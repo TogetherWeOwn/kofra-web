@@ -11,7 +11,7 @@
 	];
 </script>
 
-<PageHead heading={FAQ_PAGE.heading} description={FAQ_PAGE.description} lead={FAQ_PAGE.lead} />
+<PageHead heading={FAQ_PAGE.heading} lead={FAQ_PAGE.lead} />
 
 <div class="wrap groups">
 	{#each groups as g (g.id)}

@@ -6,7 +6,6 @@
 
 	type Props = {
 		heading: string;
-		description: string;
 		lead?: string;
 		blocks: Block[];
 		/** Show an "On this page" list of the h2 sections beside the text (wide screens) or above it. */
@@ -15,13 +14,13 @@
 		notice?: Snippet;
 	};
 
-	let { heading, description, lead, blocks, toc = false, notice }: Props = $props();
+	let { heading, lead, blocks, toc = false, notice }: Props = $props();
 	const sections = $derived(
 		blocks.flatMap((b) => (b.type === 'h2' ? [{ id: headingId(b), text: plain(b.text) }] : []))
 	);
 </script>
 
-<PageHead {heading} {description} {lead} children={notice} />
+<PageHead {heading} {lead} children={notice} />
 
 <div class="wrap body" class:with-toc={toc}>
 	{#if toc}

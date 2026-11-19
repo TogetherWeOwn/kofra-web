@@ -15,11 +15,6 @@
 	import { HOME } from '#lib/pages/home.js';
 </script>
 
-<svelte:head>
-	<title>{HOME.title}</title>
-	<meta name="description" content={HOME.description} />
-</svelte:head>
-
 <section class="hero">
 	<div class="wrap hero-grid">
 		<div>

@@ -6,7 +6,7 @@
 	import { PRICING } from '#lib/pages/pricing.js';
 </script>
 
-<PageHead heading={PRICING.heading} description={PRICING.description} lead={PRICING.lead}>
+<PageHead heading={PRICING.heading} lead={PRICING.lead}>
 	<Callout tone="info"><p>{EXAMPLE_NOTE}</p></Callout>
 </PageHead>
 

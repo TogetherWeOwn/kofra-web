@@ -51,3 +51,20 @@ export const LICENCES = {
 	description: 'Open-source fonts and icons used on the Kofra website, and their licences.',
 	lead: 'This website uses these open-source works. Their licences are reproduced in full below.'
 };
+
+/** Open-source works used on the site; full texts are in src/lib/licences/. */
+export const LICENCE_WORKS = [
+	{
+		id: 'plex-sans',
+		name: 'IBM Plex Sans',
+		use: 'Text typeface',
+		licence: 'SIL Open Font License 1.1'
+	},
+	{
+		id: 'plex-mono',
+		name: 'IBM Plex Mono',
+		use: 'Code typeface',
+		licence: 'SIL Open Font License 1.1'
+	},
+	{ id: 'lucide', name: 'Lucide', use: 'Icons', licence: 'ISC License' }
+] as const;
