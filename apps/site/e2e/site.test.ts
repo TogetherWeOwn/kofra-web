@@ -108,17 +108,22 @@ test('without JavaScript every page still reads, the menu works and the toggle i
 	await context.close();
 });
 
-test('every internal link resolves', async ({ page, request }) => {
+test('every internal link resolves, including its #fragment', async ({ page, request }) => {
 	const seen = new Set<string>();
 	for (const path of PAGES) {
 		await page.goto(path);
 		const hrefs = await page
 			.locator('a[href^="/"]')
 			.evaluateAll((els) => els.map((e) => e.getAttribute('href')!));
-		for (const h of hrefs) seen.add(h.split('#')[0]!);
+		for (const h of hrefs) seen.add(h);
 	}
 	for (const href of seen) {
-		const r = await request.get(href);
+		const [path, fragment] = href.split('#') as [string, string | undefined];
+		const r = await request.get(path);
 		expect(r.status(), href).toBe(200);
+		if (fragment) {
+			await page.goto(path);
+			await expect(page.locator(`[id="${fragment}"]`), href).toHaveCount(1);
+		}
 	}
 });

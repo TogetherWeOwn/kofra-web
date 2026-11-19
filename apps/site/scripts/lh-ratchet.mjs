@@ -42,7 +42,7 @@ export function medians(lhrs) {
 	return out;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.main) {
 	const files = readdirSync(DIR).filter((f) => /^lhr-.*\.json$/.test(f));
 	if (!files.length) {
 		console.error(`no Lighthouse results in ${DIR}/; run lhci collect first`);
@@ -54,7 +54,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 		console.log(`wrote ${BASELINE}`);
 		process.exit(0);
 	}
-	const base = existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, 'utf8')) : {};
+	if (!existsSync(BASELINE)) {
+		console.error(`${BASELINE} is missing; run with --update and commit it`);
+		process.exit(1);
+	}
+	const base = JSON.parse(readFileSync(BASELINE, 'utf8'));
+	const missing = Object.keys(base).filter((p) => !(p in current));
+	const added = Object.keys(current).filter((p) => !(p in base));
 	console.log('| Page | Perf | A11y | Best pr. | SEO | LCP | TBT | CLS | Runs |');
 	console.log('|---|---|---|---|---|---|---|---|---|');
 	const regressions = [];
@@ -63,12 +69,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 			`| ${p} | ${r.performance} | ${r.accessibility} | ${r['best-practices']} | ${r.seo} | ${r.lcpMs} ms | ${r.tbtMs} ms | ${r.cls} | ${r.runs} |`
 		);
 		const b = base[p];
-		if (!b) continue; // a new page sets its own baseline on the next --update
+		if (!b) continue; // reported below as an added page
 		for (const c of CATEGORIES) {
 			if (r[c] < b[c] - MARGIN[c])
 				regressions.push(`${p} ${c}: ${r[c]} < baseline ${b[c]} - ${MARGIN[c]}`);
 		}
 	}
+	for (const p of missing) regressions.push(`${p}: in the baseline but not measured`);
+	for (const p of added) regressions.push(`${p}: measured but not in the baseline (run --update)`);
 	if (regressions.length) {
 		console.error('\nLighthouse regressions beyond the noise margin:\n' + regressions.join('\n'));
 		process.exit(1);

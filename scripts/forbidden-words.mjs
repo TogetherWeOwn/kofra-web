@@ -42,6 +42,12 @@ const BINARY = /\.(png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|pdf|zip|gz|br)$/i;
 
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 
+/**
+ * Build tools name assets with random content hashes (`_layout.CJwq8O2U.css`); a hash can
+ * contain a short term by chance, so hashes are removed before matching.
+ */
+const CONTENT_HASH = /[.-][A-Za-z0-9_-]{8}(?=\.(?:js|mjs|css|woff2?|png|svg|json|map)\b)/g;
+
 /** Returns the [line, hash] of every deny-listed substring in the text. */
 export function findTerms(text, terms = TERMS) {
 	const byLength = new Map();
@@ -51,7 +57,10 @@ export function findTerms(text, terms = TERMS) {
 	}
 	const hits = [];
 	text.split('\n').forEach((line, i) => {
-		for (const token of line.toLowerCase().match(/[a-z0-9]+/g) ?? []) {
+		for (const token of line
+			.replace(CONTENT_HASH, '')
+			.toLowerCase()
+			.match(/[a-z0-9]+/g) ?? []) {
 			for (const [len, hashes] of byLength) {
 				for (let at = 0; at + len <= token.length; at++) {
 					const h = sha(token.slice(at, at + len));
@@ -70,13 +79,23 @@ function walk(dir) {
 	});
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.main) {
 	const args = process.argv.slice(2);
 	if (args[0] === '--self-test') {
 		const found = findTerms('ok\nsome Kofraselftesttermish text', [SELF_TEST]);
+		// A term inside a content-hashed asset name is ignored; the same term in text is not.
+		const hashTerm = [[8, sha('kofrasel')]];
+		const inHash = findTerms('see _app/x.kofrasel.js', hashTerm);
+		const inText = findTerms('see kofrasel here', hashTerm);
 		const clean = findTerms('nothing to see here', [SELF_TEST]);
-		if (found.length !== 1 || found[0][0] !== 2 || clean.length !== 0) {
-			console.error('self-test failed', found, clean);
+		if (
+			found.length !== 1 ||
+			found[0][0] !== 2 ||
+			clean.length !== 0 ||
+			inHash.length !== 0 ||
+			inText.length !== 1
+		) {
+			console.error('self-test failed', found, clean, inHash, inText);
 			process.exit(1);
 		}
 		console.log('self-test passed');

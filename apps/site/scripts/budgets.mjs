@@ -44,17 +44,31 @@ export function measure(clientDir) {
 				const f = resolve(ref);
 				return f ? sum + gzipSync(readFileSync(f), { level: 9 }).length : sum;
 			}, 0);
-		const js = refs(/<script[^>]*\ssrc="([^"]+)"/g);
+		const js = [
+			...refs(/<script[^>]*\ssrc="([^"]+)"/g),
+			...[...html.matchAll(/<link\b[^>]*>/g)]
+				.map((m) => m[0])
+				.filter((tag) => /rel="modulepreload"/.test(tag))
+				.map((tag) => /href="([^"]+)"/.exec(tag)?.[1])
+				.filter(Boolean)
+		];
+		// Inline code counts too (JSON-LD data blocks are not code and are excluded).
+		const inline = (re) =>
+			[...html.matchAll(re)].reduce((n, m) => n + gzipSync(m[1], { level: 9 }).length, 0);
+		const inlineJs = inline(
+			/<script(?![^>]*\bsrc=)(?![^>]*application\/ld\+json)[^>]*>([\s\S]*?)<\/script>/g
+		);
+		const inlineCss = inline(/<style[^>]*>([\s\S]*?)<\/style>/g);
 		const css = [...html.matchAll(/<link\b[^>]*>/g)]
 			.map((m) => m[0])
 			.filter((tag) => /rel="stylesheet"/.test(tag))
 			.map((tag) => /href="([^"]+)"/.exec(tag)?.[1])
 			.filter(Boolean);
-		return { url, js: size(js), css: size(css) };
+		return { url, js: size(js) + inlineJs, css: size(css) + inlineCss };
 	});
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.main) {
 	const dir = process.argv[2] ?? '.svelte-kit/cloudflare/client';
 	const rows = measure(dir).sort((a, b) => a.url.localeCompare(b.url));
 	const kb = (n) => (n / 1024).toFixed(1).padStart(5);

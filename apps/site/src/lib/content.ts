@@ -27,7 +27,7 @@ export const EARLY_ACCESS = '/early-access';
 
 /** Shown next to every price until the owner sets real prices. */
 export const EXAMPLE_NOTE =
-	'Example prices. They are not an offer and may change before Kofra opens for sign-ups.';
+	'Example prices and plans. They are not an offer and may change before Kofra opens for sign-ups.';
 
 export const NAV: NavItem[] = [
 	{ label: 'Product', href: '/' },
@@ -144,7 +144,6 @@ export const COMPARE: CompareRow[] = [
 	{ label: 'API requests', values: ['No charge', 'No charge', 'No charge'] },
 	{ label: 'Minimum storage duration', values: ['None', 'None', 'None'] },
 	{ label: 'Smallest monthly bill', values: ['$0', '$1', '$9 (1 TB)'] },
-	{ label: 'Largest single file', values: ['5 GB', '1 TB', '1 TB'] },
 	{ label: 'Trash and versions', values: ['30 days', '30 days', '90 days'] },
 	{ label: 'Members', values: ['1', '1', 'Unlimited'] },
 	{ label: 'Scoped access keys', values: [true, true, true] },
@@ -222,12 +221,12 @@ export const FEATURES: Feature[] = [
 	{
 		icon: History,
 		title: 'Trash and versions',
-		body: 'Restore a deleted or overwritten file for 30 days, or 90 days on Team.'
+		body: 'Planned for launch: restore a deleted or overwritten file for 30 days, or 90 days on Team.'
 	},
 	{
 		icon: KeyRound,
 		title: 'Scoped access keys',
-		body: 'Create keys that can only read, only write, or only reach one bucket.'
+		body: 'Planned for launch: keys that can only read, only write, or only reach one bucket.'
 	},
 	{
 		icon: HardDrive,
@@ -250,17 +249,17 @@ export const SECURITY: Feature[] = [
 	{
 		icon: KeyRound,
 		title: 'Least-privilege keys',
-		body: 'Keys can be limited to one bucket, read-only or write-only, and revoked at any time.'
+		body: 'Planned for launch: keys limited to one bucket, read-only or write-only, and revoked at any time.'
 	},
 	{
 		icon: Smartphone,
 		title: 'Two-factor sign-in',
-		body: 'Authenticator apps and passkeys. Required for every member on Team.'
+		body: 'Planned for launch: authenticator apps and passkeys, required for every member on Team.'
 	},
 	{
 		icon: ScrollText,
 		title: 'Audit log',
-		body: 'Team accounts record sign-ins, key changes and deletions, with export.'
+		body: 'Planned for launch: Team accounts record sign-ins, key changes and deletions, with export.'
 	},
 	{
 		icon: DatabaseBackup,
@@ -291,21 +290,22 @@ export const TOOL_EXAMPLES: {
 		name: 'aws-cli',
 		kind: 'Command line',
 		blurb: 'The AWS command line, pointed at the Kofra endpoint.',
-		code: `aws s3 sync ./photos s3://family-photos/ \\\n  --endpoint-url ${ENDPOINT}`
+		code: `aws configure --profile kofra   # region: ${REGION}\naws configure set s3.addressing_style path --profile kofra\naws s3 sync ./photos s3://my-bucket/photos/ \\\n  --profile kofra --endpoint-url ${ENDPOINT}`
 	},
 	{
 		id: 'rclone',
 		name: 'rclone',
 		kind: 'Sync and mount',
-		blurb: 'Copy, sync and mount. Also moves files from other clouds.',
-		code: `rclone config create kofra s3 provider=Other \\\n  endpoint=${ENDPOINT} region=${REGION} \\\n  force_path_style=true env_auth=true\nrclone sync ./projects kofra:projects`
+		blurb:
+			'Copy, sync and mount. Also moves files from other clouds. Files over 95 MiB go in parts.',
+		code: `rclone config create kofra s3 provider=Other env_auth=true \\\n  endpoint=${ENDPOINT} region=${REGION} \\\n  force_path_style=true upload_cutoff=95M\nrclone sync ./projects kofra:my-bucket/projects`
 	},
 	{
 		id: 'restic',
 		name: 'restic',
 		kind: 'Backup',
 		blurb: 'Encrypted, deduplicated backups of laptops and servers.',
-		code: `restic -r s3:${ENDPOINT}/backups init\nrestic -r s3:${ENDPOINT}/backups backup ~/`
+		code: `export AWS_DEFAULT_REGION=${REGION}\nrestic -r s3:${ENDPOINT}/my-backups init\nrestic -r s3:${ENDPOINT}/my-backups backup ~/`
 	},
 	{
 		id: 'cyberduck',
@@ -355,7 +355,7 @@ export const FAQ_PRICING: FaqItem[] = [
 export const FAQ_DATA: FaqItem[] = [
 	{
 		q: 'How is my data protected?',
-		a: 'Objects are encrypted at rest, connections use HTTPS, and every upload is checked against its checksum. Deleted files stay in the trash for 30 days, or 90 days on Team.'
+		a: 'Objects are encrypted at rest, connections use HTTPS, and every upload is checked against its checksum. A trash that keeps deleted files for 30 days (90 days on Team) is planned for launch.'
 	},
 	{
 		q: 'Can I move my data out again?',

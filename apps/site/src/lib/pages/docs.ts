@@ -67,7 +67,7 @@ export const DOCS_BLOCKS: Block[] = [
 	},
 	{
 		type: 'p',
-		text: 'Large files are uploaded in parts automatically. The default part size (8 MB) works with Kofra.'
+		text: 'aws-cli uploads large files in parts automatically, with no extra settings.'
 	},
 
 	{ type: 'h2', text: 'rclone', id: 'rclone' },
