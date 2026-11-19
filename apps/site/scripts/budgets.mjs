@@ -1,7 +1,7 @@
 // Hard gate: JavaScript and CSS bytes (gzip) that each prerendered page loads.
 // Usage: node scripts/budgets.mjs [client-dir]   (default: the adapter output)
 // Deterministic: it reads the build output, not a browser. Exit 1 when a page is over budget.
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, realpathSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -69,8 +69,9 @@ export function measure(clientDir) {
 	});
 }
 
-// import.meta.main needs Node 24.2; this works on every Node the engines field allows.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// import.meta.main needs Node 24.2; this works on every Node the engines field allows, and
+// resolves a symlinked script path the way import.meta.url does.
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
 	const dir = process.argv[2] ?? '.svelte-kit/cloudflare/client';
 	const rows = measure(dir).sort((a, b) => a.url.localeCompare(b.url));
 	const kb = (n) => (n / 1024).toFixed(1).padStart(5);

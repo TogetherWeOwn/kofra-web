@@ -11,7 +11,7 @@
 //   --self-test: proves the matcher finds a planted term
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -83,8 +83,9 @@ function walk(dir) {
 	});
 }
 
-// import.meta.main needs Node 24.2; this works on every Node the engines field allows.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// import.meta.main needs Node 24.2; this works on every Node the engines field allows, and
+// resolves a symlinked script path the way import.meta.url does.
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
 	const args = process.argv.slice(2);
 	if (args[0] === '--self-test') {
 		const found = findTerms('ok\nsome Kofraselftesttermish text', [SELF_TEST]);
