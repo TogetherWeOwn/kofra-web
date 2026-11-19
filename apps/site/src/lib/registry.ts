@@ -150,7 +150,7 @@ export const PAGES: PageEntry[] = [
 		updated: '2026-11-19',
 		kind: 'page',
 		llms: { section: 'Optional', note: 'open-source fonts and icons used on the site' },
-		markdown: () => licencesMarkdown([...LICENCE_WORKS])
+		markdown: () => licencesMarkdown(LICENCE_WORKS)
 	}
 ];
 

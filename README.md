@@ -47,8 +47,9 @@ the same content modules the pages render, so nothing can drift:
   `src/lib/negotiate.js`, installed by `scripts/postbuild.mjs`). Pages link their twin with
   `<link rel="alternate" type="text/markdown">`.
 - **`/llms.txt`** (llmstxt.org format) and **`/llms-full.txt`** (all twins in one file).
-- **JSON-LD:** Organization, WebSite, BreadcrumbList, FAQPage (`/faq`), Product with example-labelled
-  offers (`/pricing`) and TechArticle (docs), checked against schema.org in unit and e2e tests.
+- **JSON-LD:** Organization, WebSite, BreadcrumbList, FAQPage (`/faq`) and TechArticle (docs), checked
+  against schema.org in unit and e2e tests. Product and Offer (`/pricing`) are published only once
+  `PRICES_FINAL` in `src/lib/site.ts` is true; example prices never become structured data.
 - **SEO basics:** canonical URLs on `https://kofra.app`, `sitemap.xml` with `lastmod`, Open Graph and
   Twitter cards with `static/og.png` (regenerate with `node scripts/og-image.mjs`).
 

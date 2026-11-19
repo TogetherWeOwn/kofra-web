@@ -1,5 +1,8 @@
 // Copy for the FAQ, security, early access and licences pages.
 import type { Block } from '#lib/blocks.js';
+import plexSans from '#lib/licences/ibm-plex-sans.txt?raw';
+import plexMono from '#lib/licences/ibm-plex-mono.txt?raw';
+import lucide from '#lib/licences/lucide.txt?raw';
 
 export const FAQ_PAGE = {
 	heading: 'Questions and answers',
@@ -52,19 +55,21 @@ export const LICENCES = {
 	lead: 'This website uses these open-source works. Their licences are reproduced in full below.'
 };
 
-/** Open-source works used on the site; full texts are in src/lib/licences/. */
+/** Open-source works used on the site, with their full licence texts (src/lib/licences/). */
 export const LICENCE_WORKS = [
 	{
 		id: 'plex-sans',
 		name: 'IBM Plex Sans',
 		use: 'Text typeface',
-		licence: 'SIL Open Font License 1.1'
+		licence: 'SIL Open Font License 1.1',
+		text: plexSans
 	},
 	{
 		id: 'plex-mono',
 		name: 'IBM Plex Mono',
 		use: 'Code typeface',
-		licence: 'SIL Open Font License 1.1'
+		licence: 'SIL Open Font License 1.1',
+		text: plexMono
 	},
-	{ id: 'lucide', name: 'Lucide', use: 'Icons', licence: 'ISC License' }
-] as const;
+	{ id: 'lucide', name: 'Lucide', use: 'Icons', licence: 'ISC License', text: lucide }
+];

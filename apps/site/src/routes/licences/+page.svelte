@@ -1,16 +1,7 @@
 <script lang="ts">
 	import PageHead from '#lib/components/PageHead.svelte';
 	import { LICENCE_WORKS, LICENCES } from '#lib/pages/misc.js';
-	import plexSans from '#lib/licences/ibm-plex-sans.txt?raw';
-	import plexMono from '#lib/licences/ibm-plex-mono.txt?raw';
-	import lucide from '#lib/licences/lucide.txt?raw';
-
-	const texts: Record<string, string> = {
-		'plex-sans': plexSans,
-		'plex-mono': plexMono,
-		lucide
-	};
-	const works = LICENCE_WORKS.map((w) => ({ ...w, text: texts[w.id] ?? '' }));
+	const works = LICENCE_WORKS;
 </script>
 
 <PageHead heading={LICENCES.heading} lead={LICENCES.lead} />

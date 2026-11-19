@@ -83,7 +83,7 @@ export function pricingMarkdown(): string {
 			'## Plans',
 			PLANS.map(
 				(p) =>
-					`### ${p.name}: ${p.price} ${p.unit}\n\n${p.blurb}\n\n${p.features.map((f) => `- ${f}`).join('\n')}`
+					`### ${p.name}: ${p.price} ${p.unit}\n\n${p.blurb}\n\n[${p.cta.label}](${O}${p.cta.href})\n\n${p.features.map((f) => `- ${f}`).join('\n')}`
 			).join('\n\n'),
 			'## Compare plans',
 			table(
@@ -125,11 +125,14 @@ export function securityMarkdown(): string {
 	);
 }
 
-export function licencesMarkdown(works: { name: string; use: string; licence: string }[]): string {
+export function licencesMarkdown(
+	works: { name: string; use: string; licence: string; text: string }[]
+): string {
 	return doc(
 		LICENCES.heading,
 		LICENCES.lead,
-		works.map((w) => `- **${w.name}** (${w.use}): ${w.licence}`).join('\n') +
-			`\n\nThe full licence texts are on the [licences page](${O}/licences).`
+		works
+			.map((w) => `## ${w.name}\n\n${w.use}. ${w.licence}.\n\n\`\`\`text\n${w.text.trim()}\n\`\`\``)
+			.join('\n\n')
 	);
 }
