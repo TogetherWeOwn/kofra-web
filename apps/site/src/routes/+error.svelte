@@ -8,6 +8,7 @@
 
 <svelte:head>
 	<title>{pageTitle(notFound ? 'Page not found' : 'Something went wrong')}</title>
+	<meta name="robots" content="noindex" />
 </svelte:head>
 
 <section class="page-head">

@@ -1,31 +1,32 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
-	import { headingId, plain, type Block } from '#lib/blocks.js';
+	import { Callout } from '@kofra/ui';
+	import { headingId, plain, type Block, type Tone } from '#lib/blocks.js';
 	import Blocks from './Blocks.svelte';
 	import PageHead from './PageHead.svelte';
 
 	type Props = {
 		heading: string;
-		description: string;
 		lead?: string;
 		blocks: Block[];
 		/** Show an "On this page" list of the h2 sections beside the text (wide screens) or above it. */
 		toc?: boolean;
-		/** Shown under the lead, for example a draft notice. */
-		notice?: Snippet;
+		/** A note under the lead, for example the draft notice. Also in the Markdown twin. */
+		notice?: { tone: Tone; title: string; text: string };
 	};
 
-	let { heading, description, lead, blocks, toc = false, notice }: Props = $props();
+	let { heading, lead, blocks, toc = false, notice }: Props = $props();
 	const sections = $derived(
 		blocks.flatMap((b) => (b.type === 'h2' ? [{ id: headingId(b), text: plain(b.text) }] : []))
 	);
 </script>
 
-<PageHead {heading} {description} {lead} children={notice} />
+<PageHead {heading} {lead}>
+	{#if notice}<Callout tone={notice.tone} title={notice.title}><p>{notice.text}</p></Callout>{/if}
+</PageHead>
 
 <div class="wrap body" class:with-toc={toc}>
 	{#if toc}
-		<nav class="toc" aria-label="On this page">
+		<nav class="toc" aria-label="On this page" data-twin-skip>
 			<p class="toc-h">On this page</p>
 			<ul>
 				{#each sections as s (s.id)}<li><a href="#{s.id}">{s.text}</a></li>{/each}

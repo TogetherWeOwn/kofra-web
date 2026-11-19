@@ -8,9 +8,12 @@
 	import { page } from '$app/state';
 	import { Button, Footer, Nav, ThemeToggle } from '@kofra/ui';
 	import { EARLY_ACCESS, FOOTER, NAV } from '#lib/content.js';
+	import Seo from '#lib/components/Seo.svelte';
+	import { pageFor } from '#lib/registry.js';
 	import { SITE } from '#lib/site.js';
 
 	let { children } = $props();
+	const entry = $derived(pageFor(page.url.pathname));
 </script>
 
 <svelte:head>
@@ -18,6 +21,8 @@
 	<script src={themeScript}></script>
 	<link rel="preload" href={plexLatin} as="font" type="font/woff2" crossorigin="anonymous" />
 </svelte:head>
+
+{#if entry}<Seo {entry} />{/if}
 
 <a class="skip-link" href="#main">Skip to content</a>
 <Nav items={NAV} current={page.url.pathname}>

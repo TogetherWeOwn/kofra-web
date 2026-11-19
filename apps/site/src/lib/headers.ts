@@ -1,5 +1,6 @@
 import type { Handle } from '@sveltejs/kit/hooks';
 import raw from '../../_headers?raw';
+import { INDEXABLE } from '#lib/site.js';
 
 /**
  * Headers of the catch-all `/*` rule in a Cloudflare `_headers` file. Comments and other
@@ -24,8 +25,14 @@ export function catchAllHeaders(text: string): [string, string][] {
 	return out;
 }
 
-/** The site-wide headers, from the same `_headers` file that static assets use. */
-export const SITE_HEADERS = catchAllHeaders(raw);
+/**
+ * The site-wide headers, from the same `_headers` file that static assets use. An indexable
+ * (production) build drops X-Robots-Tag here and in the built `_headers` (scripts/postbuild.mjs).
+ */
+export const siteHeaderList = (indexable: boolean) =>
+	catchAllHeaders(raw).filter(([name]) => !indexable || name.toLowerCase() !== 'x-robots-tag');
+
+export const SITE_HEADERS = siteHeaderList(INDEXABLE);
 
 /**
  * Server hook (built with `headersHook(dev)`): responses the Worker renders (404 pages, any dynamic route) get the same

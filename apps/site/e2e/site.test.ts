@@ -27,7 +27,10 @@ for (const path of PAGES) {
 			.evaluateAll((els) => els.map((e) => e.getAttribute('src')));
 		expect(scripts).toHaveLength(1);
 		expect(scripts[0]).toMatch(/\/_app\/immutable\/assets\/theme\.[\w-]+\.js$/);
-		await expect(page.locator('script:not([src])')).toHaveCount(0);
+		// Inline scripts: only the JSON-LD data block, which browsers never execute.
+		await expect(page.locator('script:not([src]):not([type="application/ld+json"])')).toHaveCount(
+			0
+		);
 		expect(problems).toEqual([]);
 	});
 }

@@ -37,6 +37,27 @@ The site is fully prerendered and ships no JavaScript except the theme switch. C
   and TBT, as medians of three runs. On pull requests Lighthouse runs only when site-affecting files
   change (a skip counts as a pass in `ci-ok`); the job summary lists every warning and failure. See [docs/PERF-BACKLOG.md](docs/PERF-BACKLOG.md).
 
+## Search engines and AI assistants
+
+`apps/site/src/lib/registry.ts` lists every page once; everything below is generated from it and
+the same content modules the pages render, so nothing can drift:
+
+- **Markdown twins:** every page is also served as Markdown at `<path>.md` (`/index.md` for home),
+  and at the page URL itself for requests with `Accept: text/markdown` (a small entry Worker,
+  `src/lib/negotiate.js`, installed by `scripts/postbuild.mjs`). Pages link their twin with
+  `<link rel="alternate" type="text/markdown">`.
+- **`/llms.txt`** (llmstxt.org format) and **`/llms-full.txt`** (all twins in one file).
+- **JSON-LD:** Organization, WebSite, BreadcrumbList, FAQPage (`/faq`) and TechArticle (docs), checked
+  against schema.org in unit and e2e tests. Product and Offer (`/pricing`) are published only once
+  `PRICES_FINAL` in `src/lib/site.ts` is true; example prices never become structured data.
+- **SEO basics:** canonical URLs on `https://kofra.app`, `sitemap.xml` with `lastmod`, Open Graph and
+  Twitter cards with `static/og.png` (regenerate with `node scripts/og-image.mjs`).
+
+**Indexing is off** for every build: `noindex` meta and header, and a `Disallow: /` robots.txt. A
+production launch flips one value: build with `KOFRA_INDEXABLE=true`. That drops `noindex`
+everywhere and serves a robots.txt that allows search engines and the AI crawlers that honour it,
+with the sitemap line.
+
 ## Development
 
 Requires Node 24 (see `.node-version`) and pnpm 10 (`corepack enable` or install pnpm directly).

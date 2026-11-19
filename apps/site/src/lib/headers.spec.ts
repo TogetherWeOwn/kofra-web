@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { RequestEvent } from '@sveltejs/kit';
 import { describe, expect, it } from 'vitest';
-import { catchAllHeaders, headersHook } from './headers';
+import { catchAllHeaders, headersHook, siteHeaderList } from './headers';
 
 const file = readFileSync(new URL('../../_headers', import.meta.url), 'utf8');
 const event = {} as RequestEvent;
@@ -27,6 +27,22 @@ describe('_headers', () => {
 		]);
 		expect(() => catchAllHeaders('/*\n  ! B\n')).toThrow(/detach/);
 		expect(() => catchAllHeaders('/*\n  nonsense\n')).toThrow(/not a header/);
+	});
+});
+
+describe('siteHeaderList', () => {
+	const robots = (list: [string, string][]) =>
+		list.filter(([n]) => n.toLowerCase() === 'x-robots-tag').map(([, v]) => v);
+
+	it('keeps noindex on Worker-rendered responses until the site is indexable', () => {
+		expect(robots(siteHeaderList(false))).toEqual(['noindex']);
+	});
+
+	it('drops only X-Robots-Tag in the indexable build', () => {
+		const staging = siteHeaderList(false);
+		const live = siteHeaderList(true);
+		expect(robots(live)).toEqual([]);
+		expect(live).toHaveLength(staging.length - 1);
 	});
 });
 

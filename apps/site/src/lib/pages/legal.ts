@@ -3,13 +3,15 @@
 // reviewed before Kofra accepts customers.
 import type { Block } from '#lib/blocks.js';
 
+export const DRAFT_TITLE = 'Draft, not in force.';
 export const DRAFT_NOTICE =
 	'This is a draft for review. It is not in force, it is not an offer and it does not form an agreement. Kofra is not accepting customers yet. Bracketed items such as [COMPANY LEGAL NAME] are placeholders.';
 
 export const TERMS = {
 	heading: 'Terms of service (draft)',
 	description: 'Draft terms of service for Kofra cloud storage. Not in force.',
-	lead: 'The agreement that will apply when you use Kofra.'
+	lead: 'The agreement that will apply when you use Kofra.',
+	notice: { tone: 'draft', title: DRAFT_TITLE, text: DRAFT_NOTICE } as const
 };
 
 export const TERMS_BLOCKS: Block[] = [
@@ -70,7 +72,8 @@ export const TERMS_BLOCKS: Block[] = [
 export const PRIVACY = {
 	heading: 'Privacy policy (draft)',
 	description: 'Draft privacy policy for Kofra cloud storage. Not in force.',
-	lead: 'What personal data Kofra will process, why, and your rights.'
+	lead: 'What personal data Kofra will process, why, and your rights.',
+	notice: { tone: 'draft', title: DRAFT_TITLE, text: DRAFT_NOTICE } as const
 };
 
 export const PRIVACY_BLOCKS: Block[] = [

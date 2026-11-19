@@ -15,15 +15,10 @@
 	import { HOME } from '#lib/pages/home.js';
 </script>
 
-<svelte:head>
-	<title>{HOME.title}</title>
-	<meta name="description" content={HOME.description} />
-</svelte:head>
-
 <section class="hero">
 	<div class="wrap hero-grid">
 		<div>
-			<p class="eyebrow">{HOME.hero.eyebrow}</p>
+			<p class="eyebrow" data-twin-skip>{HOME.hero.eyebrow}</p>
 			<h1>{HOME.hero.heading}</h1>
 			<p class="lead">{HOME.hero.lead}</p>
 			<div class="cta-row">
@@ -72,7 +67,7 @@
 					</div>
 				{/each}
 			</dl>
-			<p class="more"><Link href="/docs" variant="arrow">{HOME.s3.more}</Link></p>
+			<p class="more" data-twin-skip><Link href="/docs" variant="arrow">{HOME.s3.more}</Link></p>
 		</div>
 		<ToolExamples />
 	</div>
@@ -92,7 +87,9 @@
 			rows={PLAN_SUMMARY}
 			secondary={[2, 3]}
 		/>
-		<p class="after"><Link href="/pricing" variant="arrow">{HOME.pricing.more}</Link></p>
+		<p class="after" data-twin-skip>
+			<Link href="/pricing" variant="arrow">{HOME.pricing.more}</Link>
+		</p>
 	</div>
 </section>
 
@@ -110,7 +107,7 @@
 	<div class="wrap faq-grid">
 		<div>
 			<h2 id="faq-h">{HOME.faq.heading}</h2>
-			<p class="muted"><Link href="/faq" variant="arrow">{HOME.faq.more}</Link></p>
+			<p class="muted" data-twin-skip><Link href="/faq" variant="arrow">{HOME.faq.more}</Link></p>
 		</div>
 		<FAQ items={FAQ_HOME} />
 	</div>

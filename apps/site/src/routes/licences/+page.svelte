@@ -1,30 +1,10 @@
 <script lang="ts">
 	import PageHead from '#lib/components/PageHead.svelte';
-	import { LICENCES } from '#lib/pages/misc.js';
-	import plexSans from '#lib/licences/ibm-plex-sans.txt?raw';
-	import plexMono from '#lib/licences/ibm-plex-mono.txt?raw';
-	import lucide from '#lib/licences/lucide.txt?raw';
-
-	const works = [
-		{
-			id: 'plex-sans',
-			name: 'IBM Plex Sans',
-			use: 'Text typeface',
-			licence: 'SIL Open Font License 1.1',
-			text: plexSans
-		},
-		{
-			id: 'plex-mono',
-			name: 'IBM Plex Mono',
-			use: 'Code typeface',
-			licence: 'SIL Open Font License 1.1',
-			text: plexMono
-		},
-		{ id: 'lucide', name: 'Lucide', use: 'Icons', licence: 'ISC License', text: lucide }
-	];
+	import { LICENCE_WORKS, LICENCES } from '#lib/pages/misc.js';
+	const works = LICENCE_WORKS;
 </script>
 
-<PageHead heading={LICENCES.heading} description={LICENCES.description} lead={LICENCES.lead} />
+<PageHead heading={LICENCES.heading} lead={LICENCES.lead} />
 
 <div class="wrap body">
 	{#each works as w (w.id)}

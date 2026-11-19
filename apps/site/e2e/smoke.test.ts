@@ -22,12 +22,12 @@ test('static assets are not indexable', async ({ page, request }) => {
 	expect(asset.headers()['x-robots-tag']).toContain('noindex');
 });
 
-// robots.txt is outside /_app/, so only the root _headers catch-all rule
-// can add the header. Crawling stays allowed so crawlers can see noindex.
-test('robots.txt allows crawling and is not indexable', async ({ request }) => {
+// Until launch (KOFRA_INDEXABLE unset) nothing may be crawled, and robots.txt
+// itself carries the noindex header from the root _headers rule.
+test('robots.txt disallows crawling before launch and is not indexable', async ({ request }) => {
 	const response = await request.get('/robots.txt');
 	expect(response.status()).toBe(200);
-	expect(await response.text()).toContain('Allow: /');
+	expect(await response.text()).toBe('User-agent: *\nDisallow: /\n');
 	expect(response.headers()['x-robots-tag']).toContain('noindex');
 });
 

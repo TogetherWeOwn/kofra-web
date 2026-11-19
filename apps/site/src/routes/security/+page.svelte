@@ -6,11 +6,7 @@
 	import { SECURITY_BLOCKS, SECURITY_PAGE } from '#lib/pages/misc.js';
 </script>
 
-<PageHead
-	heading={SECURITY_PAGE.heading}
-	description={SECURITY_PAGE.description}
-	lead={SECURITY_PAGE.lead}
-/>
+<PageHead heading={SECURITY_PAGE.heading} lead={SECURITY_PAGE.lead} />
 
 <section class="sec sec-tight" aria-labelledby="prot-h">
 	<div class="wrap">
