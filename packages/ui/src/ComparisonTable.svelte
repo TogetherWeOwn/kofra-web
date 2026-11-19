@@ -7,25 +7,40 @@
 		/** Column headings after the row label column, for example the plan names. */
 		columns: string[];
 		rows: CompareRow[];
-		/** Names the table for assistive technology and the scroll region. */
+		/** Names the table (visually hidden caption) and, through it, the scroll region. */
 		label: string;
-		/** Header of the row-label column; visually hidden. */
+		/** Header of the row-label column. */
 		rowHeader?: string;
+		/** Show the row-label header; hidden by default, when the row labels speak for themselves. */
+		showRowHeader?: boolean;
+		/** Indexes (into `columns`) of columns to hide on phones; the detail must be available elsewhere. */
+		secondary?: number[];
 	};
 
-	let { columns, rows, label, rowHeader = 'Feature' }: Props = $props();
+	let {
+		columns,
+		rows,
+		label,
+		rowHeader = 'Feature',
+		showRowHeader = false,
+		secondary = []
+	}: Props = $props();
+	const hs = (i: number) => (secondary.includes(i) ? 'hs' : undefined);
+	const uid = $props.id();
 </script>
 
 <!-- Scrolls sideways on narrow screens; the region is focusable so keyboard users can scroll it too
      (WCAG 2.1.1; axe rule scrollable-region-focusable). -->
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-<div class="wrap" role="region" aria-label={label} tabindex="0">
-	<table>
-		<caption class="sr">{label}</caption>
+<div class="scroll" role="region" aria-labelledby="{uid}-caption" tabindex="0">
+	<table class:labels={!showRowHeader}>
+		<caption class="sr" id="{uid}-caption">{label}</caption>
 		<thead>
 			<tr>
-				<th scope="col"><span class="sr">{rowHeader}</span></th>
-				{#each columns as col (col)}<th scope="col">{col}</th>{/each}
+				<th scope="col">
+					{#if showRowHeader}{rowHeader}{:else}<span class="sr">{rowHeader}</span>{/if}
+				</th>
+				{#each columns as col, i (col)}<th scope="col" class={hs(i)}>{col}</th>{/each}
 			</tr>
 		</thead>
 		<tbody>
@@ -33,7 +48,7 @@
 				<tr>
 					<th scope="row">{row.label}</th>
 					{#each row.values as value, i (i)}
-						<td>
+						<td class={hs(i)}>
 							{#if value === true}<Check class="yes" size={18} strokeWidth={1.75} /><span
 									class="sr"
 								>
@@ -52,7 +67,7 @@
 </div>
 
 <style>
-	.wrap {
+	.scroll {
 		overflow-x: auto;
 	}
 	table {
@@ -76,6 +91,10 @@
 		background: var(--color-band);
 	}
 	tbody th {
+		font-weight: var(--font-weight-semibold);
+	}
+	/* Descriptive row labels (a feature list) get a fixed share of the width and a lighter weight. */
+	.labels tbody th {
 		font-weight: var(--font-weight-medium);
 		width: 34%;
 	}
@@ -97,6 +116,9 @@
 		border: 0;
 	}
 	@media (max-width: 640px) {
+		.hs {
+			display: none;
+		}
 		th,
 		td {
 			padding: 10px var(--space-2);

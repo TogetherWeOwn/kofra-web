@@ -53,17 +53,25 @@ function num(v: Json | undefined, path: string): number {
 const fmt = (n: number) => String(+n.toFixed(4));
 
 function color(v: Json | undefined, path: string): string {
-	if (!isObj(v)) fail(path, 'colour $value must be an object with colorSpace, components and hex');
+	if (!isObj(v)) fail(path, 'colour $value must be an object with colorSpace and components');
 	if (v.colorSpace !== 'srgb')
 		fail(path, `only the srgb colour space is supported, got ${String(v.colorSpace)}`);
-	const hex = v.hex;
-	if (typeof hex !== 'string' || !/^#[0-9a-f]{6}$/.test(hex))
-		fail(path, 'hex must be #rrggbb in lower case');
+	// DTCG 2025.10: components are authoritative; hex is an optional fallback that must agree.
+	const comps = v.components;
+	if (!Array.isArray(comps) || comps.length !== 3)
+		fail(path, 'srgb components must be three numbers');
+	const rgb = comps.map((c) => {
+		const n = num(c, path);
+		if (n < 0 || n > 1) fail(path, 'srgb components must be within 0..1');
+		return Math.round(n * 255);
+	});
+	const hex = '#' + rgb.map((c) => c.toString(16).padStart(2, '0')).join('');
+	if (v.hex !== undefined && v.hex !== hex)
+		fail(path, `hex ${String(v.hex)} does not match components (${hex})`);
 	const alpha = v.alpha === undefined ? 1 : num(v.alpha, path);
 	if (alpha < 0 || alpha > 1) fail(path, 'alpha must be between 0 and 1');
 	if (alpha === 1) return hex;
-	const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-	return `rgb(${r} ${g} ${b} / ${fmt(alpha)})`;
+	return `rgb(${rgb.join(' ')} / ${fmt(alpha)})`;
 }
 
 function dimension(v: Json | undefined, path: string): string {
@@ -83,8 +91,11 @@ function fontFamily(v: Json | undefined, path: string): string {
 		.map((f) => {
 			if (typeof f !== 'string' || f === '')
 				fail(path, 'font family names must be non-empty strings');
-			if (GENERIC_FAMILIES.has(f) || /^[A-Za-z-]+$/.test(f)) return f;
-			return `"${f.replace(/["\\]/g, '')}"`;
+			if (/["\\]/.test(f))
+				fail(path, `font family ${JSON.stringify(f)} contains a quote or backslash`);
+			// Generic families are keywords; every other name is quoted, so a family called
+			// "inherit" or "Menlo" can never be read as a CSS keyword.
+			return GENERIC_FAMILIES.has(f) ? f : `"${f}"`;
 		})
 		.join(', ');
 }

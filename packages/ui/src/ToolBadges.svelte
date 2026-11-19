@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Tool } from './types.js';
+	import type { HeadingLevel, Tool } from './types.js';
 
 	type Props = {
 		tools: Tool[];
@@ -7,14 +7,15 @@
 		heading?: string;
 		/** id for the heading, so the surrounding section can be labelled by it. */
 		headingId?: string;
+		headingLevel?: HeadingLevel;
 	};
 
-	let { tools, heading = 'Works with', headingId }: Props = $props();
+	let { tools, heading = 'Works with', headingId, headingLevel = 2 }: Props = $props();
 </script>
 
 <!-- Tool names set in type with a generic icon: no third-party logos. -->
 <div class="strip">
-	<h2 id={headingId}>{heading}</h2>
+	<svelte:element this={`h${headingLevel}`} id={headingId} class="h">{heading}</svelte:element>
 	<ul>
 		{#each tools as tool (tool.name)}
 			{@const Icon = tool.icon}
@@ -36,7 +37,7 @@
 		align-items: center;
 		gap: var(--space-3) var(--space-8);
 	}
-	h2 {
+	.h {
 		margin: 0;
 		font-size: var(--font-size-sm);
 		font-weight: var(--font-weight-semibold);

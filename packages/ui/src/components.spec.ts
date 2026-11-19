@@ -90,9 +90,11 @@ describe('Nav', () => {
 			{ landmark: 'page' }
 		);
 		expect(a.violations).toEqual([]);
-		const current = all(a.document, '[aria-current="page"]').map(text);
-		// Desktop list and phone menu each mark the same item.
-		expect(current).toEqual(['Docs', 'Docs']);
+		const current = all(a.document, '[aria-current]').map(
+			(el) => `${text(el)}=${el.getAttribute('aria-current')}`
+		);
+		// Desktop list and phone menu each mark the same item; a page inside a section is "true".
+		expect(current).toEqual(['Docs=true', 'Docs=true']);
 		expect(all(a.document, 'nav[aria-label="Main"]')).toHaveLength(2);
 	});
 
@@ -175,7 +177,9 @@ describe('ComparisonTable', () => {
 		});
 		expect(a.violations).toEqual([]);
 		const region = q(a.document, '[role="region"]');
-		expect(region.getAttribute('aria-label')).toBe('Plan comparison');
+		const caption = q(a.document, 'caption');
+		expect(region.getAttribute('aria-labelledby')).toBe(caption.id);
+		expect(caption.id).not.toBe('');
 		expect(region.getAttribute('tabindex')).toBe('0');
 		expect(text(q(a.document, 'caption'))).toBe('Plan comparison');
 		expect(all(a.document, 'tbody th[scope="row"]').map(text)).toEqual([
@@ -186,6 +190,22 @@ describe('ComparisonTable', () => {
 			'Not included',
 			'Included'
 		]);
+	});
+});
+
+describe('ComparisonTable options', () => {
+	it('shows the row header on request and marks secondary columns for phones', async () => {
+		const a = await audit(ComparisonTable, {
+			label: 'Plan summary',
+			rowHeader: 'Plan',
+			showRowHeader: true,
+			columns: ['Storage', 'Smallest bill'],
+			rows: [{ label: 'Free', values: ['25 GB', '$0'] }],
+			secondary: [1]
+		});
+		expect(a.violations).toEqual([]);
+		expect(text(q(a.document, 'thead th'))).toBe('Plan');
+		expect(all(a.document, '.hs').map(text)).toEqual(['Smallest bill', '$0']);
 	});
 });
 
@@ -216,6 +236,7 @@ describe('ToolBadges', () => {
 	it('names every tool in text and shows notes such as "coming soon"', async () => {
 		const a = await audit(ToolBadges, {
 			headingId: 'works',
+			headingLevel: 2,
 			tools: [
 				{ name: 'rclone', icon: Terminal },
 				{ name: 'WebDAV', icon: Terminal, note: 'coming soon' }
@@ -224,6 +245,14 @@ describe('ToolBadges', () => {
 		expect(a.violations).toEqual([]);
 		expect(q(a.document, 'h2').id).toBe('works');
 		expect(all(a.document, 'li').map(text)).toEqual(['rclone', 'WebDAV(coming soon)']);
+	});
+
+	it('takes the heading level of its place in the outline', async () => {
+		const a = await audit(ToolBadges, {
+			headingLevel: 3,
+			tools: [{ name: 'rclone', icon: Terminal }]
+		});
+		expect(a.document.querySelector('h3')?.textContent).toBe('Works with');
 	});
 });
 

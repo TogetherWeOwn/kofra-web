@@ -2,15 +2,18 @@
 	import type { Snippet } from 'svelte';
 	import Menu from '@lucide/svelte/icons/menu';
 	import Logo from './Logo.svelte';
-	import { isCurrent } from './current.js';
+	import { currentState } from './current.js';
 	import type { NavItem } from './types.js';
 
 	type Props = {
 		items: NavItem[];
-		/** Path of the current page, for aria-current. */
+		/** Path of the current page: its link gets aria-current="page", a containing section "true". */
 		current: string;
 		homeHref?: string;
-		/** Calls to action at the right (for example the primary button). Shown in the menu on phones. */
+		/**
+		 * Calls to action at the right (for example the primary button). Rendered twice, in the bar and
+		 * in the phone menu (only one is visible at a time), so it must not contain `id` attributes.
+		 */
 		actions?: Snippet;
 		/** Small controls that stay in the bar on every width (for example the theme toggle). */
 		utility?: Snippet;
@@ -23,7 +26,7 @@
 	<ul>
 		{#each items as item (item.href)}
 			<li>
-				<a href={item.href} aria-current={isCurrent(item.href, current) ? 'page' : undefined}>
+				<a href={item.href} aria-current={currentState(item.href, current)}>
 					{item.label}
 				</a>
 			</li>
@@ -80,7 +83,7 @@
 		padding: var(--space-2) 0;
 	}
 	.links a:hover,
-	.links a[aria-current='page'] {
+	.links a[aria-current] {
 		color: var(--color-ink);
 		text-decoration: underline;
 		text-underline-offset: 6px;

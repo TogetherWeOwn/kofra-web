@@ -39,6 +39,13 @@
 	document.addEventListener('DOMContentLoaded', function () {
 		apply(root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
 	});
+	// Another tab changed the choice, or the page came back from the back-forward cache.
+	window.addEventListener('storage', function (event) {
+		if (event.key === KEY || event.key === null) apply(saved() || system());
+	});
+	window.addEventListener('pageshow', function (event) {
+		if (event.persisted) apply(saved() || system());
+	});
 	document.addEventListener('click', function (event) {
 		var target = event.target;
 		var button = target instanceof Element ? target.closest('[data-theme-toggle]') : null;

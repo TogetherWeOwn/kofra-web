@@ -24,7 +24,7 @@
 	--color-code-ink: #f1f2ee;
 	--color-mark-ink: #ffffff;
 	--font-family-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-	--font-family-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	--font-family-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
 	--font-weight-regular: 400;
 	--font-weight-medium: 500;
 	--font-weight-semibold: 600;
@@ -43,8 +43,8 @@
 	--font-line-height-snug: 1.2;
 	--font-line-height-heading: 1.35;
 	--font-line-height-body: 1.6;
-	--font-tracking-tight: -0.02rem;
-	--font-tracking-snug: -0.015rem;
+	--font-tracking-tight: -0.02;
+	--font-tracking-snug: -0.015;
 	--space-1: 4px;
 	--space-2: 8px;
 	--space-3: 12px;

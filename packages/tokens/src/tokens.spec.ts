@@ -138,8 +138,9 @@ describe('tokens.css', () => {
 		const css = toCss(tokens);
 		for (const name of [
 			'--font-family-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;',
+			'--font-family-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;',
 			'--font-size-base: 16px;',
-			'--font-tracking-tight: -0.02rem;',
+			'--font-tracking-tight: -0.02;',
 			'--space-4: 16px;',
 			'--radius-lg: 8px;',
 			'--size-container: 1200px;',
@@ -160,10 +161,26 @@ describe('css generator', () => {
 		expect(flat).toEqual([{ name: '--space-2', path: 'space.2', type: 'dimension', value: '8px' }]);
 	});
 
-	it('quotes family names with spaces and leaves generic families bare', () => {
-		expect(cssValue('fontFamily', ['IBM Plex Mono', 'Menlo', 'ui-monospace'], 'f')).toBe(
-			'"IBM Plex Mono", Menlo, ui-monospace'
+	it('quotes every family name and leaves only generic families bare', () => {
+		expect(cssValue('fontFamily', ['IBM Plex Mono', 'Menlo', 'inherit', 'ui-monospace'], 'f')).toBe(
+			'"IBM Plex Mono", "Menlo", "inherit", ui-monospace'
 		);
+		expect(() => cssValue('fontFamily', ['Bad"Name'], 'f')).toThrow(/quote or backslash/);
+	});
+
+	it('takes colour from the components and rejects a hex that disagrees', () => {
+		const c = (components: number[], hex?: string): { [key: string]: Json } =>
+			hex === undefined
+				? { colorSpace: 'srgb', components }
+				: { colorSpace: 'srgb', components, hex };
+		expect(cssValue('color', c([1, 0, 0]), 'c')).toBe('#ff0000');
+		expect(cssValue('color', { ...c([0, 0, 0], '#000000'), alpha: 0.5 }, 'c')).toBe(
+			'rgb(0 0 0 / 0.5)'
+		);
+		expect(() => cssValue('color', c([1, 0, 0], '#00ff00'), 'c')).toThrow(
+			/does not match components/
+		);
+		expect(() => cssValue('color', c([1.2, 0, 0]), 'c')).toThrow(/within 0..1/);
 	});
 
 	it('rejects values it cannot represent instead of emitting broken CSS', () => {
