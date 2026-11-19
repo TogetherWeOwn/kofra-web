@@ -77,7 +77,9 @@ test('llms.txt and llms-full.txt are served and every llms.txt link resolves', a
 	}
 	const full = await request.get('/llms-full.txt');
 	expect(full.status()).toBe(200);
-	expect((await full.text()).split('\n---\n').length).toBe(PAGES.length);
+	// Each page starts with its provenance comment; licence texts may contain "---" lines.
+	const starts = (await full.text()).match(/^<!-- Kofra: https:\/\/kofra\.app/gm) ?? [];
+	expect(starts.length).toBe(PAGES.length);
 });
 
 test('sitemap.xml lists every page and each one resolves', async ({ request }) => {
