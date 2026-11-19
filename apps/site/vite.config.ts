@@ -13,6 +13,10 @@ export default defineConfig({
 			adapter: adapter()
 		})
 	],
+	build: {
+		// Never inline scripts as data: URLs: the CSP allows scripts from this origin only.
+		assetsInlineLimit: (file) => (file.endsWith('.js') ? false : undefined)
+	},
 	test: {
 		expect: { requireAssertions: true },
 		environment: 'node',

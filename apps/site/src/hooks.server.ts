@@ -1,3 +1,3 @@
-import { noindex } from '#lib/noindex.js';
+import { siteHeaders } from '#lib/headers.js';
 
-export const handle = noindex;
+export const handle = siteHeaders;

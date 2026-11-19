@@ -25,3 +25,6 @@ playwright-report
 Thumbs.db
 
 vite.config.ts.timestamp-*
+
+# Lighthouse CI runs
+.lighthouseci

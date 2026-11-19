@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
 
-test('home page renders the placeholder and is not indexable', async ({ page }) => {
+test('home page renders and is not indexable', async ({ page }) => {
 	const response = await page.goto('/');
 	expect(response?.status()).toBe(200);
 	expect(response?.headers()['x-robots-tag']).toBe('noindex');
-	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Kofra');
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+		'S3-compatible cloud storage for backups, media and archives'
+	);
 	await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
 });
 
@@ -29,8 +31,10 @@ test('robots.txt allows crawling and is not indexable', async ({ request }) => {
 	expect(response.headers()['x-robots-tag']).toContain('noindex');
 });
 
-test('unknown paths return 404 and are not indexable', async ({ request }) => {
-	const response = await request.get('/this-path-does-not-exist');
-	expect(response.status()).toBe(404);
-	expect(response.headers()['x-robots-tag']).toContain('noindex');
+test('unknown paths return the 404 page with the site headers', async ({ page }) => {
+	const response = await page.goto('/this-path-does-not-exist');
+	expect(response?.status()).toBe(404);
+	expect(response?.headers()['x-robots-tag']).toContain('noindex');
+	expect(response?.headers()['content-security-policy']).toContain("default-src 'self'");
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page not found');
 });

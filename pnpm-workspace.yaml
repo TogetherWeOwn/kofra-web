@@ -9,3 +9,10 @@ onlyBuiltDependencies:
   - workerd
 
 engineStrict: true
+
+# Lighthouse (via @lhci/cli) loads intl-messageformat, which requires tslib without
+# declaring it; pnpm's strict layout then cannot resolve it.
+packageExtensions:
+  intl-messageformat@10:
+    dependencies:
+      tslib: ^2.8.1
