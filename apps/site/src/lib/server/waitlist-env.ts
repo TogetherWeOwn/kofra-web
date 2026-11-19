@@ -1,11 +1,20 @@
 // Turns the Worker environment into waitlist dependencies, or null when the waitlist must not run.
 // Fail closed: the flag off, any binding or secret missing, or a malformed key all give null.
-import { confirmationEmail, d1Store, keyBytes, type D1Like, type Deps } from './waitlist.js';
+import {
+	DEFAULT_DAILY_SEND_CAP,
+	confirmationEmail,
+	d1Store,
+	keyBytes,
+	type D1Like,
+	type Deps
+} from './waitlist.js';
 
 export interface WaitlistEnv {
 	WAITLIST_ENABLED?: string;
 	/** Sender address on an onboarded Email Service domain, for example early-access@kofra.app. */
 	WAITLIST_FROM?: string;
+	/** Confirmation emails a day over all addresses; empty or unset means the default. */
+	WAITLIST_DAILY_SEND_CAP?: string;
 	TURNSTILE_SITE_KEY?: string;
 	TURNSTILE_SECRET_KEY?: string;
 	WAITLIST_HMAC_KEY?: string;
@@ -30,6 +39,11 @@ export function waitlistRuntime(env: WaitlistEnv): WaitlistRuntime | null {
 	if (!WAITLIST_FROM || !TURNSTILE_SECRET_KEY || !WAITLIST_HMAC_KEY || !WAITLIST_ENC_KEY)
 		return null;
 	if (!WAITLIST_DB || !EMAIL || !WAITLIST_RATE) return null;
+	// A cap that is set but not a whole number from 1 to 100000 is a mistake: stop, do not guess.
+	const rawCap = env.WAITLIST_DAILY_SEND_CAP ?? '';
+	if (rawCap !== '' && !/^[1-9]\d{0,5}$/.test(rawCap)) return null;
+	const dailySendCap = rawCap === '' ? DEFAULT_DAILY_SEND_CAP : Number(rawCap);
+	if (dailySendCap > 100_000) return null;
 	try {
 		// One key must never serve both purposes. Compared as bytes: base64 has several spellings.
 		const hmac = keyBytes(WAITLIST_HMAC_KEY);
@@ -45,6 +59,7 @@ export function waitlistRuntime(env: WaitlistEnv): WaitlistRuntime | null {
 			store: d1Store(WAITLIST_DB),
 			hmacKey: WAITLIST_HMAC_KEY,
 			encKey: WAITLIST_ENC_KEY,
+			dailySendCap,
 			now: () => Math.floor(Date.now() / 1000),
 			send: async (to, url) => {
 				await EMAIL.send({ from: WAITLIST_FROM, to, ...confirmationEmail(url) });

@@ -80,3 +80,11 @@ for (const path of WAITLIST_RESULT_PAGES) {
 		expect(problems).toEqual([]);
 	});
 }
+
+test('the retention cron handler exists and does nothing without a database', async ({
+	request
+}) => {
+	// wrangler dev runs the scheduled handler of the built entry Worker at this path.
+	const response = await request.get('/cdn-cgi/handler/scheduled');
+	expect(response.status()).toBe(200);
+});

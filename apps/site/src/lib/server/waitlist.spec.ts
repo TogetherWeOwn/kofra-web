@@ -1,10 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { purgeScheduled } from '../waitlist-purge.js';
 import {
+	MAX_SENDS,
 	PENDING_RETENTION_S,
 	RESEND_AFTER_S,
+	SUPPRESSION_S,
 	TOKEN_TTL_S,
+	clientKey,
 	confirm,
 	confirmationEmail,
 	d1Store,
@@ -45,6 +49,7 @@ function sqliteD1(): { d1: D1Like; db: DatabaseSync } {
 }
 
 let db: DatabaseSync;
+let d1: D1Like;
 let deps: Deps;
 let clock: number;
 let sent: { to: string; url: string }[];
@@ -59,12 +64,14 @@ const lastToken = () => new URL(sent.at(-1)!.url).searchParams.get('token')!;
 beforeEach(() => {
 	const s = sqliteD1();
 	db = s.db;
+	d1 = s.d1;
 	clock = 1_800_000_000;
 	sent = [];
 	deps = {
 		store: d1Store(s.d1),
 		hmacKey: HMAC_KEY,
 		encKey: ENC_KEY,
+		dailySendCap: 1000,
 		now: () => clock,
 		send: async (to, url) => {
 			sent.push({ to, url });
@@ -101,10 +108,83 @@ describe('normaliseEmail and emailHash', () => {
 			'a@example.com\r\nBcc: x@example.com',
 			'a\u0000@example.com',
 			'<a@example.com>',
-			`${'a'.repeat(250)}@example.com`
+			`${'a'.repeat(250)}@example.com`,
+			`${'a'.repeat(65)}@example.com`,
+			// More than one recipient, or header syntax, in one field.
+			'victim@example.com,evil.org',
+			'victim@example.com;evil.org',
+			'victim@example.com, other@example.org',
+			'a(comment)@example.com',
+			'a@example.com(comment)',
+			'"a b"@example.com',
+			'a\\b@example.com',
+			'a:b@example.com',
+			'a@example.com:25',
+			// Not a host name.
+			'a@[1.2.3.4]',
+			'a@1.2.3.4',
+			'a@[::1]',
+			'a@example..com',
+			'a@.example.com',
+			'a@example.com.',
+			'a@-example.com',
+			'a@exa_mple.com',
+			'a@example.com/path',
+			'a@example.com?x=1',
+			'a@example.com#x',
+			'a@user:pw@example.com',
+			'a@%65xample.com',
+			// Dots in the local part only between other characters.
+			'.a@example.com',
+			'a.@example.com',
+			'a..b@example.com',
+			// Invisible format characters: zero-width space, joiner, bidi override, soft hyphen, BOM.
+			'a\u200bb@example.com',
+			'a\u200db@example.com',
+			'a\u202eb@example.com',
+			'a\u00adb@example.com',
+			'a\ufeffb@example.com',
+			'a@exam\u200bple.com'
 		]) {
-			expect(normaliseEmail(bad), String(bad)).toBeNull();
+			expect(normaliseEmail(bad), JSON.stringify(bad)).toBeNull();
 		}
+	});
+
+	it('gives a domain one spelling (IDNA), so look-alike spellings are one address', async () => {
+		// Fullwidth letters and a fullwidth dot.
+		expect(normaliseEmail('ada@\uff45xample.com')).toBe('ada@example.com');
+		expect(normaliseEmail('ada@example\uff0ecom')).toBe('ada@example.com');
+		// A Unicode label and its A-label, in any case.
+		expect(normaliseEmail('ada@B\u00fccher.example')).toBe('ada@xn--bcher-kva.example');
+		expect(normaliseEmail('ada@XN--Bcher-KVA.example')).toBe('ada@xn--bcher-kva.example');
+		expect(await emailHash(normaliseEmail('ada@\uff45xample.com')!, HMAC_KEY)).toBe(
+			await emailHash('ada@example.com', HMAC_KEY)
+		);
+	});
+
+	it('keeps plus- and dot-variants of a mailbox distinct (documented policy)', () => {
+		expect(normaliseEmail('ada+list@example.com')).toBe('ada+list@example.com');
+		expect(normaliseEmail('a.da@example.com')).toBe('a.da@example.com');
+	});
+});
+
+describe('clientKey', () => {
+	it('keeps an IPv4 address and reduces an IPv6 address to its /64', () => {
+		expect(clientKey('203.0.113.7')).toBe('203.0.113.7');
+		expect(clientKey('::ffff:203.0.113.7')).toBe('203.0.113.7');
+		expect(clientKey('2001:db8:1:2:3:4:5:6')).toBe('2001:db8:1:2::/64');
+		expect(clientKey('2001:0DB8:0001:0002:ffff:ffff:ffff:ffff')).toBe('2001:db8:1:2::/64');
+		expect(clientKey('2001:db8:1:2::9')).toBe('2001:db8:1:2::/64');
+		expect(clientKey('2001:db8::9')).toBe('2001:db8:0:0::/64');
+		expect(clientKey('2001:db8:0:0:1::9')).toBe('2001:db8:0:0::/64');
+		expect(clientKey('::1')).toBe('0:0:0:0::/64');
+		// Another line is another key.
+		expect(clientKey('2001:db8:1:3::9')).not.toBe(clientKey('2001:db8:1:2::9'));
+	});
+
+	it('uses one shared key for anything it cannot read', () => {
+		for (const bad of [null, '', '2001:db8:1', 'zz:1:2:3:4:5:6:7', '1:2:3:4:5:6:7:8:9'])
+			expect(clientKey(bad), String(bad)).toBe('unknown');
 	});
 });
 
@@ -135,6 +215,19 @@ describe('encryptEmail / decryptEmail', () => {
 		expect(new Set(blobs).size).toBe(200);
 	});
 
+	it('hides the length of the address: every ciphertext has the same size', async () => {
+		const longest = `${'a'.repeat(64)}@${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(57)}.com`;
+		expect(new TextEncoder().encode(longest)).toHaveLength(254);
+		const sizes = new Set<number>();
+		for (const email of ['a@b.co', 'ada@example.com', 'jos\u00e9@example.com', longest]) {
+			const blob = await encryptEmail(email, ENC_KEY, AAD);
+			sizes.add(atob(blob).length);
+			expect(await decryptEmail(blob, ENC_KEY, AAD)).toBe(email);
+		}
+		expect([...sizes]).toEqual([12 + 256 + 16]);
+		await expect(encryptEmail(`a${longest}`, ENC_KEY, AAD)).rejects.toThrow(/long/);
+	});
+
 	it('rejects a changed ciphertext, nonce or tag, a wrong key and another row', async () => {
 		const blob = await encryptEmail('ada@example.com', ENC_KEY, AAD);
 		const bytes = Uint8Array.from(atob(blob), (c) => c.charCodeAt(0));
@@ -144,7 +237,7 @@ describe('encryptEmail / decryptEmail', () => {
 			await expect(decryptEmail(b64(copy), ENC_KEY, AAD), `byte ${at}`).rejects.toThrow();
 		}
 		await expect(decryptEmail(b64(bytes.slice(0, -1)), ENC_KEY, AAD)).rejects.toThrow();
-		await expect(decryptEmail(b64(bytes.slice(0, 20)), ENC_KEY, AAD)).rejects.toThrow(/short/);
+		await expect(decryptEmail(b64(bytes.slice(0, 20)), ENC_KEY, AAD)).rejects.toThrow(/size/);
 		await expect(decryptEmail(blob, HMAC_KEY, AAD)).rejects.toThrow();
 		await expect(decryptEmail(blob, ENC_KEY, 'b'.repeat(64))).rejects.toThrow();
 	});
@@ -163,7 +256,8 @@ describe('join', () => {
 		expect(row.status).toBe('pending');
 		expect(row.token_hash).toBe(await sha256(token));
 		expect(row.token_expires_at).toBe(clock + TOKEN_TTL_S);
-		expect(await decryptEmail(row.email_enc, ENC_KEY, row.email_hash)).toBe('ada@example.com');
+		expect(row).toMatchObject({ created_at: clock, last_sent_at: clock, send_count: 1 });
+		expect(await decryptEmail(row.email_enc!, ENC_KEY, row.email_hash)).toBe('ada@example.com');
 	});
 
 	it('answers the same for a new, a pending and a confirmed address', async () => {
@@ -193,8 +287,106 @@ describe('join', () => {
 	it('lets the address retry at once when the email could not be sent', async () => {
 		deps.send = vi.fn().mockRejectedValueOnce(new Error('provider down'));
 		await expect(join('ada@example.com', BASE, deps)).rejects.toThrow('provider down');
-		expect((await rowOf('ada@example.com'))!.last_sent_at).toBe(0);
+		expect(await rowOf('ada@example.com')).toMatchObject({ last_sent_at: 0, send_count: 0 });
 		expect(await join('ada@example.com', BASE, deps)).toBe('sent');
+		expect(deps.send).toHaveBeenCalledTimes(2);
+		expect(await rowOf('ada@example.com')).toMatchObject({ last_sent_at: clock, send_count: 1 });
+	});
+
+	it('gives back a failed send only while its own token is the current one', async () => {
+		await join('ada@example.com', BASE, deps);
+		const stale = await sha256(lastToken());
+		const hash = await emailHash('ada@example.com', HMAC_KEY);
+		clock += RESEND_AFTER_S;
+		await join('ada@example.com', BASE, deps); // a newer request has replaced the token
+		await deps.store.releaseSend(hash, stale);
+		expect(await rowOf('ada@example.com')).toMatchObject({ last_sent_at: clock, send_count: 2 });
+	});
+
+	it('sends one email when the same address is submitted many times at once', async () => {
+		const many = () =>
+			Promise.all(Array.from({ length: 8 }, () => join('ada@example.com', BASE, deps)));
+		expect(await many()).toEqual(Array(8).fill('sent'));
+		expect(sent).toHaveLength(1);
+		expect(rows()).toHaveLength(1);
+		expect(await rowOf('ada@example.com')).toMatchObject({ send_count: 1 });
+		// The link that was sent is the one that is stored.
+		expect((await rowOf('ada@example.com'))!.token_hash).toBe(await sha256(lastToken()));
+		clock += RESEND_AFTER_S;
+		await many();
+		expect(sent).toHaveLength(2);
+		expect(await rowOf('ada@example.com')).toMatchObject({ send_count: 2 });
+		expect((await rowOf('ada@example.com'))!.token_hash).toBe(await sha256(lastToken()));
+	});
+
+	it(`sends at most ${MAX_SENDS} emails for one sign-up, however often it is requested`, async () => {
+		const first = clock;
+		for (let i = 0; i < MAX_SENDS + 5; i++) {
+			await join('ada@example.com', BASE, deps);
+			clock += RESEND_AFTER_S;
+		}
+		expect(sent).toHaveLength(MAX_SENDS);
+		// The last link still works, and the first request date never moved.
+		expect(await rowOf('ada@example.com')).toMatchObject({
+			status: 'pending',
+			created_at: first,
+			send_count: MAX_SENDS,
+			token_hash: await sha256(lastToken())
+		});
+	});
+
+	it('does not send a link that would outlive the row', async () => {
+		await join('ada@example.com', BASE, deps);
+		clock += PENDING_RETENTION_S - TOKEN_TTL_S;
+		await join('ada@example.com', BASE, deps); // expires exactly when the row does
+		expect(sent).toHaveLength(2);
+		await join('bob@example.com', BASE, deps);
+		clock = (await rowOf('bob@example.com'))!.created_at + PENDING_RETENTION_S - TOKEN_TTL_S + 1;
+		await join('bob@example.com', BASE, deps);
+		expect(sent).toHaveLength(3);
+	});
+});
+
+describe('daily send cap', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it('stops storing and sending above the cap, says so in the log, and recovers', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		deps.dailySendCap = 2;
+		await join('a@example.com', BASE, deps);
+		await join('b@example.com', BASE, deps);
+		expect(warn).not.toHaveBeenCalled();
+		expect(await join('c@example.com', BASE, deps)).toBe('sent'); // same answer, nothing done
+		expect(sent).toHaveLength(2);
+		expect(await rowOf('c@example.com')).toBeUndefined();
+		expect(warn).toHaveBeenCalledTimes(1);
+		expect(String(warn.mock.calls[0])).not.toMatch(/example/);
+		// A re-send counts against the cap as well.
+		clock += RESEND_AFTER_S;
+		await join('a@example.com', BASE, deps);
+		expect(sent).toHaveLength(2);
+		// A day after the first two sends there is room again.
+		clock += 24 * 60 * 60 - RESEND_AFTER_S;
+		await join('c@example.com', BASE, deps);
+		expect(sent.map((m) => m.to)).toEqual(['a@example.com', 'b@example.com', 'c@example.com']);
+	});
+
+	it('holds when many different addresses arrive at once', async () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		deps.dailySendCap = 3;
+		await Promise.all(
+			Array.from({ length: 10 }, (_, i) => join(`user${i}@example.com`, BASE, deps))
+		);
+		expect(sent).toHaveLength(3);
+		expect(rows()).toHaveLength(3);
+	});
+
+	it('does not count an email that could not be sent', async () => {
+		deps.dailySendCap = 1;
+		deps.send = vi.fn().mockRejectedValueOnce(new Error('provider down'));
+		await expect(join('a@example.com', BASE, deps)).rejects.toThrow();
+		expect(await deps.store.sentSince(clock - 24 * 60 * 60)).toBe(0);
+		await join('a@example.com', BASE, deps);
 		expect(deps.send).toHaveBeenCalledTimes(2);
 	});
 });
@@ -247,39 +439,106 @@ describe('confirm', () => {
 		await join('ada@example.com', BASE, deps);
 		const pending = (await rowOf('ada@example.com'))!;
 		await confirm(lastToken(), deps);
-		await deps.store.put({ ...pending, last_sent_at: 0 });
-		expect((await rowOf('ada@example.com'))!.status).toBe('confirmed');
+		const confirmed = (await rowOf('ada@example.com'))!;
+		clock += RESEND_AFTER_S;
+		expect(
+			await deps.store.claimSend({
+				email_hash: pending.email_hash,
+				email_enc: 'other',
+				token_hash: 'f'.repeat(64),
+				now: clock,
+				dailySendCap: 1000
+			})
+		).toBe(false);
+		await deps.store.releaseSend(pending.email_hash, pending.token_hash!);
+		expect(await rowOf('ada@example.com')).toEqual(confirmed);
 	});
 });
 
 describe('retention', () => {
-	it('deletes pending rows 7 days after the latest request and keeps confirmed ones', async () => {
-		await join('old-pending@example.com', BASE, deps);
-		await join('old-confirmed@example.com', BASE, deps);
+	const DAY = 24 * 60 * 60;
+
+	it('counts 7 days from the first request, whatever is asked again later', async () => {
+		const first = clock;
+		await join('pending@example.com', BASE, deps);
+		await join('confirmed@example.com', BASE, deps);
 		expect(await confirm(lastToken(), deps)).toBe('confirmed');
-		clock += 3 * 24 * 60 * 60;
-		await join('old-pending-again@example.com', BASE, deps);
-		clock += RESEND_AFTER_S;
-		await join('old-pending@example.com', BASE, deps); // asks again: the clock restarts
-		clock += PENDING_RETENTION_S - RESEND_AFTER_S + 1;
-		// Day 10 and a second: only the request from day 3 that was never repeated is too old.
-		await join('new@example.com', BASE, deps);
-		expect(await rowOf('old-pending-again@example.com')).toBeUndefined();
-		expect((await rowOf('old-pending@example.com'))!.status).toBe('pending');
-		expect((await rowOf('old-confirmed@example.com'))!.status).toBe('confirmed');
-		expect((await rowOf('new@example.com'))!.status).toBe('pending');
-		clock += PENDING_RETENTION_S + 1;
-		await join('newer@example.com', BASE, deps);
-		expect(rows()).toHaveLength(2); // the confirmed row and the newest request
-		expect((await rowOf('old-confirmed@example.com'))!.status).toBe('confirmed');
+		clock += 3 * DAY;
+		await join('pending@example.com', BASE, deps); // asks again on day 3: a new link, same date
+		expect(sent).toHaveLength(3);
+		expect((await rowOf('pending@example.com'))!.created_at).toBe(first);
+		clock = first + PENDING_RETENTION_S;
+		await join('other@example.com', BASE, deps);
+		expect((await rowOf('pending@example.com'))!.status).toBe('pending'); // at the limit: stays
+		clock += 1;
+		await join('another@example.com', BASE, deps);
+		// Past it: the address and the token are gone, only the keyed hash is left.
+		expect(await rowOf('pending@example.com')).toEqual({
+			email_hash: await emailHash('pending@example.com', HMAC_KEY),
+			email_enc: null,
+			status: 'suppressed',
+			token_hash: null,
+			token_expires_at: null,
+			created_at: first,
+			confirmed_at: null,
+			last_sent_at: first + 3 * DAY,
+			send_count: 2
+		});
+		expect((await rowOf('confirmed@example.com'))!.status).toBe('confirmed');
 	});
 
-	it('purges on the boundary exactly: created before the cut-off goes, at it stays', async () => {
-		await join('a@example.com', BASE, deps);
-		await deps.store.purgePending(clock);
-		expect(rows()).toHaveLength(1);
-		await deps.store.purgePending(clock + 1);
-		expect(rows()).toHaveLength(0);
+	it('does not email a suppressed address, then forgets it after 30 more days', async () => {
+		const first = clock;
+		await join('ada@example.com', BASE, deps);
+		const token = lastToken();
+		clock = first + PENDING_RETENTION_S + 1;
+		expect(await join('ada@example.com', BASE, deps)).toBe('sent');
+		expect(sent).toHaveLength(1);
+		expect((await rowOf('ada@example.com'))!.status).toBe('suppressed');
+		expect(await confirm(token, deps)).toBe('expired');
+		clock = first + PENDING_RETENTION_S + SUPPRESSION_S;
+		await join('ada@example.com', BASE, deps);
+		expect(sent).toHaveLength(1);
+		clock += 1;
+		// The purge at the start of this request deletes the row, so it is a new sign-up.
+		await join('ada@example.com', BASE, deps);
+		expect(sent).toHaveLength(2);
+		expect(await rowOf('ada@example.com')).toMatchObject({
+			status: 'pending',
+			created_at: clock,
+			send_count: 1
+		});
+	});
+
+	it('keeps confirmed rows for good', async () => {
+		await join('ada@example.com', BASE, deps);
+		await confirm(lastToken(), deps);
+		const row = await rowOf('ada@example.com');
+		await deps.store.purge(clock + 10 * (PENDING_RETENTION_S + SUPPRESSION_S));
+		expect(await rowOf('ada@example.com')).toEqual(row);
+	});
+
+	describe('cron handler', () => {
+		afterEach(() => vi.useRealTimers());
+
+		it('applies the same rules with the database binding alone, and is a no-op without it', async () => {
+			await join('ada@example.com', BASE, deps);
+			vi.useFakeTimers();
+			vi.setSystemTime((clock + PENDING_RETENTION_S) * 1000);
+			await purgeScheduled(null, { WAITLIST_DB: d1 });
+			expect((await rowOf('ada@example.com'))!.status).toBe('pending');
+			vi.setSystemTime((clock + PENDING_RETENTION_S + 1) * 1000 + 999);
+			await purgeScheduled(null, {});
+			expect((await rowOf('ada@example.com'))!.status).toBe('pending');
+			await purgeScheduled(null, { WAITLIST_DB: d1 });
+			expect(await rowOf('ada@example.com')).toMatchObject({
+				status: 'suppressed',
+				email_enc: null
+			});
+			vi.setSystemTime((clock + PENDING_RETENTION_S + SUPPRESSION_S + 1) * 1000);
+			await purgeScheduled(null, { WAITLIST_DB: d1 });
+			expect(rows()).toHaveLength(0);
+		});
 	});
 });
 

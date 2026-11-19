@@ -14,9 +14,13 @@
 		// The build reads these too: the form is rendered only when enabled with a site key.
 		"WAITLIST_ENABLED": "false",
 		"WAITLIST_FROM": "",
+		// Confirmation emails a day over all addresses; empty means the built-in default.
+		"WAITLIST_DAILY_SEND_CAP": "",
 		"TURNSTILE_SITE_KEY": ""
 	},
-	// Per-IP limit for the waitlist form and confirmation (5 requests a minute).
+	// Hourly: waitlist retention (src/lib/waitlist-purge.js). Does nothing without the database.
+	"triggers": { "crons": ["17 * * * *"] },
+	// Per-client limit (an IPv4 address or an IPv6 /64) for the waitlist form and confirmation (5 requests a minute).
 	"ratelimits": [
 		{
 			"name": "WAITLIST_RATE",

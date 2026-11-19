@@ -2,7 +2,7 @@
 // so mail scanners that fetch links cannot confirm an address on the owner's behalf.
 import { error, redirect } from '@sveltejs/kit';
 import { env } from 'cloudflare:workers';
-import { confirm } from '#lib/server/waitlist.js';
+import { clientKey, confirm } from '#lib/server/waitlist.js';
 import { waitlistRuntime, type WaitlistEnv } from '#lib/server/waitlist-env.js';
 
 export const prerender = false;
@@ -21,8 +21,8 @@ export const actions = {
 	default: async ({ request }) => {
 		const rt = waitlistRuntime(env as WaitlistEnv);
 		if (!rt) error(404, 'Not found');
-		const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
-		const { success } = await rt.rate.limit({ key: `confirm:${ip}` });
+		const ip = request.headers.get('cf-connecting-ip');
+		const { success } = await rt.rate.limit({ key: `confirm:${clientKey(ip)}` });
 		if (!success) redirect(303, '/early-access/try-again');
 		const form = await request.formData().catch(() => null);
 		const result = await confirm(form?.get('token'), rt.deps);

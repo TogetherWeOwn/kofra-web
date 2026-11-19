@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { DEFAULT_DAILY_SEND_CAP } from './waitlist';
 import { waitlistRuntime, type WaitlistEnv } from './waitlist-env';
 
 const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
@@ -7,6 +8,7 @@ const key = (fill: number, length = 32) => b64(new Uint8Array(length).fill(fill)
 const full = (): Required<WaitlistEnv> => ({
 	WAITLIST_ENABLED: 'true',
 	WAITLIST_FROM: 'early-access@kofra.example',
+	WAITLIST_DAILY_SEND_CAP: '',
 	TURNSTILE_SITE_KEY: 'site-key',
 	TURNSTILE_SECRET_KEY: 'turnstile-secret',
 	WAITLIST_HMAC_KEY: key(1),
@@ -32,6 +34,18 @@ describe('waitlistRuntime', () => {
 			})
 		);
 		expect(rt!.deps.now()).toBeCloseTo(Date.now() / 1000, -1);
+	});
+
+	it('takes the daily send cap from the environment, and stops on a malformed one', () => {
+		expect(waitlistRuntime(full())!.deps.dailySendCap).toBe(DEFAULT_DAILY_SEND_CAP);
+		const without: WaitlistEnv = full();
+		delete without.WAITLIST_DAILY_SEND_CAP;
+		expect(waitlistRuntime(without)!.deps.dailySendCap).toBe(DEFAULT_DAILY_SEND_CAP);
+		expect(waitlistRuntime({ ...full(), WAITLIST_DAILY_SEND_CAP: '90' })!.deps.dailySendCap).toBe(
+			90
+		);
+		for (const bad of ['0', '-1', '1.5', '1e3', ' 90', 'ninety', '0x10', '100001', '9999999'])
+			expect(waitlistRuntime({ ...full(), WAITLIST_DAILY_SEND_CAP: bad }), bad).toBeNull();
 	});
 
 	it('is off unless the flag is exactly "true"', () => {

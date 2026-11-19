@@ -2,7 +2,7 @@
 // SvelteKit rejects cross-origin form posts before this runs (CSRF origin check).
 import { error, redirect } from '@sveltejs/kit';
 import { env, waitUntil } from 'cloudflare:workers';
-import { join, normaliseEmail, verifyTurnstile } from '#lib/server/waitlist.js';
+import { clientKey, join, normaliseEmail, verifyTurnstile } from '#lib/server/waitlist.js';
 import { waitlistRuntime, type WaitlistEnv } from '#lib/server/waitlist-env.js';
 
 export const prerender = false;
@@ -12,9 +12,11 @@ export async function POST({ request, url }) {
 	const rt = waitlistRuntime(env as WaitlistEnv);
 	if (!rt) error(404, 'Not found');
 	const ip = request.headers.get('cf-connecting-ip');
-	const { success } = await rt.rate.limit({ key: `join:${ip ?? 'unknown'}` });
+	const { success } = await rt.rate.limit({ key: `join:${clientKey(ip)}` });
 	if (!success) redirect(303, '/early-access/try-again');
-	if (Number(request.headers.get('content-length') ?? MAX_BODY + 1) > MAX_BODY) {
+	// Written as "not within the limit" so a missing or malformed length (NaN) is refused too.
+	const length = Number(request.headers.get('content-length') ?? NaN);
+	if (!(length <= MAX_BODY)) {
 		redirect(303, '/early-access/try-again');
 	}
 	const form = await request.formData().catch(() => null);
