@@ -1,6 +1,6 @@
 // Markdown twins of the structured pages (home, pricing, FAQ, security, licences). Prose pages use
 // toMarkdown(blocks) directly. Everything reads the same content modules as the HTML templates.
-import { absolutise, toMarkdown, type Block, type Tone } from '#lib/blocks.js';
+import { absolutise, cell as escapeCell, toMarkdown, type Block, type Tone } from '#lib/blocks.js';
 import {
 	COMPARE,
 	EARLY_ACCESS,
@@ -25,7 +25,7 @@ import { SITE } from '#lib/site.js';
 
 const O = SITE.origin;
 const cell = (v: string | boolean) =>
-	(v === true ? 'Included' : v === false ? 'Not included' : v).replace(/\|/g, '\\|');
+	escapeCell(v === true ? 'Included' : v === false ? 'Not included' : v);
 const table = (head: string[], rows: string[][]) =>
 	[
 		`| ${head.join(' | ')} |`,

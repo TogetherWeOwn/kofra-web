@@ -107,8 +107,9 @@ export function withMarkdown(app, twins, origin) {
 				return res;
 			}
 			const page = await app.fetch(request, env, ctx);
-			// Error pages have no twin to point at, and do not vary on Accept.
-			if (!page.ok) return page;
+			// Error pages have no twin to point at, and do not vary on Accept. A 304 revalidation
+			// must carry the same Vary as the 200 it revalidates (RFC 9110 §15.4.5).
+			if (!page.ok && page.status !== 304) return page;
 			const res = new Response(page.body, page);
 			res.headers.append('vary', 'Accept');
 			res.headers.set('link', `<${twin}>; rel="alternate"; type="text/markdown"`);

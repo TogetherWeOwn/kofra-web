@@ -92,6 +92,17 @@ describe('withMarkdown', () => {
 		expect(res.headers.get('link')).toBeNull();
 	});
 
+	it('keeps Vary: Accept on a 304 revalidation', async () => {
+		const cached = withMarkdown(
+			{ fetch: async () => new Response(null, { status: 304 }) },
+			twins,
+			'https://kofra.app'
+		);
+		const res = await cached.fetch(new Request('https://kofra.test/docs'), env, {});
+		expect(res.status).toBe(304);
+		expect(res.headers.get('vary')).toContain('Accept');
+	});
+
 	it('does not treat /index as the home page twin', async () => {
 		const res = await get('/index', 'text/markdown');
 		expect(await res.text()).toBe('<h1>Home</h1>');

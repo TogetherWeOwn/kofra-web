@@ -43,15 +43,16 @@ for (const path of PAGES) {
 		// Illustrations and navigation aids are marked data-twin-skip.
 		const shown = await page
 			.locator(
-				'main :is(h2, h3, [role="note"], p, td, th, li:not(:has(p, div, h3, h4, ul, ol))):not([data-twin-skip], [data-twin-skip] *)'
+				'main :is(h2, h3, [role="note"], p, tr, li:not(:has(p, div, h3, h4, ul, ol))):not([data-twin-skip], [data-twin-skip] *)'
 			)
 			.evaluateAll((els) =>
 				els.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean)
 			);
 		for (const text of shown) {
-			// Whitespace-insensitive: textContent drops the space between adjacent inline elements.
-			const plain = text.replace(/[*`\s]/g, '');
-			expect.soft(flat.replace(/\s/g, ''), `${path}: "${text}"`).toContain(plain);
+			// Whitespace-insensitive, because textContent drops the space between adjacent inline
+			// elements. Table pipes are dropped too, so a table row must match a twin row in order.
+			const plain = text.replace(/[*`\s|\\]/g, '');
+			expect.soft(flat.replace(/[\s|\\]/g, ''), `${path}: "${text}"`).toContain(plain);
 		}
 		expect(twin.headers()['link']).toBe(`<${ORIGIN}${path}>; rel="canonical"`);
 		expect(twin.headers()['x-robots-tag']).toBe('noindex');
