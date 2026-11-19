@@ -14,15 +14,19 @@ on:
   merge_group:
   push:
     branches: [main]
+  # Nightly, with the CI safety net (org CI rule 6: secret scan on every run).
+  schedule:
+    - cron: '17 3 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# PR runs cancel superseded runs of the same PR; every other event gets its
+# own group so no main or queue run is ever cancelled (see ci.yml).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # Never cancel a queue validation run (see ci.yml).
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.event_name != 'merge_group' }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   gitleaks:
@@ -54,6 +58,12 @@ jobs:
           chmod 0755 "$RUNNER_TEMP/gitleaks"
           "$RUNNER_TEMP/gitleaks" version
 
+      # --text: a PR-added `.gitattributes` entry such as `creds.env -diff`
+      # would otherwise turn a text patch into "Binary files differ", which
+      # gitleaks skips. --diff-merges=first-parent: `git log -p` prints no
+      # patch for merge commits by default, so a secret added only while
+      # resolving a merge conflict would be missed. Both bypasses were
+      # reproduced with gitleaks 8.30.1 (exit 0 before, exit 1 after).
       - name: Scan the full history
         env:
           GITLEAKS_BIN: ${{ runner.temp }}/gitleaks
@@ -90,11 +100,11 @@ jobs:
               echo "::warning::PR touches .gitleaksignore; it is NOT in effect for this scan (base ignore pinned). Review the ignore change itself before merge."
             fi
             "$GITLEAKS_BIN" git . --redact --verbose --exit-code 1 \
-              --log-opts=HEAD --ignore-gitleaks-allow \
+              --log-opts="--text --diff-merges=first-parent HEAD" --ignore-gitleaks-allow \
               --config "${scratch}/gitleaks.toml" \
               --gitleaks-ignore-path "${scratch}/.gitleaksignore"
           else
             "$GITLEAKS_BIN" git . --redact --verbose --exit-code 1 \
-              --log-opts=HEAD --ignore-gitleaks-allow \
+              --log-opts="--text --diff-merges=first-parent HEAD" --ignore-gitleaks-allow \
               --config .gitleaks.toml
           fi

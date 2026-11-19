@@ -2,8 +2,9 @@
 
 The public web front end of Kofra: the marketing site, the customer console and the shared UI kit.
 
-**Status:** foundations only. Each app serves an unstyled placeholder page marked `noindex`. Nothing is
-deployed yet.
+**Status:** foundations only. Each app serves an unstyled placeholder page. Pages, static assets and error
+responses carry `X-Robots-Tag: noindex` until launch (see `src/lib/noindex.ts` for the two framework
+responses that cannot). Nothing is deployed.
 
 ## Layout
 
@@ -41,8 +42,8 @@ not committed.
 
 ## Deployment
 
-Not enabled. Worker names in each `wrangler.jsonc` are placeholders, and the deploy workflow is switched
-off until launch is approved.
+Not enabled. Worker names in each `wrangler.jsonc` are placeholders, `workers_dev` and `preview_urls` are
+off, and there is no deploy workflow. Adding one is a separate, reviewed change once launch is approved.
 
 ## Contributing and security
 
