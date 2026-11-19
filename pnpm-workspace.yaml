@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Only these packages may run install scripts (native binaries for the
+# Workers runtime and the bundler).
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
+
+engineStrict: true
