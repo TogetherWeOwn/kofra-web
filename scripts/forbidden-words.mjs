@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 /** [term length, sha256(term)] */
 const TERMS = [
@@ -82,7 +83,8 @@ function walk(dir) {
 	});
 }
 
-if (import.meta.main) {
+// import.meta.main needs Node 24.2; this works on every Node the engines field allows.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
 	const args = process.argv.slice(2);
 	if (args[0] === '--self-test') {
 		const found = findTerms('ok\nsome Kofraselftesttermish text', [SELF_TEST]);

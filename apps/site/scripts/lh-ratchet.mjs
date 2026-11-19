@@ -6,6 +6,7 @@
 // Usage: node scripts/lh-ratchet.mjs            compare with lighthouse-baseline.json
 //        node scripts/lh-ratchet.mjs --update   write the current medians as the new baseline
 import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 const DIR = '.lighthouseci';
 const BASELINE = 'lighthouse-baseline.json';
@@ -42,7 +43,8 @@ export function medians(lhrs) {
 	return out;
 }
 
-if (import.meta.main) {
+// import.meta.main needs Node 24.2; this works on every Node the engines field allows.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
 	const files = readdirSync(DIR).filter((f) => /^lhr-.*\.json$/.test(f));
 	if (!files.length) {
 		console.error(`no Lighthouse results in ${DIR}/; run lhci collect first`);

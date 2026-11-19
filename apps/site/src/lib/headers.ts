@@ -28,13 +28,21 @@ export function catchAllHeaders(text: string): [string, string][] {
 export const SITE_HEADERS = catchAllHeaders(raw);
 
 /**
- * Server hook: responses the Worker renders (404 pages, any dynamic route) get the same
+ * Server hook (built with `headersHook(dev)`): responses the Worker renders (404 pages, any dynamic route) get the same
  * headers as static assets and prerendered pages, including `X-Robots-Tag: noindex`.
  * Two framework responses bypass `handle`: `/_app/env.js` and `304 Not Modified`
  * revalidations; neither is indexable content (RFC 9111 §4.3.4 keeps the 200's headers).
  */
-export const siteHeaders: Handle = async ({ event, resolve }) => {
-	const response = await resolve(event);
-	for (const [name, value] of SITE_HEADERS) response.headers.set(name, value);
-	return response;
-};
+export function headersHook(dev: boolean): Handle {
+	// `vite dev` inlines CSS as <style> elements, which the production CSP blocks.
+	const headers = dev
+		? SITE_HEADERS.filter(([name]) => name.toLowerCase() !== 'content-security-policy')
+		: SITE_HEADERS;
+	return async ({ event, resolve }) => {
+		const response = await resolve(event);
+		for (const [name, value] of headers) response.headers.set(name, value);
+		return response;
+	};
+}
+
+export const siteHeaders = headersHook(import.meta.env.DEV);

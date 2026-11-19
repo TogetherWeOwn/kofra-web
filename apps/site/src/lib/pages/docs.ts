@@ -67,7 +67,7 @@ export const DOCS_BLOCKS: Block[] = [
 	},
 	{
 		type: 'p',
-		text: 'aws-cli uploads large files in parts automatically, with no extra settings.'
+		text: 'aws-cli uploads large files in parts automatically. Its default part sizes work for files up to 625 GiB; for larger files, set a fixed part size of 90 MiB with `aws configure set s3.multipart_chunksize 90MB --profile kofra`.'
 	},
 
 	{ type: 'h2', text: 'rclone', id: 'rclone' },

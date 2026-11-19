@@ -10,8 +10,8 @@
 		{ name: 'family-photos', size: '1.42 TB', objects: '48,210', access: 'Private' },
 		{ name: 'laptop-backups', size: '612.4 GB', objects: '9,844', access: 'Private' },
 		{ name: 'drive-archive', size: '318.0 GB', objects: '27,503', access: 'Private' },
-		{ name: 'client-deliveries', size: '84.2 GB', objects: '1,206', access: 'Share links' },
-		{ name: 'website-assets', size: '2.1 GB', objects: '3,391', access: 'Public read' }
+		{ name: 'client-deliveries', size: '84.2 GB', objects: '1,206', access: 'Private' },
+		{ name: 'website-assets', size: '2.1 GB', objects: '3,391', access: 'Private' }
 	];
 	const nav = [
 		{ label: 'Buckets', icon: Database, on: true },

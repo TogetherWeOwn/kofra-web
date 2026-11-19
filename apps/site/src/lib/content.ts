@@ -90,7 +90,7 @@ export const PLANS: Plan[] = [
 			'25 GB of storage',
 			'75 GB of downloads a month',
 			'One member',
-			'30-day trash and versions',
+			'30-day trash and versions (planned for launch)',
 			'Community support'
 		]
 	},
@@ -120,9 +120,9 @@ export const PLANS: Plan[] = [
 		features: [
 			'Everything in Storage',
 			'Members with roles and permissions',
-			'Two-factor sign-in required for everyone',
-			'Audit log and data export',
-			'90-day trash and versions',
+			'Two-factor sign-in required for everyone (planned for launch)',
+			'Audit log and data export (planned for launch)',
+			'90-day trash and versions (planned for launch)',
 			'Priority support'
 		]
 	}
@@ -144,12 +144,14 @@ export const COMPARE: CompareRow[] = [
 	{ label: 'API requests', values: ['No charge', 'No charge', 'No charge'] },
 	{ label: 'Minimum storage duration', values: ['None', 'None', 'None'] },
 	{ label: 'Smallest monthly bill', values: ['$0', '$1', '$9 (1 TB)'] },
-	{ label: 'Trash and versions', values: ['30 days', '30 days', '90 days'] },
+	{ label: 'Trash and versions (planned for launch)', values: ['30 days', '30 days', '90 days'] },
 	{ label: 'Members', values: ['1', '1', 'Unlimited'] },
-	{ label: 'Scoped access keys', values: [true, true, true] },
-	{ label: 'Share links with expiry and password', values: [true, true, true] },
-	{ label: 'Two-factor sign-in', values: ['Optional', 'Optional', 'Required for all members'] },
-	{ label: 'Audit log', values: [false, false, true] },
+	{ label: 'Scoped access keys (planned for launch)', values: [true, true, true] },
+	{
+		label: 'Two-factor sign-in (planned for launch)',
+		values: ['Optional', 'Optional', 'Required for all members']
+	},
+	{ label: 'Audit log (planned for launch)', values: [false, false, true] },
 	{
 		label: 'Support',
 		values: ['Community', 'Email, next business day', 'Email, same business day']
@@ -244,7 +246,7 @@ export const SECURITY: Feature[] = [
 	{
 		icon: FileCheck,
 		title: 'Integrity checks',
-		body: 'Checksums are verified on upload, and stored data is re-checked on a regular schedule.'
+		body: 'Checksums are verified on upload. Planned for launch: stored data is re-checked on a regular schedule.'
 	},
 	{
 		icon: KeyRound,
@@ -348,7 +350,7 @@ export const FAQ_PRICING: FaqItem[] = [
 	},
 	{
 		q: 'Is there a minimum storage duration?',
-		a: 'No. Delete a file whenever you like and it stops counting towards your bill once it leaves the trash.'
+		a: 'No. Delete a file whenever you like and you stop paying for it.'
 	}
 ];
 

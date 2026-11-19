@@ -11,7 +11,7 @@ export const FAQ_PAGE = {
 export const SECURITY_PAGE = {
 	heading: 'Security',
 	description:
-		'How Kofra protects stored data: encryption at rest, HTTPS, checksums on upload, scoped access keys, two-factor sign-in and audit logs.',
+		'How Kofra protects stored data: encryption at rest, HTTPS and checksums on upload. Scoped access keys, two-factor sign-in and audit logs are planned for launch.',
 	lead: 'How Kofra protects and checks your data, and how access to it is controlled.',
 	protectionsHeading: 'Protections'
 };

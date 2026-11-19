@@ -4,6 +4,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 // Set from the first full build (JS 1.0 KB, CSS 6.3 KB at most, 2026-11-19) plus headroom.
 // Raise them only with a reason in the PR; a regression should be fixed, not absorbed.
@@ -68,7 +69,8 @@ export function measure(clientDir) {
 	});
 }
 
-if (import.meta.main) {
+// import.meta.main needs Node 24.2; this works on every Node the engines field allows.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
 	const dir = process.argv[2] ?? '.svelte-kit/cloudflare/client';
 	const rows = measure(dir).sort((a, b) => a.url.localeCompare(b.url));
 	const kb = (n) => (n / 1024).toFixed(1).padStart(5);

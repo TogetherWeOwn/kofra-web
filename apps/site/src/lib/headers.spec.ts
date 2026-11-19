@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { RequestEvent } from '@sveltejs/kit';
 import { describe, expect, it } from 'vitest';
-import { catchAllHeaders, siteHeaders } from './headers';
+import { catchAllHeaders, headersHook } from './headers';
 
 const file = readFileSync(new URL('../../_headers', import.meta.url), 'utf8');
 const event = {} as RequestEvent;
@@ -32,12 +32,21 @@ describe('_headers', () => {
 
 describe('siteHeaders hook', () => {
 	it('adds the headers to rendered responses and overrides weaker ones', async () => {
-		const response = await siteHeaders({
+		const response = await headersHook(false)({
 			event,
 			resolve: async () => new Response('ok', { headers: { 'X-Robots-Tag': 'all' } })
 		});
 		expect(response.headers.get('X-Robots-Tag')).toBe('noindex');
 		expect(response.headers.get('Content-Security-Policy')).toContain("default-src 'self'");
 		expect(await response.text()).toBe('ok');
+	});
+
+	it('leaves the CSP out in development, where styles are inlined', async () => {
+		const response = await headersHook(true)({
+			event,
+			resolve: async () => new Response('ok')
+		});
+		expect(response.headers.get('X-Robots-Tag')).toBe('noindex');
+		expect(response.headers.get('Content-Security-Policy')).toBeNull();
 	});
 });

@@ -6,9 +6,12 @@ describe('cell', () => {
 		expect(cell('a | b')).toBe('a \\| b');
 	});
 
-	it('escapes backslashes first, so a trailing backslash cannot unescape the pipe', () => {
+	it('escapes backslashes before a pipe, so they cannot unescape it', () => {
 		expect(cell('a\\|b')).toBe('a\\\\\\|b');
-		expect(cell('C:\\dir')).toBe('C:\\\\dir');
+	});
+
+	it('leaves other backslashes alone, since they are literal inside code spans', () => {
+		expect(cell('`C:\\dir`')).toBe('`C:\\dir`');
 	});
 
 	it('turns newlines into spaces', () => {
