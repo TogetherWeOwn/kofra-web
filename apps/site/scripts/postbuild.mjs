@@ -2,9 +2,16 @@
 //  1. puts a small entry Worker in front of SvelteKit's, so pages with a Markdown twin answer
 //     `Accept: text/markdown` at their own URL (src/lib/negotiate.js);
 //  2. routes page requests through the Worker (assets.run_worker_first), except /_app/*;
-//  3. for an indexable build (KOFRA_INDEXABLE=true), drops X-Robots-Tag from the built _headers.
+//  3. for an indexable build (KOFRA_INDEXABLE=true), drops X-Robots-Tag from the built _headers;
+//  4. when the waitlist is enabled (the built form page loads Cloudflare Turnstile), gives that
+//     page alone a Content-Security-Policy that allows Turnstile (src/lib/turnstile-csp.js).
 import { copyFileSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import {
+	WAITLIST_FORM_PAGES,
+	loadsTurnstile,
+	withTurnstileRules
+} from '../src/lib/turnstile-csp.js';
 
 const OUT = '.svelte-kit/cloudflare';
 const WORKER = path.join(OUT, 'worker');
@@ -58,6 +65,28 @@ if (process.env.KOFRA_INDEXABLE === 'true') {
 	writeFileSync(headersFile, kept.join('\n'));
 }
 
+// Decided from the build output itself, so the policy can never be wider than the pages need.
+const htmlOf = (page) => readFileSync(path.join(CLIENT, `${page.slice(1)}.html`), 'utf8');
+const turnstilePages = WAITLIST_FORM_PAGES.filter((page) => loadsTurnstile(htmlOf(page)));
+const strays = walk(CLIENT)
+	.filter((f) => f.endsWith('.html') && loadsTurnstile(readFileSync(f, 'utf8')))
+	.map(
+		(f) =>
+			'/' +
+			path
+				.relative(CLIENT, f)
+				.split(path.sep)
+				.join('/')
+				.replace(/\.html$/, '')
+	)
+	.filter((page) => !turnstilePages.includes(page));
+if (strays.length)
+	throw new Error(`postbuild: Turnstile on unexpected pages: ${strays.join(', ')}`);
+if (turnstilePages.length) {
+	const headersFile = path.join(CLIENT, '_headers');
+	writeFileSync(headersFile, withTurnstileRules(readFileSync(headersFile, 'utf8'), turnstilePages));
+}
+
 console.log(
-	`postbuild: ${twins.length} Markdown twins; entry Worker installed; indexable=${process.env.KOFRA_INDEXABLE === 'true'}`
+	`postbuild: ${twins.length} Markdown twins; entry Worker installed; indexable=${process.env.KOFRA_INDEXABLE === 'true'}; waitlist=${turnstilePages.length > 0}`
 );

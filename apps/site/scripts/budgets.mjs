@@ -5,13 +5,19 @@ import { readFileSync, readdirSync, statSync, realpathSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { TURNSTILE_ORIGIN, WAITLIST_FORM_PAGES } from '../src/lib/turnstile-csp.js';
 
 // Set from the first full build (JS 1.0 KB, CSS 6.3 KB at most, 2026-11-19) plus headroom.
 // Raise them only with a reason in the PR; a regression should be fixed, not absorbed.
 export const BUDGET = { js: 4 * 1024, css: 12 * 1024 };
 
-/** Third-party origins a page may load scripts from (none today). */
-const ALLOWED_EXTERNAL = new Set([]);
+/**
+ * Third-party hosts a page may load scripts from: Cloudflare Turnstile, on the waitlist form
+ * page only (and only an enabled build renders it). Every other page: none.
+ */
+const TURNSTILE_HOST = new URL(TURNSTILE_ORIGIN).host;
+const allowedExternal = (url) =>
+	WAITLIST_FORM_PAGES.includes(url) ? new Set([TURNSTILE_HOST]) : new Set();
 
 /** Every .html file under dir, as [file, url path]. */
 function pages(dir, base = dir) {
@@ -33,7 +39,7 @@ export function measure(clientDir) {
 		const resolve = (ref) => {
 			if (/^(https?:)?\/\//.test(ref)) {
 				const host = new URL(ref, 'https://x').host;
-				if (!ALLOWED_EXTERNAL.has(host))
+				if (!allowedExternal(url).has(host))
 					throw new Error(`${url}: external asset ${ref} is not allowed`);
 				return null;
 			}
