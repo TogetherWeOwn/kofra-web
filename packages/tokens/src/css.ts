@@ -182,6 +182,8 @@ export function flatten(tree: Json): FlatToken[] {
 			// DTCG 2025.10 "$root": the group's own token, named after the group.
 			if (key === '$root') {
 				if (path.length === 0) fail('$root', 'a $root token needs a parent group');
+				if (!isObj(child) || !('$value' in child))
+					fail(`${path.join('.')}.$root`, 'a $root token must have a $value');
 				walk(child, path, type);
 				continue;
 			}

@@ -29,13 +29,13 @@ describe('tokens.json', () => {
 	it('keeps every colour hex in step with its sRGB components', () => {
 		const mismatches: string[] = [];
 		// hex is an optional fallback in DTCG 2025.10; when present it must agree.
-		const check = (v: { components: number[]; hex?: string }, where: string) => {
+		const check = (v: { components: (number | 'none')[]; hex?: string }, where: string) => {
 			if (v.hex === undefined) return;
 			const fromComponents =
 				'#' +
 				v.components
 					.map((c) =>
-						Math.round(c * 255)
+						Math.round((c === 'none' ? 0 : c) * 255)
 							.toString(16)
 							.padStart(2, '0')
 					)
@@ -186,6 +186,9 @@ describe('css generator', () => {
 		});
 		expect(flat.map((t) => `${t.name}: ${t.value}`)).toEqual(['--space: 4px', '--space-sm: 8px']);
 		expect(() => flatten({ $root: { $type: 'number', $value: 1 } })).toThrow(/parent group/);
+		expect(() => flatten({ space: { $type: 'number', $root: { child: { $value: 1 } } } })).toThrow(
+			/must have a \$value/
+		);
 	});
 
 	it('takes colour from the components and rejects a hex that disagrees', () => {

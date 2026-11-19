@@ -28,6 +28,10 @@ describe('isCurrent', () => {
 		expect(isCurrent('../docs', '/docs/rclone')).toBe(true);
 		expect(isCurrent('../pricing', '/docs/rclone')).toBe(false);
 		expect(isCurrent('rclone', '/docs/rclone')).toBe(true);
+		// On a directory URL a bare name points inside it, as the browser follows it.
+		expect(currentState('docs', '/docs/')).toBeUndefined();
+		expect(currentState('rclone', '/docs/')).toBeUndefined();
+		expect(currentState('rclone', '/docs/rclone')).toBe('page');
 	});
 
 	it('stays fast on hostile input with many slashes', () => {

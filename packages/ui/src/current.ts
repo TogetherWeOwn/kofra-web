@@ -13,7 +13,9 @@ const isForeign = (href: string) =>
 /** Resolves a relative href ("?view=all", "rclone", "../pricing") against the current path. */
 function target(href: string, current: string): string {
 	if (href.startsWith('/')) return href;
-	return new URL(href, `https://site.invalid${norm(current)}`).pathname;
+	// Resolve against the path as the browser sees it: "/docs/" is a directory, "/docs" a file.
+	const base = current.split(/[?#]/, 1)[0] || '/';
+	return new URL(href, `https://site.invalid${base.startsWith('/') ? base : `/${base}`}`).pathname;
 }
 
 /**
