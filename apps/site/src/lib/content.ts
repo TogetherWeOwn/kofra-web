@@ -298,7 +298,7 @@ export const TOOL_EXAMPLES: {
 		kind: 'Sync and mount',
 		blurb:
 			'Copy, sync and mount. Also moves files from other clouds. Files over 95 MiB go in parts.',
-		code: `rclone config create kofra s3 provider=Other env_auth=true \\\n  endpoint=${ENDPOINT} region=${REGION} \\\n  force_path_style=true upload_cutoff=95M\nrclone sync ./projects kofra:my-bucket/projects`
+		code: `rclone config create kofra s3 provider=Other env_auth=true \\\n  endpoint=${ENDPOINT} region=${REGION} \\\n  force_path_style=true upload_cutoff=95M\nrclone copy ./projects kofra:my-bucket/projects`
 	},
 	{
 		id: 'restic',

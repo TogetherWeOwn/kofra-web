@@ -85,11 +85,11 @@ export const DOCS_BLOCKS: Block[] = [
 		type: 'code',
 		title: 'Use it',
 		lang: 'sh',
-		code: `${KEY_ENV}\nrclone lsd kofra:\nrclone copy ./projects kofra:my-bucket/projects --progress\nrclone sync ./photos kofra:my-bucket/photos --progress\nrclone mount kofra:my-bucket ~/kofra --vfs-cache-mode writes`
+		code: `${KEY_ENV}\nrclone lsd kofra:\nrclone copy ./projects kofra:my-bucket/projects --progress\nrclone sync ./photos kofra:my-bucket/photos --dry-run\nrclone mount kofra:my-bucket ~/kofra --vfs-cache-mode writes`
 	},
 	{
 		type: 'p',
-		text: '`upload_cutoff=95M` makes rclone send files over 95 MiB in parts. Kofra refuses a single upload request larger than 100 MB, and rclone’s own default cutoff (200 MiB) is above that.'
+		text: '`rclone copy` only adds and updates files. `rclone sync` makes the bucket match the source, so it also **deletes** files in the bucket that are not in the source: run it with `--dry-run` first, as above, and remove that flag only when the list is right. `upload_cutoff=95M` makes rclone send files over 95 MiB in parts. Kofra refuses a single upload request larger than 100 MB, and rclone’s own default cutoff (200 MiB) is above that.'
 	},
 
 	{ type: 'h2', text: 'restic', id: 'restic' },

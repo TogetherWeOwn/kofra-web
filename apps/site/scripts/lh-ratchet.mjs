@@ -75,6 +75,20 @@ if (import.meta.main) {
 				regressions.push(`${p} ${c}: ${r[c]} < baseline ${b[c]} - ${MARGIN[c]}`);
 		}
 	}
+	// lhci assert results (warnings and failures), so the summary says what to fix.
+	const asserted = `${DIR}/assertion-results.json`;
+	if (existsSync(asserted)) {
+		const items = JSON.parse(readFileSync(asserted, 'utf8'));
+		if (items.length) {
+			console.log('\n| Level | Page | Audit | Expected | Actual |\n|---|---|---|---|---|');
+			for (const a of items) {
+				const page = new URL(a.url).pathname;
+				console.log(
+					`| ${a.level} | ${page} | ${a.auditId ?? a.name} | ${a.operator} ${a.expected} | ${a.actual} |`
+				);
+			}
+		} else console.log('\nAll Lighthouse assertions met.');
+	}
 	for (const p of missing) regressions.push(`${p}: in the baseline but not measured`);
 	for (const p of added) regressions.push(`${p}: measured but not in the baseline (run --update)`);
 	if (regressions.length) {

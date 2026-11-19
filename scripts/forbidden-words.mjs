@@ -44,12 +44,17 @@ const sha = (s) => createHash('sha256').update(s).digest('hex');
 
 /**
  * Build tools name assets with random content hashes (`_layout.CJwq8O2U.css`); a hash can
- * contain a short term by chance, so hashes are removed before matching.
+ * contain a short term by chance. In build output only, an 8-character segment before an asset
+ * extension that mixes letter cases or digits (as hashes do, and authored names rarely do) is
+ * removed before matching. Source files are always matched in full.
  */
-const CONTENT_HASH = /[.-][A-Za-z0-9_-]{8}(?=\.(?:js|mjs|css|woff2?|png|svg|json|map)\b)/g;
+const CONTENT_HASH = /[.-]([A-Za-z0-9_-]{8})(?=\.(?:js|mjs|css|woff2?|png|svg|json|map)\b)/g;
+const hashLike = (seg) => /[A-Z]/.test(seg) || /[0-9_-]/.test(seg);
+export const stripHashes = (line) =>
+	line.replace(CONTENT_HASH, (m, seg) => (hashLike(seg) ? '' : m));
 
 /** Returns the [line, hash] of every deny-listed substring in the text. */
-export function findTerms(text, terms = TERMS) {
+export function findTerms(text, terms = TERMS, { build = false } = {}) {
 	const byLength = new Map();
 	for (const [len, hash] of terms) {
 		if (!byLength.has(len)) byLength.set(len, new Set());
@@ -57,10 +62,8 @@ export function findTerms(text, terms = TERMS) {
 	}
 	const hits = [];
 	text.split('\n').forEach((line, i) => {
-		for (const token of line
-			.replace(CONTENT_HASH, '')
-			.toLowerCase()
-			.match(/[a-z0-9]+/g) ?? []) {
+		for (const token of (build ? stripHashes(line) : line).toLowerCase().match(/[a-z0-9]+/g) ??
+			[]) {
 			for (const [len, hashes] of byLength) {
 				for (let at = 0; at + len <= token.length; at++) {
 					const h = sha(token.slice(at, at + len));
@@ -85,7 +88,9 @@ if (import.meta.main) {
 		const found = findTerms('ok\nsome Kofraselftesttermish text', [SELF_TEST]);
 		// A term inside a content-hashed asset name is ignored; the same term in text is not.
 		const hashTerm = [[8, sha('kofrasel')]];
-		const inHash = findTerms('see _app/x.kofrasel.js', hashTerm);
+		const inHash = findTerms('see _app/x.kOfrasel.js', hashTerm, { build: true });
+		const authored = findTerms('see /guide.kofrasel.js', hashTerm, { build: true });
+		const inSource = findTerms('see _app/x.kOfrasel.js', hashTerm);
 		const inText = findTerms('see kofrasel here', hashTerm);
 		const clean = findTerms('nothing to see here', [SELF_TEST]);
 		if (
@@ -93,9 +98,11 @@ if (import.meta.main) {
 			found[0][0] !== 2 ||
 			clean.length !== 0 ||
 			inHash.length !== 0 ||
+			authored.length !== 1 ||
+			inSource.length !== 1 ||
 			inText.length !== 1
 		) {
-			console.error('self-test failed', found, clean, inHash, inText);
+			console.error('self-test failed', { found, clean, inHash, authored, inSource, inText });
 			process.exit(1);
 		}
 		console.log('self-test passed');
@@ -113,7 +120,7 @@ if (import.meta.main) {
 		} catch {
 			continue; // deleted in the working tree, or unreadable
 		}
-		for (const [line, h] of findTerms(text)) {
+		for (const [line, h] of findTerms(text, TERMS, { build: args.length > 0 })) {
 			bad++;
 			console.error(`${file}:${line}: forbidden term (hash ${h})`);
 		}

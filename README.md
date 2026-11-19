@@ -34,7 +34,8 @@ The site is fully prerendered and ships no JavaScript except the theme switch. C
   no Lighthouse regression beyond the noise margin against `apps/site/lighthouse-baseline.json`
   (`apps/site/scripts/lh-ratchet.mjs`).
 - **Warnings (noisy on shared runners):** Lighthouse performance, best practices and SEO ≥ 95, LCP
-  and TBT, as medians of three runs. See [docs/PERF-BACKLOG.md](docs/PERF-BACKLOG.md).
+  and TBT, as medians of three runs. On pull requests Lighthouse runs only when site-affecting files
+  change (a skip counts as a pass in `ci-ok`); the job summary lists every warning and failure. See [docs/PERF-BACKLOG.md](docs/PERF-BACKLOG.md).
 
 ## Development
 

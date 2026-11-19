@@ -112,6 +112,13 @@ test('every internal link resolves, including its #fragment', async ({ page, req
 	const seen = new Set<string>();
 	for (const path of PAGES) {
 		await page.goto(path);
+		// Same-page anchors (skip link, "On this page") must point at an element on this page.
+		const anchors = await page
+			.locator('a[href^="#"]')
+			.evaluateAll((els) => els.map((e) => e.getAttribute('href')!.slice(1)));
+		for (const id of anchors) {
+			await expect(page.locator(`[id="${id}"]`), `${path}#${id}`).toHaveCount(1);
+		}
 		const hrefs = await page
 			.locator('a[href^="/"]')
 			.evaluateAll((els) => els.map((e) => e.getAttribute('href')!));
