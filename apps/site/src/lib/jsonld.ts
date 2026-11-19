@@ -1,7 +1,7 @@
 // schema.org structured data (JSON-LD) for each page, built from the registry and content.
 import { FAQ_DATA, FAQ_GENERAL, FAQ_PRICING, PLANS } from '#lib/content.js';
 import { canonical, pageFor, type PageEntry } from '#lib/registry.js';
-import { ORGANISATION_FACTS, SITE } from '#lib/site.js';
+import { ORGANISATION_FACTS, PRICES_FINAL, SITE } from '#lib/site.js';
 
 type Node = Record<string, unknown>;
 
@@ -66,7 +66,7 @@ export function faqPage(entry: PageEntry): Node {
 	};
 }
 
-/** Example prices are labelled as such in each offer until real prices are set. */
+/** Product and offers. Emitted only once PRICES_FINAL is true (see site.ts). */
 export function product(entry: PageEntry): Node {
 	return {
 		'@type': 'Product',
@@ -79,16 +79,19 @@ export function product(entry: PageEntry): Node {
 			return {
 				'@type': 'Offer',
 				name: p.name,
-				description: `Example price, not an offer: ${p.price} ${p.unit}. Kofra is not yet open for sign-ups.`,
 				price,
 				priceCurrency: 'USD',
 				url: canonical(entry.path),
-				priceSpecification: {
-					'@type': 'UnitPriceSpecification',
-					price,
-					priceCurrency: 'USD',
-					unitText: p.unit
-				}
+				...(p.id === 'free'
+					? {}
+					: {
+							priceSpecification: {
+								'@type': 'UnitPriceSpecification',
+								price,
+								priceCurrency: 'USD',
+								unitText: 'TB per month'
+							}
+						})
 			};
 		})
 	};
@@ -113,7 +116,7 @@ export function graphFor(entry: PageEntry): Node {
 	const nodes: Node[] = [organization(), website()];
 	if (entry.kind !== 'home') nodes.push(breadcrumbs(entry));
 	if (entry.path === '/faq') nodes.push(faqPage(entry));
-	if (entry.path === '/pricing') nodes.push(product(entry));
+	if (entry.path === '/pricing' && PRICES_FINAL) nodes.push(product(entry));
 	if (entry.kind === 'docs') nodes.push(techArticle(entry));
 	return { '@context': 'https://schema.org', '@graph': nodes };
 }

@@ -196,6 +196,16 @@ jobs:
           if-no-files-found: error
           # Long enough to re-run a failed e2e job without rebuilding.
           retention-days: 7
+      # The production flip (KOFRA_INDEXABLE=true) must remove every noindex and open
+      # robots.txt. Built after the upload, so the artifact stays the staging build.
+      - name: Indexable build check (site)
+        working-directory: apps/site
+        env:
+          KOFRA_INDEXABLE: 'true'
+        run: |
+          set -euo pipefail
+          pnpm run build
+          node scripts/check-indexable.mjs
 
   e2e:
     name: e2e smoke (playwright)

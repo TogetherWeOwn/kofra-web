@@ -35,7 +35,14 @@ export function prefersMarkdown(accept) {
 	const q = acceptQ(accept);
 	const md = Math.max(q.get('text/markdown') ?? 0, q.get('text/x-markdown') ?? 0);
 	if (md <= 0) return false;
-	const html = Math.max(q.get('text/html') ?? 0, q.get('application/xhtml+xml') ?? 0);
+	// HTML is wanted as much as its explicit ranges or a wildcard say; at equal q the explicit
+	// Markdown range wins ("text/markdown, */*" is Markdown).
+	const html = Math.max(
+		q.get('text/html') ?? 0,
+		q.get('application/xhtml+xml') ?? 0,
+		q.get('text/*') ?? 0,
+		q.get('*/*') ?? 0
+	);
 	return md >= html;
 }
 
@@ -45,11 +52,11 @@ export function prefersMarkdown(accept) {
  * @returns {string | null}
  */
 export function twinFor(pathname) {
-	if (pathname.startsWith('/_app/')) return null;
-	const p = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
-	if (p === '/' || p === '') return '/index.md';
-	if (/\.[a-z0-9]+$/i.test(p)) return null;
-	return `${p}.md`;
+	if (pathname === '/') return '/index.md';
+	// A trailing slash is left to the framework, which redirects it to the canonical path.
+	if (pathname.startsWith('/_app/') || pathname.endsWith('/')) return null;
+	if (/\.[a-z0-9]+$/i.test(pathname)) return null;
+	return `${pathname}.md`;
 }
 
 /**
@@ -59,15 +66,32 @@ export function twinFor(pathname) {
  */
 
 /**
- * Wraps a Worker so pages with a Markdown twin honour `Accept: text/markdown`.
+ * The page a twin belongs to: "/index.md" -> "/", "/docs.md" -> "/docs".
+ * @param {string} twin
+ */
+export const pageOf = (twin) => (twin === '/index.md' ? '/' : twin.slice(0, -'.md'.length));
+
+/**
+ * Wraps a Worker so pages with a Markdown twin honour `Accept: text/markdown`, and every
+ * Markdown response points search engines at the HTML page as canonical.
  * @param {Handler} app
  * @param {Set<string>} twins
+ * @param {string} origin canonical origin, for example https://kofra.app
  * @returns {Handler}
  */
-export function withMarkdown(app, twins) {
+export function withMarkdown(app, twins, origin) {
+	/** @param {string} twin */
+	const canonical = (twin) => `<${origin}${pageOf(twin)}>; rel="canonical"`;
 	return {
 		async fetch(request, env, ctx) {
 			const url = new URL(request.url);
+			if (twins.has(url.pathname)) {
+				// A direct .md request: the twin itself, with its canonical page.
+				const direct = await app.fetch(request, env, ctx);
+				const res = new Response(direct.body, direct);
+				res.headers.set('link', canonical(url.pathname));
+				return res;
+			}
 			const twin =
 				request.method === 'GET' || request.method === 'HEAD' ? twinFor(url.pathname) : null;
 			if (!twin || !twins.has(twin)) return app.fetch(request, env, ctx);
@@ -76,6 +100,7 @@ export function withMarkdown(app, twins) {
 				const res = new Response(asset.body, asset);
 				res.headers.set('content-type', 'text/markdown; charset=utf-8');
 				res.headers.set('content-location', twin);
+				res.headers.set('link', canonical(twin));
 				res.headers.append('vary', 'Accept');
 				return res;
 			}

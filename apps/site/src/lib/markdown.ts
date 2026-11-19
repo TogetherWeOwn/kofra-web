@@ -1,6 +1,6 @@
 // Markdown twins of the structured pages (home, pricing, FAQ, security, licences). Prose pages use
 // toMarkdown(blocks) directly. Everything reads the same content modules as the HTML templates.
-import { absolutise, toMarkdown, type Block } from '#lib/blocks.js';
+import { absolutise, toMarkdown, type Block, type Tone } from '#lib/blocks.js';
 import {
 	COMPARE,
 	EARLY_ACCESS,
@@ -39,8 +39,12 @@ const faq = (items: { q: string; a: string }[], level = '###') =>
 export const doc = (heading: string, lead: string | undefined, body: string) =>
 	`# ${heading}\n\n${lead ? `${lead}\n\n` : ''}${body.trim()}\n`;
 
-export const prose = (heading: string, lead: string | undefined, blocks: Block[]) =>
-	doc(heading, lead, toMarkdown(blocks, O));
+export const prose = (
+	heading: string,
+	lead: string | undefined,
+	blocks: Block[],
+	notice?: { tone: Tone; title: string; text: string }
+) => doc(heading, lead, toMarkdown(notice ? [{ type: 'note', ...notice }, ...blocks] : blocks, O));
 
 export function homeMarkdown(): string {
 	const h = HOME;

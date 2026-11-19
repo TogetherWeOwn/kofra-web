@@ -16,6 +16,12 @@ describe('prefersMarkdown', () => {
 		expect(prefersMarkdown('text/markdown, text/html;q=0.9')).toBe(true);
 		expect(prefersMarkdown('text/x-markdown, */*;q=0.1')).toBe(true);
 		expect(prefersMarkdown('text/markdown;q=0')).toBe(false);
+		expect(prefersMarkdown('text/markdown, */*')).toBe(true);
+	});
+
+	it('lets a wildcard outrank a low-priority Markdown range', () => {
+		expect(prefersMarkdown('text/markdown;q=0.1, */*')).toBe(false);
+		expect(prefersMarkdown('text/markdown;q=0.5, text/*;q=0.9')).toBe(false);
 	});
 
 	it('parses q-values defensively', () => {
@@ -27,7 +33,8 @@ describe('prefersMarkdown', () => {
 describe('twinFor', () => {
 	it('maps page paths to their twin and ignores assets', () => {
 		expect(twinFor('/')).toBe('/index.md');
-		expect(twinFor('/docs/')).toBe('/docs.md');
+		expect(twinFor('/docs')).toBe('/docs.md');
+		expect(twinFor('/docs/')).toBeNull(); // the framework redirects it first
 		expect(twinFor('/legal/terms')).toBe('/legal/terms.md');
 		expect(twinFor('/_app/immutable/x.js')).toBeNull();
 		expect(twinFor('/og.png')).toBeNull();
@@ -35,7 +42,7 @@ describe('twinFor', () => {
 });
 
 describe('withMarkdown', () => {
-	const twins = new Set(['/index.md']);
+	const twins = new Set(['/index.md', '/docs.md']);
 	const app = {
 		fetch: async () => new Response('<h1>Home</h1>', { headers: { 'content-type': 'text/html' } })
 	};
@@ -46,7 +53,7 @@ describe('withMarkdown', () => {
 		}
 	};
 	const get = (path: string, accept?: string, method = 'GET') =>
-		withMarkdown(app, twins).fetch(
+		withMarkdown(app, twins, 'https://kofra.app').fetch(
 			new Request(`https://kofra.test${path}`, { method, headers: accept ? { accept } : {} }),
 			env,
 			{}
@@ -58,6 +65,12 @@ describe('withMarkdown', () => {
 		expect(res.headers.get('content-type')).toBe('text/markdown; charset=utf-8');
 		expect(res.headers.get('vary')).toContain('Accept');
 		expect(res.headers.get('content-location')).toBe('/index.md');
+		expect(res.headers.get('link')).toBe('<https://kofra.app/>; rel="canonical"');
+	});
+
+	it('points a directly requested twin at its canonical page', async () => {
+		const res = await get('/docs.md');
+		expect(res.headers.get('link')).toBe('<https://kofra.app/docs>; rel="canonical"');
 	});
 
 	it('returns HTML otherwise, still varying on Accept and linking the twin', async () => {

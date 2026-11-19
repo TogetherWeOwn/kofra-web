@@ -35,12 +35,24 @@ for (const path of PAGES) {
 		const md = await twin.text();
 		const h1 = (await page.locator('h1').textContent())?.trim();
 		expect(md).toContain(`\n# ${h1}\n`);
+		// Parity: every heading and note the page shows is in the twin (Markdown marks removed).
+		const flat = md
+			.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+			.replace(/[*`]/g, '')
+			.replace(/\s+/g, ' ');
+		const shown = await page
+			.locator('main h2, main h3, main [role="note"]')
+			.evaluateAll((els) => els.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()));
+		for (const text of shown) expect(flat, `${path}: "${text}"`).toContain(text);
+		expect(twin.headers()['link']).toBe(`<${ORIGIN}${path}>; rel="canonical"`);
 
 		const negotiated = await request.get(path, { headers: { accept: 'text/markdown' } });
 		expect(negotiated.status()).toBe(200);
 		expect(negotiated.headers()['content-type']).toContain('text/markdown');
 		expect(negotiated.headers()['vary']).toContain('Accept');
 		expect(await negotiated.text()).toBe(md);
+
+		expect(negotiated.headers()['link']).toBe(`<${ORIGIN}${path}>; rel="canonical"`);
 
 		const html = await request.get(path, { headers: { accept: 'text/html,*/*;q=0.8' } });
 		expect(html.headers()['content-type']).toContain('text/html');

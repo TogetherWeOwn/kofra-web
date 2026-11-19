@@ -25,3 +25,9 @@ export const ORGANISATION_FACTS: { legalName?: string; email?: string; address?:
 
 /** Title for <title>: the page name, then the brand. */
 export const pageTitle = (name: string) => `${name} | ${SITE.name}`;
+
+/**
+ * Prices on the site are examples until the owner sets real ones. While false, no price is
+ * published as structured data (no schema.org Product or Offer), only as labelled page text.
+ */
+export const PRICES_FINAL = false;

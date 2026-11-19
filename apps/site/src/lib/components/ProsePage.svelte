@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
-	import { headingId, plain, type Block } from '#lib/blocks.js';
+	import { Callout } from '@kofra/ui';
+	import { headingId, plain, type Block, type Tone } from '#lib/blocks.js';
 	import Blocks from './Blocks.svelte';
 	import PageHead from './PageHead.svelte';
 
@@ -10,8 +10,8 @@
 		blocks: Block[];
 		/** Show an "On this page" list of the h2 sections beside the text (wide screens) or above it. */
 		toc?: boolean;
-		/** Shown under the lead, for example a draft notice. */
-		notice?: Snippet;
+		/** A note under the lead, for example the draft notice. Also in the Markdown twin. */
+		notice?: { tone: Tone; title: string; text: string };
 	};
 
 	let { heading, lead, blocks, toc = false, notice }: Props = $props();
@@ -20,7 +20,9 @@
 	);
 </script>
 
-<PageHead {heading} {lead} children={notice} />
+<PageHead {heading} {lead}>
+	{#if notice}<Callout tone={notice.tone} title={notice.title}><p>{notice.text}</p></Callout>{/if}
+</PageHead>
 
 <div class="wrap body" class:with-toc={toc}>
 	{#if toc}

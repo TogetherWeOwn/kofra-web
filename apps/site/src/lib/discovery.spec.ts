@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { PAGES as E2E_PAGES } from '../../e2e/pages';
 import { llmsFullTxt, llmsTxt, robotsTxt, sitemapXml } from './discovery';
-import { graphFor } from './jsonld';
+import { readFileSync } from 'node:fs';
+import { graphFor, organization, product } from './jsonld';
+import { DRAFT_NOTICE } from './pages/legal';
 import { PAGES, pageFor, twinDocument, twinPath } from './registry';
 import { checkJsonLd } from './schema-check';
-import { SITE } from './site';
+import { PRICES_FINAL, SITE } from './site';
 
 describe('page registry', () => {
 	it('lists exactly the pages the e2e suite checks', () => {
@@ -40,6 +42,19 @@ describe('Markdown twins', () => {
 	}
 });
 
+describe('twins carry what the page shows', () => {
+	it('legal twins keep the draft notice', () => {
+		for (const path of ['/legal/terms', '/legal/privacy']) {
+			expect(twinDocument(pageFor(path)!)).toContain(DRAFT_NOTICE);
+		}
+	});
+
+	it('the entry Worker uses the canonical origin', () => {
+		const postbuild = readFileSync(new URL('../../scripts/postbuild.mjs', import.meta.url), 'utf8');
+		expect(postbuild).toContain(`'${SITE.origin}'`);
+	});
+});
+
 describe('structured data', () => {
 	for (const p of PAGES) {
 		it(`${p.path}: valid schema.org JSON-LD`, () => {
@@ -47,10 +62,17 @@ describe('structured data', () => {
 		});
 	}
 
-	it('marks every price as an example and emits no placeholder legal facts', () => {
+	it('publishes no price as structured data while prices are examples', () => {
+		expect(PRICES_FINAL).toBe(false);
 		const pricing = JSON.stringify(graphFor(pageFor('/pricing')!));
-		expect(pricing.match(/Example price, not an offer/g)?.length).toBe(3);
+		expect(pricing).not.toMatch(/"Product"|"Offer"|"price"/);
 		expect(pricing).not.toContain('legalName');
+	});
+
+	it('builds a valid Product once prices are final', () => {
+		const node = product(pageFor('/pricing')!);
+		const graph = { '@context': 'https://schema.org', '@graph': [organization(), node] };
+		expect(checkJsonLd(graph)).toEqual([]);
 	});
 
 	it('rejects typos, unknown types, dangling references and placeholders', () => {

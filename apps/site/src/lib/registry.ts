@@ -44,15 +44,13 @@ export interface PageEntry {
 	markdown: () => string;
 }
 
-const UPDATED = '2026-11-19';
-
 export const PAGES: PageEntry[] = [
 	{
 		path: '/',
 		name: 'Home',
 		title: HOME.title,
 		description: HOME.description,
-		updated: UPDATED,
+		updated: '2026-11-19',
 		kind: 'home',
 		llms: { section: 'Product', note: 'what Kofra is, features, S3 settings and a plan summary' },
 		markdown: homeMarkdown
@@ -62,7 +60,7 @@ export const PAGES: PageEntry[] = [
 		name: 'Pricing',
 		title: pageTitle(PRICING.heading),
 		description: PRICING.description,
-		updated: UPDATED,
+		updated: '2026-11-19',
 		kind: 'page',
 		llms: {
 			section: 'Product',
@@ -75,7 +73,7 @@ export const PAGES: PageEntry[] = [
 		name: 'Documentation',
 		title: pageTitle(DOCS.heading),
 		description: DOCS.description,
-		updated: UPDATED,
+		updated: '2026-11-19',
 		kind: 'docs',
 		llms: {
 			section: 'Docs',
@@ -88,7 +86,7 @@ export const PAGES: PageEntry[] = [
 		name: 'S3 compatibility',
 		title: pageTitle(S3.heading),
 		description: S3.description,
-		updated: UPDATED,
+		updated: '2026-11-19',
 		kind: 'docs',
 		parent: '/docs',
 		llms: { section: 'Docs', note: 'supported S3 operations, limits and error codes' },
@@ -99,7 +97,7 @@ export const PAGES: PageEntry[] = [
 		name: 'Questions and answers',
 		title: pageTitle(FAQ_PAGE.heading),
 		description: FAQ_PAGE.description,
-		updated: UPDATED,
+		updated: '2026-11-19',
 		kind: 'page',
 		llms: { section: 'Product', note: 'short answers about tools, billing and data' },
 		markdown: faqMarkdown
@@ -109,7 +107,7 @@ export const PAGES: PageEntry[] = [
 		name: 'Security',
 		title: pageTitle(SECURITY_PAGE.heading),
 		description: SECURITY_PAGE.description,
-		updated: UPDATED,
+		updated: '2026-11-19',
 		kind: 'page',
 		llms: { section: 'Product', note: 'encryption, integrity checks and access control' },
 		markdown: securityMarkdown
@@ -119,7 +117,7 @@ export const PAGES: PageEntry[] = [
 		name: 'Early access',
 		title: pageTitle(EARLY.heading),
 		description: EARLY.description,
-		updated: UPDATED,
+		updated: '2026-11-19',
 		kind: 'page',
 		llms: { section: 'Optional', note: 'sign-up status' },
 		markdown: () => prose(EARLY.heading, EARLY.lead, EARLY_BLOCKS)
@@ -129,27 +127,27 @@ export const PAGES: PageEntry[] = [
 		name: 'Terms of service (draft)',
 		title: pageTitle(TERMS.heading),
 		description: TERMS.description,
-		updated: UPDATED,
+		updated: '2026-11-19',
 		kind: 'legal',
 		llms: { section: 'Optional', note: 'draft, not in force' },
-		markdown: () => prose(TERMS.heading, TERMS.lead, TERMS_BLOCKS)
+		markdown: () => prose(TERMS.heading, TERMS.lead, TERMS_BLOCKS, TERMS.notice)
 	},
 	{
 		path: '/legal/privacy',
 		name: 'Privacy policy (draft)',
 		title: pageTitle(PRIVACY.heading),
 		description: PRIVACY.description,
-		updated: UPDATED,
+		updated: '2026-11-19',
 		kind: 'legal',
 		llms: { section: 'Optional', note: 'draft, not in force' },
-		markdown: () => prose(PRIVACY.heading, PRIVACY.lead, PRIVACY_BLOCKS)
+		markdown: () => prose(PRIVACY.heading, PRIVACY.lead, PRIVACY_BLOCKS, PRIVACY.notice)
 	},
 	{
 		path: '/licences',
 		name: 'Licences',
 		title: pageTitle(LICENCES.heading),
 		description: LICENCES.description,
-		updated: UPDATED,
+		updated: '2026-11-19',
 		kind: 'page',
 		llms: { section: 'Optional', note: 'open-source fonts and icons used on the site' },
 		markdown: () => licencesMarkdown([...LICENCE_WORKS])
