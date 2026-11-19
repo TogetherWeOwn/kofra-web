@@ -1,0 +1,32 @@
+{
+	"name": "@kofra/site",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"imports": {
+		"#lib/*": "./src/lib/*"
+	},
+	"scripts": {
+		"dev": "vite dev",
+		"gen": "wrangler types",
+		"build": "wrangler types && vite build",
+		"preview": "wrangler dev --port 4173",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "wrangler types && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
+		"test:unit": "vitest --run",
+		"test:e2e": "playwright test"
+	},
+	"devDependencies": {
+		"@playwright/test": "^1.65.1",
+		"@sveltejs/adapter-cloudflare": "^9.0.0",
+		"@sveltejs/kit": "^3.4.0",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"@types/node": "^24",
+		"svelte": "^5.58.0",
+		"svelte-check": "^4.7.8",
+		"typescript": "^6.0.3",
+		"vite": "^8.3.8",
+		"vitest": "^5.1.1",
+		"wrangler": "^4.165.0"
+	}
+}

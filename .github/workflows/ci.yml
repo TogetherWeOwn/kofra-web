@@ -1,0 +1,142 @@
+name: ci
+
+# `ci-ok` is the aggregate check required on main: its NAME must stay
+# `ci-ok`, and every gating job id must be listed in its `needs`. Actions are
+# pinned by commit SHA. Installs use the committed lockfile and run no
+# dependency install scripts except the ones allowed in pnpm-workspace.yaml.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  # Merge queue validation: every required check must report on the queue's
+  # temporary merge commit. merge_group runs are never cancelled.
+  merge_group:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.event_name != 'merge_group' }}
+
+env:
+  WRANGLER_SEND_METRICS: 'false'
+
+jobs:
+  public-pr-security:
+    if: github.event_name == 'pull_request' && github.event.repository.private == false
+    # The nested OSV reusable requires this exact permission ceiling: actions
+    # reads same-run comparison artifacts, contents reads the PR tree/history,
+    # and security-events uploads comparison SARIF. No secrets are passed.
+    permissions:
+      actions: read # Nested OSV reads same-run comparison artifacts.
+      contents: read
+      security-events: write # Nested OSV uploads comparison SARIF.
+    uses: TogetherWeOwn/.github/.github/workflows/public-pr-security.yml@c05610872587137c3c492b7025f02585a1b8ba7d # v0.11.0
+
+  lint:
+    name: lint (prettier, eslint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+
+  typecheck:
+    name: typecheck (svelte-check, tsc)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
+
+  unit:
+    name: unit (vitest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:unit
+
+  build:
+    name: build (vite, adapter-cloudflare)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+
+  e2e:
+    name: e2e smoke (playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - run: pnpm install --frozen-lockfile
+      # Chromium only; the version comes from the locked @playwright/test.
+      - run: pnpm --filter @kofra/site exec playwright install --with-deps chromium
+      # Each app is built and served by the local Workers runtime
+      # (wrangler dev); no Cloudflare credentials are used.
+      - run: pnpm run test:e2e
+
+  ci-ok:
+    name: ci-ok
+    needs: [public-pr-security, lint, typecheck, unit, build, e2e]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          # Fail closed: every job must succeed, except the PR-only security
+          # caller, which must succeed on pull_request and be skipped on any
+          # other event.
+          if ! jq -e --arg event "$CI_EVENT_NAME" '
+            . as $n |
+            ($n | length) > 1 and
+            $n["public-pr-security"].result == (if $event == "pull_request" then "success" else "skipped" end) and
+            ($n | del(.["public-pr-security"]) | all(.[]; .result == "success"))
+          ' <<< "$NEEDS_JSON" > /dev/null; then
+            echo "ci-ok: a required job did not succeed"
+            exit 1
+          fi
+          echo "ci-ok: all required jobs passed"
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          CI_EVENT_NAME: ${{ github.event_name }}

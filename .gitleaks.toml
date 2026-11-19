@@ -1,0 +1,3 @@
+# Gitleaks policy: the default rule set, no allowlist.
+[extend]
+useDefault = true
