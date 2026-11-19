@@ -1,0 +1,102 @@
+{
+	"/": {
+		"performance": 100,
+		"accessibility": 100,
+		"best-practices": 100,
+		"seo": 100,
+		"lcpMs": 982,
+		"tbtMs": 0,
+		"cls": 0,
+		"runs": 3
+	},
+	"/docs": {
+		"performance": 100,
+		"accessibility": 100,
+		"best-practices": 100,
+		"seo": 100,
+		"lcpMs": 999,
+		"tbtMs": 0,
+		"cls": 0,
+		"runs": 3
+	},
+	"/docs/s3-compatibility": {
+		"performance": 100,
+		"accessibility": 100,
+		"best-practices": 100,
+		"seo": 100,
+		"lcpMs": 994,
+		"tbtMs": 0,
+		"cls": 0,
+		"runs": 3
+	},
+	"/early-access": {
+		"performance": 100,
+		"accessibility": 100,
+		"best-practices": 100,
+		"seo": 100,
+		"lcpMs": 1007,
+		"tbtMs": 0,
+		"cls": 0,
+		"runs": 3
+	},
+	"/faq": {
+		"performance": 100,
+		"accessibility": 100,
+		"best-practices": 100,
+		"seo": 100,
+		"lcpMs": 1012,
+		"tbtMs": 0,
+		"cls": 0,
+		"runs": 3
+	},
+	"/legal/privacy": {
+		"performance": 100,
+		"accessibility": 100,
+		"best-practices": 100,
+		"seo": 100,
+		"lcpMs": 959,
+		"tbtMs": 0,
+		"cls": 0,
+		"runs": 3
+	},
+	"/legal/terms": {
+		"performance": 100,
+		"accessibility": 100,
+		"best-practices": 100,
+		"seo": 100,
+		"lcpMs": 1000,
+		"tbtMs": 0,
+		"cls": 0,
+		"runs": 3
+	},
+	"/licences": {
+		"performance": 100,
+		"accessibility": 100,
+		"best-practices": 100,
+		"seo": 100,
+		"lcpMs": 987,
+		"tbtMs": 0,
+		"cls": 0,
+		"runs": 3
+	},
+	"/pricing": {
+		"performance": 100,
+		"accessibility": 100,
+		"best-practices": 100,
+		"seo": 100,
+		"lcpMs": 1002,
+		"tbtMs": 0,
+		"cls": 0,
+		"runs": 3
+	},
+	"/security": {
+		"performance": 100,
+		"accessibility": 100,
+		"best-practices": 100,
+		"seo": 100,
+		"lcpMs": 987,
+		"tbtMs": 0,
+		"cls": 0,
+		"runs": 3
+	}
+}

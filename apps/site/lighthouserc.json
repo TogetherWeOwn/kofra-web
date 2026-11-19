@@ -1,0 +1,50 @@
+{
+	"ci": {
+		"collect": {
+			"startServerCommand": "pnpm run preview",
+			"startServerReadyPattern": "Ready on",
+			"startServerReadyTimeout": 60000,
+			"numberOfRuns": 3,
+			"url": [
+				"http://127.0.0.1:4173/",
+				"http://127.0.0.1:4173/pricing",
+				"http://127.0.0.1:4173/docs",
+				"http://127.0.0.1:4173/docs/s3-compatibility",
+				"http://127.0.0.1:4173/faq",
+				"http://127.0.0.1:4173/security",
+				"http://127.0.0.1:4173/early-access",
+				"http://127.0.0.1:4173/legal/terms",
+				"http://127.0.0.1:4173/legal/privacy",
+				"http://127.0.0.1:4173/licences"
+			],
+			"settings": {
+				"chromeFlags": "--headless=new --no-sandbox",
+				"skipAudits": ["is-crawlable"]
+			}
+		},
+		"assert": {
+			"assertions": {
+				"categories:accessibility": ["error", { "minScore": 1, "aggregationMethod": "median" }],
+				"cumulative-layout-shift": [
+					"error",
+					{ "maxNumericValue": 0.1, "aggregationMethod": "median" }
+				],
+				"categories:performance": ["warn", { "minScore": 0.95, "aggregationMethod": "median-run" }],
+				"categories:best-practices": [
+					"warn",
+					{ "minScore": 0.95, "aggregationMethod": "median-run" }
+				],
+				"categories:seo": ["warn", { "minScore": 0.95, "aggregationMethod": "median-run" }],
+				"largest-contentful-paint": [
+					"warn",
+					{ "maxNumericValue": 2500, "aggregationMethod": "median-run" }
+				],
+				"total-blocking-time": [
+					"warn",
+					{ "maxNumericValue": 200, "aggregationMethod": "median-run" }
+				]
+			}
+		},
+		"upload": { "target": "filesystem", "outputDir": ".lighthouseci/report" }
+	}
+}

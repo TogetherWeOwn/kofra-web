@@ -17,6 +17,13 @@
 		"test:e2e": "playwright test"
 	},
 	"devDependencies": {
+		"@axe-core/playwright": "^4.14.0",
+		"@fontsource-variable/ibm-plex-sans": "^5.3.0",
+		"@fontsource/ibm-plex-mono": "^5.3.0",
+		"@kofra/tokens": "workspace:*",
+		"@kofra/ui": "workspace:*",
+		"@lhci/cli": "^0.16.1",
+		"@lucide/svelte": "^1.75.0",
 		"@playwright/test": "^1.65.1",
 		"@sveltejs/adapter-cloudflare": "^9.0.0",
 		"@sveltejs/kit": "^3.4.0",
