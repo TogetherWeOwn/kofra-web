@@ -12,11 +12,18 @@ responses that cannot). Nothing is deployed.
 | ----------------- | ---------------- | ------------------------------------------------------------- |
 | `apps/site`       | `@kofra/site`    | Marketing site; every route is prerendered                    |
 | `apps/console`    | `@kofra/console` | Customer console; server-rendered                             |
-| `packages/ui`     | `@kofra/ui`      | Shared Svelte 5 components (placeholder)                      |
-| `packages/tokens` | `@kofra/tokens`  | Design tokens in the DTCG format (`tokens.json`, placeholder) |
+| `packages/ui`     | `@kofra/ui`      | Shared Svelte 5 components, base styles and the theme script  |
+| `packages/tokens` | `@kofra/tokens`  | Design tokens (DTCG `tokens.json`) and generated `tokens.css` |
 
 Stack: SvelteKit 3, Svelte 5 (runes), TypeScript (strict), Vite, `@sveltejs/adapter-cloudflare` on Cloudflare
 Workers with static assets. Tests use Vitest and Playwright. Linting uses ESLint, Prettier and svelte-check.
+
+## Design tokens
+
+`packages/tokens/tokens.json` is the source (DTCG format 2025.10; colours carry their dark value in
+`$extensions["app.kofra.modes"].dark`). After editing it, run `pnpm --filter @kofra/tokens run build` to
+regenerate `tokens.css`; a unit test fails when the two drift, and another fails when a text or control
+colour pair drops below its WCAG contrast minimum in either theme.
 
 ## Development
 

@@ -1,0 +1,41 @@
+/** Path without query, fragment or trailing slash; "/" stays "/". Linear time on any input. */
+function norm(p: string): string {
+	const path = p.split(/[?#]/, 1)[0] ?? '';
+	let end = path.length;
+	while (end > 1 && path.charCodeAt(end - 1) === 47 /* "/" */) end--;
+	return path.slice(0, end) || '/';
+}
+
+/** Absolute URLs (any scheme), protocol-relative URLs and bare fragments are never "current". */
+const isForeign = (href: string) =>
+	/^([a-z][a-z0-9+.-]*:|\/\/)/i.test(href) || href.startsWith('#');
+
+/** Resolves a relative href ("?view=all", "rclone", "../pricing") against the current path. */
+function target(href: string, current: string): string {
+	if (href.startsWith('/')) return href;
+	// Resolve against the path as the browser sees it: "/docs/" is a directory, "/docs" a file.
+	const base = current.split(/[?#]/, 1)[0] || '/';
+	return new URL(href, `https://site.invalid${base.startsWith('/') ? base : `/${base}`}`).pathname;
+}
+
+/**
+ * True when `href` is the current page or a section that contains it.
+ * The home link matches only the home page; `/docs` also matches `/docs/rclone`.
+ * Trailing slashes, query strings and fragments are ignored.
+ */
+export function isCurrent(href: string, current: string): boolean {
+	if (isForeign(href)) return false;
+	const h = norm(target(href, current));
+	const c = norm(current);
+	if (h === '/') return c === '/';
+	return c === h || c.startsWith(`${h}/`);
+}
+
+/**
+ * The aria-current value for a navigation link: "page" for the current page itself,
+ * "true" for a section that contains it, undefined otherwise.
+ */
+export function currentState(href: string, current: string): 'page' | 'true' | undefined {
+	if (!isCurrent(href, current)) return undefined;
+	return norm(target(href, current)) === norm(current) ? 'page' : 'true';
+}
