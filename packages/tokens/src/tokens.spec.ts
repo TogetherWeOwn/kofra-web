@@ -28,7 +28,9 @@ describe('tokens.json', () => {
 
 	it('keeps every colour hex in step with its sRGB components', () => {
 		const mismatches: string[] = [];
-		const check = (v: { components: number[]; hex: string }, where: string) => {
+		// hex is an optional fallback in DTCG 2025.10; when present it must agree.
+		const check = (v: { components: number[]; hex?: string }, where: string) => {
+			if (v.hex === undefined) return;
 			const fromComponents =
 				'#' +
 				v.components
@@ -166,6 +168,24 @@ describe('css generator', () => {
 			'"IBM Plex Mono", "Menlo", "inherit", ui-monospace'
 		);
 		expect(() => cssValue('fontFamily', ['Bad"Name'], 'f')).toThrow(/quote or backslash/);
+	});
+
+	it('accepts "none" channels, mixed-case generic families and $root tokens', () => {
+		expect(cssValue('color', { colorSpace: 'srgb', components: ['none', 1, 0] }, 'c')).toBe(
+			'#00ff00'
+		);
+		expect(cssValue('fontFamily', ['Plex', 'MONOSPACE', 'Sans-Serif'], 'f')).toBe(
+			'"Plex", monospace, sans-serif'
+		);
+		const flat = flatten({
+			space: {
+				$type: 'dimension',
+				$root: { $value: { value: 4, unit: 'px' } },
+				sm: { $value: { value: 8, unit: 'px' } }
+			}
+		});
+		expect(flat.map((t) => `${t.name}: ${t.value}`)).toEqual(['--space: 4px', '--space-sm: 8px']);
+		expect(() => flatten({ $root: { $type: 'number', $value: 1 } })).toThrow(/parent group/);
 	});
 
 	it('takes colour from the components and rejects a hex that disagrees', () => {

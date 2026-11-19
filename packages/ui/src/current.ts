@@ -10,6 +10,12 @@ function norm(p: string): string {
 const isForeign = (href: string) =>
 	/^([a-z][a-z0-9+.-]*:|\/\/)/i.test(href) || href.startsWith('#');
 
+/** Resolves a relative href ("?view=all", "rclone", "../pricing") against the current path. */
+function target(href: string, current: string): string {
+	if (href.startsWith('/')) return href;
+	return new URL(href, `https://site.invalid${norm(current)}`).pathname;
+}
+
 /**
  * True when `href` is the current page or a section that contains it.
  * The home link matches only the home page; `/docs` also matches `/docs/rclone`.
@@ -17,7 +23,7 @@ const isForeign = (href: string) =>
  */
 export function isCurrent(href: string, current: string): boolean {
 	if (isForeign(href)) return false;
-	const h = norm(href);
+	const h = norm(target(href, current));
 	const c = norm(current);
 	if (h === '/') return c === '/';
 	return c === h || c.startsWith(`${h}/`);
@@ -29,5 +35,5 @@ export function isCurrent(href: string, current: string): boolean {
  */
 export function currentState(href: string, current: string): 'page' | 'true' | undefined {
 	if (!isCurrent(href, current)) return undefined;
-	return norm(href) === norm(current) ? 'page' : 'true';
+	return norm(target(href, current)) === norm(current) ? 'page' : 'true';
 }

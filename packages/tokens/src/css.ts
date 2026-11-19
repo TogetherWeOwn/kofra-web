@@ -59,9 +59,10 @@ function color(v: Json | undefined, path: string): string {
 	// DTCG 2025.10: components are authoritative; hex is an optional fallback that must agree.
 	const comps = v.components;
 	if (!Array.isArray(comps) || comps.length !== 3)
-		fail(path, 'srgb components must be three numbers');
+		fail(path, 'srgb components must be three numbers or "none"');
 	const rgb = comps.map((c) => {
-		const n = num(c, path);
+		// DTCG 2025.10 allows "none" for a missing channel; CSS renders a missing channel as 0.
+		const n = c === 'none' ? 0 : num(c, path);
 		if (n < 0 || n > 1) fail(path, 'srgb components must be within 0..1');
 		return Math.round(n * 255);
 	});
@@ -95,7 +96,8 @@ function fontFamily(v: Json | undefined, path: string): string {
 				fail(path, `font family ${JSON.stringify(f)} contains a quote or backslash`);
 			// Generic families are keywords; every other name is quoted, so a family called
 			// "inherit" or "Menlo" can never be read as a CSS keyword.
-			return GENERIC_FAMILIES.has(f) ? f : `"${f}"`;
+			// Generic families are case-insensitive keywords (MONOSPACE is monospace).
+			return GENERIC_FAMILIES.has(f.toLowerCase()) ? f.toLowerCase() : `"${f}"`;
 		})
 		.join(', ');
 }
@@ -177,6 +179,12 @@ export function flatten(tree: Json): FlatToken[] {
 			return;
 		}
 		for (const [key, child] of Object.entries(node)) {
+			// DTCG 2025.10 "$root": the group's own token, named after the group.
+			if (key === '$root') {
+				if (path.length === 0) fail('$root', 'a $root token needs a parent group');
+				walk(child, path, type);
+				continue;
+			}
 			if (!key.startsWith('$')) walk(child, [...path, key], type);
 		}
 	};

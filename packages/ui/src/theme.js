@@ -43,7 +43,10 @@
 	});
 	// Another tab changed the choice, or the page came back from the back-forward cache.
 	window.addEventListener('storage', function (event) {
-		if (event.key === KEY || event.key === null) apply(saved() || system());
+		if (event.key !== KEY && event.key !== null) return;
+		// The other tab's choice (or its clearing of storage) replaces this page's own choice.
+		chosen = null;
+		apply(saved() || system());
 	});
 	window.addEventListener('pageshow', function (event) {
 		if (event.persisted) apply(saved() || system());

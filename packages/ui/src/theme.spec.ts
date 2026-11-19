@@ -109,6 +109,28 @@ describe('theme.js', () => {
 		expect(t.pressed()).toEqual(['true', 'true']);
 	});
 
+	it('falls back to the system setting when another tab clears storage', () => {
+		const t = load({ systemDark: true });
+		t.click(); // choose light on this page
+		expect(t.root.getAttribute('data-theme')).toBe('light');
+		t.win.localStorage.clear();
+		t.win.dispatchEvent(new t.win.StorageEvent('storage', { key: null }));
+		expect(t.root.getAttribute('data-theme')).toBe('dark');
+		t.systemChange(false);
+		expect(t.root.getAttribute('data-theme')).toBe('light');
+	});
+
+	it('re-applies the theme when a page returns from the back-forward cache', () => {
+		const t = load();
+		t.root.setAttribute('data-theme', 'light');
+		t.win.localStorage.setItem('kofra-theme', 'dark'); // chosen elsewhere while cached
+		const show = new t.win.Event('pageshow') as Event & { persisted: boolean };
+		Object.defineProperty(show, 'persisted', { value: true });
+		t.win.dispatchEvent(show);
+		expect(t.root.getAttribute('data-theme')).toBe('dark');
+		expect(t.pressed()).toEqual(['true', 'true']);
+	});
+
 	it('works when storage is blocked from the start: follows the system, and toggling still works', () => {
 		const t = load({ systemDark: true, storageBlocked: true });
 		expect(t.themeAtHead).toBe('dark');
