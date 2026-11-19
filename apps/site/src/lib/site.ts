@@ -31,3 +31,7 @@ export const pageTitle = (name: string) => `${name} | ${SITE.name}`;
  * published as structured data (no schema.org Product or Offer), only as labelled page text.
  */
 export const PRICES_FINAL = false;
+
+/** Whether the early-access form is shown (build time; the endpoints check again at run time). */
+export const WAITLIST: boolean = __KOFRA_WAITLIST__;
+export const TURNSTILE_SITE_KEY: string = __KOFRA_TURNSTILE_SITE_KEY__;
