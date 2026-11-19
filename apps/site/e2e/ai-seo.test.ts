@@ -40,17 +40,28 @@ for (const path of PAGES) {
 			.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
 			.replace(/[*`]/g, '')
 			.replace(/\s+/g, ' ');
+		// Illustrations and navigation aids are marked data-twin-skip.
 		const shown = await page
-			.locator('main h2, main h3, main [role="note"]')
-			.evaluateAll((els) => els.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()));
-		for (const text of shown) expect(flat, `${path}: "${text}"`).toContain(text);
+			.locator(
+				'main :is(h2, h3, [role="note"], p, td, th, li:not(:has(p, div, h3, h4, ul, ol))):not([data-twin-skip], [data-twin-skip] *)'
+			)
+			.evaluateAll((els) =>
+				els.map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean)
+			);
+		for (const text of shown) {
+			// Whitespace-insensitive: textContent drops the space between adjacent inline elements.
+			const plain = text.replace(/[*`\s]/g, '');
+			expect.soft(flat.replace(/\s/g, ''), `${path}: "${text}"`).toContain(plain);
+		}
 		expect(twin.headers()['link']).toBe(`<${ORIGIN}${path}>; rel="canonical"`);
+		expect(twin.headers()['x-robots-tag']).toBe('noindex');
 
 		const negotiated = await request.get(path, { headers: { accept: 'text/markdown' } });
 		expect(negotiated.status()).toBe(200);
 		expect(negotiated.headers()['content-type']).toContain('text/markdown');
 		expect(negotiated.headers()['vary']).toContain('Accept');
 		expect(await negotiated.text()).toBe(md);
+		expect(negotiated.headers()['x-robots-tag']).toBe('noindex');
 
 		expect(negotiated.headers()['link']).toBe(`<${ORIGIN}${path}>; rel="canonical"`);
 
@@ -75,8 +86,10 @@ test('llms.txt and llms-full.txt are served and every llms.txt link resolves', a
 		expect(r.status(), link).toBe(200);
 		expect(r.headers()['content-type'], link).toContain('text/markdown');
 	}
+	expect(llms.headers()['x-robots-tag']).toBe('noindex');
 	const full = await request.get('/llms-full.txt');
 	expect(full.status()).toBe(200);
+	expect(full.headers()['x-robots-tag']).toBe('noindex');
 	// Each page starts with its provenance comment; licence texts may contain "---" lines.
 	const starts = (await full.text()).match(/^<!-- Kofra: https:\/\/kofra\.app/gm) ?? [];
 	expect(starts.length).toBe(PAGES.length);
@@ -86,6 +99,7 @@ test('sitemap.xml lists every page and each one resolves', async ({ request }) =
 	const sitemap = await request.get('/sitemap.xml');
 	expect(sitemap.status()).toBe(200);
 	expect(sitemap.headers()['content-type']).toContain('xml');
+	expect(sitemap.headers()['x-robots-tag']).toBe('noindex');
 	const locs = [...(await sitemap.text()).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]!);
 	expect(locs.map((l) => l.slice(ORIGIN.length)).sort()).toEqual([...PAGES].sort());
 	for (const loc of locs) expect((await request.get(loc.slice(ORIGIN.length))).status()).toBe(200);

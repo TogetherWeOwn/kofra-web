@@ -23,6 +23,7 @@
 
 <!-- A static picture of the console's buckets screen, drawn in HTML. Inert: one image to assistive technology. -->
 <div
+	data-twin-skip
 	class="shot"
 	role="img"
 	aria-label="Illustration of the Kofra console: a list of five buckets with their sizes and object counts."

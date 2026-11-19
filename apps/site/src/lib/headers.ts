@@ -29,9 +29,10 @@ export function catchAllHeaders(text: string): [string, string][] {
  * The site-wide headers, from the same `_headers` file that static assets use. An indexable
  * (production) build drops X-Robots-Tag here and in the built `_headers` (scripts/postbuild.mjs).
  */
-export const SITE_HEADERS = catchAllHeaders(raw).filter(
-	([name]) => !INDEXABLE || name.toLowerCase() !== 'x-robots-tag'
-);
+export const siteHeaderList = (indexable: boolean) =>
+	catchAllHeaders(raw).filter(([name]) => !indexable || name.toLowerCase() !== 'x-robots-tag');
+
+export const SITE_HEADERS = siteHeaderList(INDEXABLE);
 
 /**
  * Server hook (built with `headersHook(dev)`): responses the Worker renders (404 pages, any dynamic route) get the same

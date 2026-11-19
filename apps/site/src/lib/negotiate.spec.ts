@@ -80,6 +80,24 @@ describe('withMarkdown', () => {
 		expect(res.headers.get('link')).toBe('</index.md>; rel="alternate"; type="text/markdown"');
 	});
 
+	it('leaves error pages undecorated', async () => {
+		const missing = withMarkdown(
+			{ fetch: async () => new Response('gone', { status: 404 }) },
+			twins,
+			'https://kofra.app'
+		);
+		const res = await missing.fetch(new Request('https://kofra.test/docs'), env, {});
+		expect(res.status).toBe(404);
+		expect(res.headers.get('vary')).toBeNull();
+		expect(res.headers.get('link')).toBeNull();
+	});
+
+	it('does not treat /index as the home page twin', async () => {
+		const res = await get('/index', 'text/markdown');
+		expect(await res.text()).toBe('<h1>Home</h1>');
+		expect(res.headers.get('content-location')).toBeNull();
+	});
+
 	it('passes through paths without a twin and non-GET methods untouched', async () => {
 		expect((await get('/nope', 'text/markdown')).headers.get('vary')).toBeNull();
 		expect(await (await get('/', 'text/markdown', 'POST')).text()).toBe('<h1>Home</h1>');

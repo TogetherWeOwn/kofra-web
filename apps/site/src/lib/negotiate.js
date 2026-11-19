@@ -53,6 +53,8 @@ export function prefersMarkdown(accept) {
  */
 export function twinFor(pathname) {
 	if (pathname === '/') return '/index.md';
+	// "/index.md" belongs to "/", so "/index" is not a page.
+	if (pathname === '/index') return null;
 	// A trailing slash is left to the framework, which redirects it to the canonical path.
 	if (pathname.startsWith('/_app/') || pathname.endsWith('/')) return null;
 	if (/\.[a-z0-9]+$/i.test(pathname)) return null;
@@ -105,6 +107,8 @@ export function withMarkdown(app, twins, origin) {
 				return res;
 			}
 			const page = await app.fetch(request, env, ctx);
+			// Error pages have no twin to point at, and do not vary on Accept.
+			if (!page.ok) return page;
 			const res = new Response(page.body, page);
 			res.headers.append('vary', 'Accept');
 			res.headers.set('link', `<${twin}>; rel="alternate"; type="text/markdown"`);

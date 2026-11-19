@@ -26,7 +26,7 @@
 
 <div class="wrap body" class:with-toc={toc}>
 	{#if toc}
-		<nav class="toc" aria-label="On this page">
+		<nav class="toc" aria-label="On this page" data-twin-skip>
 			<p class="toc-h">On this page</p>
 			<ul>
 				{#each sections as s (s.id)}<li><a href="#{s.id}">{s.text}</a></li>{/each}
