@@ -1,0 +1,10 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	// Placeholder name. Not deployed: there is no deploy workflow until the
+	// owner approves one; production values will come from the CI environment.
+	"name": "kofra-console",
+	"compatibility_date": "2026-11-19",
+	// No public workers.dev or preview URL until launch.
+	"workers_dev": false,
+	"preview_urls": false
+}

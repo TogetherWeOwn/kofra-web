@@ -1,0 +1,229 @@
+name: ci
+
+# `ci-ok` is the aggregate check required on main: its NAME must stay
+# `ci-ok`, and every gating job id must be listed in its `needs`. Actions and
+# downloaded tools are pinned by commit SHA or SHA-256. Installs use the
+# committed lockfile and run no dependency install scripts except the ones
+# allowed in pnpm-workspace.yaml.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  # Merge queue validation: every required check must report on the queue's
+  # temporary merge commit.
+  merge_group:
+  push:
+    branches: [main]
+  # Nightly full run: catches drift no PR causes (new advisories, runtime).
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# PR runs cancel superseded runs of the same PR. Every other event gets its
+# own group (run id): a shared group would cancel older PENDING runs even
+# with cancel-in-progress false.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  WRANGLER_SEND_METRICS: 'false'
+
+jobs:
+  public-pr-security:
+    if: github.event_name == 'pull_request' && github.event.repository.private == false
+    # The nested OSV reusable requires this exact permission ceiling: actions
+    # reads same-run comparison artifacts, contents reads the PR tree/history,
+    # and security-events uploads comparison SARIF. No secrets are passed.
+    permissions:
+      actions: read # Nested OSV reads same-run comparison artifacts.
+      contents: read
+      security-events: write # Nested OSV uploads comparison SARIF.
+    uses: TogetherWeOwn/.github/.github/workflows/public-pr-security.yml@c05610872587137c3c492b7025f02585a1b8ba7d # v0.11.0
+
+  workflow-lint:
+    name: workflow lint (actionlint, zizmor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Bump each version together with its SHA-256 from the release's
+      # checksum file, never on its own.
+      - name: Install actionlint and zizmor
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+          ZIZMOR_VERSION: 1.32.0
+          ZIZMOR_SHA256: bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b
+        run: |
+          set -euo pipefail
+          a="$RUNNER_TEMP/actionlint.tgz"
+          curl -sSfL --connect-timeout 10 --max-time 60 --retry 3 -o "$a" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  ${a}" | sha256sum --check -
+          tar -xzf "$a" -C "$RUNNER_TEMP" actionlint
+          z="$RUNNER_TEMP/zizmor.tgz"
+          curl -sSfL --connect-timeout 10 --max-time 60 --retry 3 -o "$z" \
+            "https://github.com/zizmorcore/zizmor/releases/download/v${ZIZMOR_VERSION}/zizmor-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${ZIZMOR_SHA256}  ${z}" | sha256sum --check -
+          tar -xzf "$z" -C "$RUNNER_TEMP" zizmor
+      - name: actionlint
+        run: '"$RUNNER_TEMP/actionlint" -shellcheck= -pyflakes='
+      - name: zizmor
+        run: '"$RUNNER_TEMP/zizmor" --offline --no-config --no-ignores .github/workflows'
+
+  deps:
+    name: dependency scan (osv-scanner)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Bump OSV_VERSION together with OSV_SHA256 (from the release's
+      # osv-scanner_SHA256SUMS), never on its own.
+      - name: Scan the lockfile for known vulnerabilities
+        env:
+          OSV_VERSION: 2.7.1
+          OSV_SHA256: fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8
+        run: |
+          set -euo pipefail
+          bin="$RUNNER_TEMP/osv-scanner"
+          curl -sSfL --connect-timeout 10 --max-time 60 --retry 3 -o "$bin" \
+            "https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SHA256}  ${bin}" | sha256sum --check -
+          chmod 0755 "$bin"
+          "$bin" scan source --lockfile pnpm-lock.yaml
+
+  lint:
+    name: lint (prettier, eslint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+
+  typecheck:
+    name: typecheck (svelte-check, tsc)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
+
+  unit:
+    name: unit (vitest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:unit
+
+  build:
+    name: build (vite, adapter-cloudflare)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      # The adapter output plus the pointer wrangler uses to find it; the
+      # e2e job serves exactly this build.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: worker-builds
+          path: |
+            apps/*/.svelte-kit/cloudflare/
+            apps/*/.wrangler/deploy/
+          include-hidden-files: true
+          if-no-files-found: error
+          # Long enough to re-run a failed e2e job without rebuilding.
+          retention-days: 7
+
+  e2e:
+    name: e2e smoke (playwright)
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: worker-builds
+          path: apps
+      # Chromium only; the version comes from the locked @playwright/test.
+      - run: pnpm --filter @kofra/site exec playwright install --with-deps chromium
+      # Each app's build is served by the local Workers runtime (wrangler
+      # dev); no Cloudflare credentials are used.
+      - run: pnpm run test:e2e
+        env:
+          KOFRA_E2E_PREBUILT: '1'
+
+  ci-ok:
+    name: ci-ok
+    needs: [public-pr-security, workflow-lint, deps, lint, typecheck, unit, build, e2e]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          # Fail closed: every job must succeed, except the PR-only security
+          # caller, which must succeed on pull_request and be skipped on any
+          # other event.
+          if ! jq -e --arg event "$CI_EVENT_NAME" '
+            . as $n |
+            ($n | length) > 1 and
+            $n["public-pr-security"].result == (if $event == "pull_request" then "success" else "skipped" end) and
+            ($n | del(.["public-pr-security"]) | all(.[]; .result == "success"))
+          ' <<< "$NEEDS_JSON" > /dev/null; then
+            echo "ci-ok: a required job did not succeed"
+            exit 1
+          fi
+          echo "ci-ok: all required jobs passed"
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          CI_EVENT_NAME: ${{ github.event_name }}
