@@ -7,13 +7,15 @@
 	var KEY = 'kofra-theme';
 	var root = document.documentElement;
 	var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+	/** The choice made on this page, kept even when storage is blocked. @type {'light' | 'dark' | null} */
+	var chosen = null;
 
 	function saved() {
 		try {
 			var v = window.localStorage.getItem(KEY);
-			return v === 'light' || v === 'dark' ? v : null;
+			return v === 'light' || v === 'dark' ? v : chosen;
 		} catch {
-			return null; // storage blocked: behave as if nothing was saved
+			return chosen; // storage blocked: only this page's choice counts
 		}
 	}
 	function system() {
@@ -52,6 +54,7 @@
 		if (!button) return;
 		/** @type {'light' | 'dark'} */
 		var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+		chosen = next;
 		try {
 			window.localStorage.setItem(KEY, next);
 		} catch {

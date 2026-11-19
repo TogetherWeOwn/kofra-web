@@ -1,7 +1,9 @@
-/** Path without query, fragment or trailing slash; "/" stays "/". */
+/** Path without query, fragment or trailing slash; "/" stays "/". Linear time on any input. */
 function norm(p: string): string {
 	const path = p.split(/[?#]/, 1)[0] ?? '';
-	return path.length > 1 ? path.replace(/\/+$/, '') || '/' : path || '/';
+	let end = path.length;
+	while (end > 1 && path.charCodeAt(end - 1) === 47 /* "/" */) end--;
+	return path.slice(0, end) || '/';
 }
 
 /** Absolute URLs (any scheme), protocol-relative URLs and bare fragments are never "current". */

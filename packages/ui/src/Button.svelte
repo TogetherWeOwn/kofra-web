@@ -69,7 +69,7 @@
 		background: var(--color-accent);
 		color: var(--color-accent-ink);
 	}
-	.primary:hover {
+	.primary:hover:not(:disabled) {
 		background: var(--color-accent-hover);
 	}
 	.secondary {
@@ -77,7 +77,7 @@
 		color: var(--color-ink);
 		border-color: var(--color-border-strong);
 	}
-	.secondary:hover {
+	.secondary:hover:not(:disabled) {
 		border-color: var(--color-ink);
 	}
 	button:disabled {

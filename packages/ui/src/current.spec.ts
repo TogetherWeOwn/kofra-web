@@ -21,6 +21,14 @@ describe('isCurrent', () => {
 		expect(isCurrent('web+kofra:/docs', '/docs')).toBe(false);
 		expect(isCurrent('#faq', '/')).toBe(false);
 	});
+
+	it('stays fast on hostile input with many slashes', () => {
+		const slashes = `/docs${'/'.repeat(200_000)}x`;
+		const start = performance.now();
+		expect(isCurrent('/docs', slashes)).toBe(true);
+		expect(isCurrent('/', '/'.repeat(200_000))).toBe(true);
+		expect(performance.now() - start).toBeLessThan(250);
+	});
 });
 
 describe('currentState', () => {

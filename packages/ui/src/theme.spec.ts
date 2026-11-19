@@ -115,5 +115,9 @@ describe('theme.js', () => {
 		t.click();
 		expect(t.root.getAttribute('data-theme')).toBe('light');
 		expect(t.pressed()).toEqual(['false', 'false']);
+		// The choice holds for the life of the page even though it could not be saved.
+		t.systemChange(false);
+		t.systemChange(true);
+		expect(t.root.getAttribute('data-theme')).toBe('light');
 	});
 });
