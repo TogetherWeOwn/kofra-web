@@ -84,7 +84,7 @@ if (import.meta.main) {
 			for (const a of items) {
 				const page = new URL(a.url).pathname;
 				console.log(
-					`| ${a.level} | ${page} | ${a.auditId ?? a.name} | ${a.operator} ${a.expected} | ${a.actual} |`
+					`| ${a.level} | ${page} | ${[a.auditId ?? a.name, a.auditProperty].filter(Boolean).join('.')} | ${a.operator} ${a.expected} | ${a.actual} |`
 				);
 			}
 		} else console.log('\nAll Lighthouse assertions met.');
@@ -92,6 +92,9 @@ if (import.meta.main) {
 	for (const p of missing) regressions.push(`${p}: in the baseline but not measured`);
 	for (const p of added) regressions.push(`${p}: measured but not in the baseline (run --update)`);
 	if (regressions.length) {
+		// stdout feeds the job summary; stderr keeps the reason next to the failing step in the log.
+		console.log('\n**Lighthouse regressions beyond the noise margin:**\n');
+		for (const r of regressions) console.log(`- ${r}`);
 		console.error('\nLighthouse regressions beyond the noise margin:\n' + regressions.join('\n'));
 		process.exit(1);
 	}

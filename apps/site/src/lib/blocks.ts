@@ -60,7 +60,8 @@ export function absolutise(src: string, origin: string): string {
 	return src.replace(/\]\((\/[^)\s]*)\)/g, (_, path: string) => `](${origin}${path})`);
 }
 
-const cell = (s: string) => s.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+/** A GFM table cell: backslashes and pipes are escaped (backslash first), newlines become spaces. */
+export const cell = (s: string) => s.replace(/[\\|]/g, '\\$&').replace(/\n/g, ' ');
 
 /** Markdown for a list of blocks. Inline markup is already Markdown, so it passes through. */
 export function toMarkdown(blocks: Block[], origin: string): string {
