@@ -25,7 +25,8 @@ describe('isCurrent', () => {
 	it('resolves relative links against the current page', () => {
 		expect(isCurrent('?view=all', '/docs')).toBe(true);
 		expect(currentState('?view=all', '/docs')).toBe('page');
-		expect(isCurrent('../pricing', '/docs/rclone')).toBe(true);
+		expect(isCurrent('../docs', '/docs/rclone')).toBe(true);
+		expect(isCurrent('../pricing', '/docs/rclone')).toBe(false);
 		expect(isCurrent('rclone', '/docs/rclone')).toBe(true);
 	});
 
