@@ -9,18 +9,32 @@
 			"types": "./src/index.ts",
 			"svelte": "./src/index.ts",
 			"default": "./src/index.ts"
-		}
+		},
+		"./base.css": "./src/base.css",
+		"./theme.js": "./src/theme.js"
 	},
 	"scripts": {
-		"check": "tsc --noEmit",
+		"check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
 		"test:unit": "vitest --run"
 	},
 	"peerDependencies": {
-		"svelte": "^5.58.0"
+		"svelte": "^5.58.0",
+		"@kofra/tokens": "workspace:*"
 	},
 	"devDependencies": {
+		"@kofra/tokens": "workspace:*",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"@types/jsdom": "^30.0.0",
+		"@types/node": "^24.19.2",
+		"axe-core": "^4.14.1",
+		"jsdom": "^31.0.1",
 		"svelte": "^5.58.0",
+		"svelte-check": "^4.7.8",
 		"typescript": "^6.0.3",
+		"vite": "^8.3.8",
 		"vitest": "^5.1.1"
+	},
+	"dependencies": {
+		"@lucide/svelte": "^1.75.0"
 	}
 }

@@ -1,0 +1,125 @@
+/* Generated from tokens.json by @kofra/tokens (pnpm --filter @kofra/tokens run build). Do not edit. */
+
+:root {
+	color-scheme: light;
+	--color-bg: #ffffff;
+	--color-band: #f6f6f3;
+	--color-surface: #ffffff;
+	--color-surface-2: #ecece7;
+	--color-ink: #121412;
+	--color-ink-2: #3f423d;
+	--color-muted: #5f625c;
+	--color-line: #dadad3;
+	--color-border-strong: #878a83;
+	--color-accent: #1f4fd1;
+	--color-accent-hover: #1a43b3;
+	--color-accent-ink: #ffffff;
+	--color-accent-text: #1d49c2;
+	--color-accent-soft: #e8eefc;
+	--color-focus: #1f4fd1;
+	--color-danger: #b4231b;
+	--color-success: #1b6b33;
+	--color-warning: #8a5a00;
+	--color-code-bg: #121412;
+	--color-code-ink: #f1f2ee;
+	--color-mark-ink: #ffffff;
+	--font-family-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+	--font-family-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	--font-weight-regular: 400;
+	--font-weight-medium: 500;
+	--font-weight-semibold: 600;
+	--font-size-xs: 13px;
+	--font-size-sm: 14px;
+	--font-size-md: 15px;
+	--font-size-base: 16px;
+	--font-size-lg: 17px;
+	--font-size-xl: 19px;
+	--font-size-2xl: 22px;
+	--font-size-3xl: 28px;
+	--font-size-4xl: 34px;
+	--font-size-5xl: 44px;
+	--font-size-6xl: 46px;
+	--font-line-height-tight: 1.12;
+	--font-line-height-snug: 1.2;
+	--font-line-height-heading: 1.35;
+	--font-line-height-body: 1.6;
+	--font-tracking-tight: -0.02rem;
+	--font-tracking-snug: -0.015rem;
+	--space-1: 4px;
+	--space-2: 8px;
+	--space-3: 12px;
+	--space-4: 16px;
+	--space-5: 20px;
+	--space-6: 24px;
+	--space-7: 28px;
+	--space-8: 32px;
+	--space-10: 40px;
+	--space-12: 48px;
+	--space-14: 56px;
+	--space-16: 64px;
+	--space-18: 72px;
+	--space-20: 80px;
+	--space-24: 96px;
+	--size-container: 1200px;
+	--size-control-md: 40px;
+	--size-control-lg: 44px;
+	--size-header: 64px;
+	--radius-sm: 4px;
+	--radius-md: 6px;
+	--radius-lg: 8px;
+	--shadow-raised: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 12px 32px -12px rgb(0 0 0 / 0.18);
+	--motion-duration-fast: 150ms;
+	--motion-easing-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		color-scheme: dark;
+		--color-bg: #0f100f;
+		--color-band: #141614;
+		--color-surface: #171917;
+		--color-surface-2: #202320;
+		--color-ink: #f1f2ee;
+		--color-ink-2: #c9cbc4;
+		--color-muted: #9a9d95;
+		--color-line: #2c2f2b;
+		--color-border-strong: #6f726b;
+		--color-accent: #6f95ff;
+		--color-accent-hover: #8eacff;
+		--color-accent-ink: #0b0d18;
+		--color-accent-text: #8eacff;
+		--color-accent-soft: #1a2240;
+		--color-focus: #8eacff;
+		--color-danger: #ff7b6e;
+		--color-success: #5fcf7f;
+		--color-warning: #f0b43c;
+		--color-code-bg: #202320;
+		--color-code-ink: #f1f2ee;
+		--color-mark-ink: #0b0d18;
+	}
+}
+
+:root[data-theme='dark'] {
+	color-scheme: dark;
+	--color-bg: #0f100f;
+	--color-band: #141614;
+	--color-surface: #171917;
+	--color-surface-2: #202320;
+	--color-ink: #f1f2ee;
+	--color-ink-2: #c9cbc4;
+	--color-muted: #9a9d95;
+	--color-line: #2c2f2b;
+	--color-border-strong: #6f726b;
+	--color-accent: #6f95ff;
+	--color-accent-hover: #8eacff;
+	--color-accent-ink: #0b0d18;
+	--color-accent-text: #8eacff;
+	--color-accent-soft: #1a2240;
+	--color-focus: #8eacff;
+	--color-danger: #ff7b6e;
+	--color-success: #5fcf7f;
+	--color-warning: #f0b43c;
+	--color-code-bg: #202320;
+	--color-code-ink: #f1f2ee;
+	--color-mark-ink: #0b0d18;
+}

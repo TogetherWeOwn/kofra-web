@@ -4,9 +4,11 @@
 	"private": true,
 	"type": "module",
 	"exports": {
-		"./tokens.json": "./tokens.json"
+		"./tokens.json": "./tokens.json",
+		"./tokens.css": "./tokens.css"
 	},
 	"scripts": {
+		"build": "node scripts/build.ts",
 		"check": "tsc --noEmit",
 		"test:unit": "vitest --run"
 	},

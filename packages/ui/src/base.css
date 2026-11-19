@@ -1,0 +1,122 @@
+/* Kofra base styles: reset, type, focus and a few layout helpers. Load after @kofra/tokens/tokens.css. */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+html {
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
+}
+body {
+	margin: 0;
+	background: var(--color-bg);
+	color: var(--color-ink);
+	font-family: var(--font-family-sans);
+	font-size: var(--font-size-base);
+	line-height: var(--font-line-height-body);
+	-webkit-font-smoothing: antialiased;
+}
+h1,
+h2,
+h3,
+h4 {
+	text-wrap: balance;
+}
+img,
+svg {
+	display: block;
+	max-width: 100%;
+}
+a {
+	color: var(--color-accent-text);
+	text-underline-offset: 0.18em;
+}
+button,
+input,
+select,
+textarea {
+	font: inherit;
+	color: inherit;
+}
+table {
+	border-collapse: collapse;
+	width: 100%;
+}
+th {
+	text-align: left;
+	font-weight: var(--font-weight-semibold);
+}
+code,
+kbd,
+samp,
+pre {
+	font-family: var(--font-family-mono);
+}
+:not(pre) > code {
+	font-size: 0.92em;
+}
+
+/* Focus is always visible: a 2 px ring with a 2 px offset, in both themes. */
+:focus-visible {
+	outline: 2px solid var(--color-focus);
+	outline-offset: 2px;
+}
+
+/* Motion: colour and border feedback on hover and focus only, and none when reduced motion is asked for. */
+a,
+button,
+summary {
+	transition-property: color, background-color, border-color;
+	transition-duration: var(--motion-duration-fast);
+	transition-timing-function: var(--motion-easing-standard);
+}
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		transition: none !important;
+		animation: none !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+/* Layout helpers. */
+.wrap {
+	max-width: var(--size-container);
+	margin: 0 auto;
+	padding: 0 var(--space-6);
+}
+@media (max-width: 640px) {
+	.wrap {
+		padding: 0 var(--space-5);
+	}
+}
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+.skip-link {
+	position: absolute;
+	left: var(--space-3);
+	top: -48px;
+	z-index: 100;
+	padding: var(--space-2) 14px;
+	background: var(--color-surface);
+	color: var(--color-ink);
+	border: 2px solid var(--color-focus);
+}
+.skip-link:focus {
+	top: var(--space-2);
+}
+.tnum {
+	font-variant-numeric: tabular-nums;
+}
