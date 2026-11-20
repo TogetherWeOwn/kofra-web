@@ -352,6 +352,22 @@ describe('demo API edge cases', () => {
 		expect(later.upload_24h.used_bytes).toBe(sample);
 	});
 
+	it('accepts an upload up to the reported allowance and refuses one byte more', async () => {
+		const remaining = async (demo: DemoApi) =>
+			new Kofra({ token: DEMO_TOKEN, fetch: demo.fetch, maxRetries: 0 }).usage
+				.get()
+				.then((u) => u.upload_24h.remaining_bytes!);
+		const fresh = () => new DemoApi(emptyState(), { now: () => NOW });
+		const a = fresh();
+		expect(
+			a.recordUpload('projects', 'at-limit.bin', await remaining(a), 'application/octet-stream')
+		).toBeNull();
+		const b = fresh();
+		expect(
+			b.recordUpload('projects', 'over.bin', (await remaining(b)) + 1, 'application/octet-stream')
+		).toBe('demo_full');
+	});
+
 	it('names the grants a bucket deletion removes in its plan', async () => {
 		const { client } = harness();
 		await client.buckets.create({ body: { name: 'granted' } });
