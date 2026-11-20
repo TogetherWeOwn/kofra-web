@@ -156,6 +156,19 @@ export class DemoApi {
 		return st.t;
 	}
 
+	/** Bytes the visitor uploaded with a creation time in [from, to) (milliseconds). */
+	#uploadsBetween(from: number, to: number): number {
+		return this.state.o
+			.filter((o) => o[4] * 1000 >= from && o[4] * 1000 < to)
+			.reduce((n, o) => n + o[2], 0);
+	}
+
+	/** When a pending deletion was requested (Unix seconds), or 0. It lapses after 7 days unconfirmed. */
+	#deletionAt(): number {
+		const d = this.state.d;
+		return d && this.#now() < (d + 7 * 86_400) * 1000 ? d : 0;
+	}
+
 	// ---- Operations ------------------------------------------------------------------------
 
 	async #route(req: Request): Promise<{ status: number; body?: unknown }> {
@@ -181,7 +194,8 @@ export class DemoApi {
 			// The operation takes no body; anything sent is an unknown field.
 			if ((await req.text()).trim() !== '')
 				throw new HttpProblem('unknown_field', 'This operation accepts no request body.');
-			if (!this.state.d) throw new HttpProblem('deletion_not_requested', 'No deletion is pending.');
+			if (!this.#deletionAt())
+				throw new HttpProblem('deletion_not_requested', 'No deletion is pending.');
 			this.state.d = 0;
 			this.dirty = true;
 			return { status: 200, body: this.account() };
@@ -291,7 +305,7 @@ export class DemoApi {
 
 	account(): S['Account'] {
 		const now = this.#now();
-		const requested = this.state.d * 1000;
+		const requested = this.#deletionAt() * 1000;
 		return {
 			id: 'ws_demo0workspace',
 			state: 'active',
@@ -299,7 +313,7 @@ export class DemoApi {
 			s3_endpoint: this.#endpoint,
 			limits: { ...DEMO_LIMITS },
 			suspension: null,
-			deletion: this.state.d
+			deletion: requested
 				? {
 						status: 'pending_confirmation',
 						reason: 'customer',
@@ -314,7 +328,7 @@ export class DemoApi {
 	}
 
 	#deleteAccount(dry: boolean) {
-		if (this.state.d)
+		if (this.#deletionAt())
 			throw new HttpProblem('deletion_already_requested', 'Deletion is already pending.');
 		const buckets = this.buckets();
 		const keys = this.keys();
@@ -402,21 +416,28 @@ export class DemoApi {
 				'bucket_not_empty',
 				`Bucket "${name}" still holds ${b.object_count.toLocaleString('en-US')} objects.`
 			);
+		const granted = this.keys().filter((k) => k.grants.some((g) => g.bucket === name));
 		if (dry)
 			return {
 				status: 200,
 				body: {
 					dry_run: true,
 					operation: 'buckets.delete',
-					summary: `Deletes the empty bucket "${name}". This cannot be undone.`,
+					summary: `Deletes the empty bucket "${name}"${granted.length ? ` and the grants on it of ${granted.length} access key${granted.length === 1 ? '' : 's'}` : ''}. This cannot be undone.`,
 					reversible: false,
 					effects: [{ resource: 'bucket', id: name, change: 'delete' }],
-					totals: { buckets: 1, objects: 0, stored_bytes: 0, keys: 0 }
+					totals: { buckets: 1, objects: 0, stored_bytes: 0, keys: granted.length }
 				} satisfies S['Plan']
 			};
-		const added = this.state.b.findIndex(([n]) => n === name);
-		if (added >= 0) this.state.b.splice(added, 1);
-		else this.state.xb.push(name);
+		const before = { b: this.state.b, xb: this.state.xb };
+		const added = this.state.b.some(([n]) => n === name);
+		if (added) this.state.b = this.state.b.filter(([n]) => n !== name);
+		else this.state.xb = [...this.state.xb, name];
+		if (!fits(this.state)) {
+			this.state.b = before.b;
+			this.state.xb = before.xb;
+			throw new DemoLimit('The demo has no room to record this change.');
+		}
 		this.state.o = this.state.o.filter((o) => o[0] !== name);
 		// Deleting a bucket removes every grant on it. (Seed keys reach only seed buckets, which
 		// hold files and so can never be deleted.)
@@ -604,7 +625,12 @@ export class DemoApi {
 		const downloaded = days
 			.filter((d) => Date.parse(d.day) >= periodStart)
 			.reduce((n, d) => n + d.downloaded_bytes, 0);
-		const uploadedToday = days.at(-1)?.uploaded_bytes ?? 0;
+		// The sample figure for today, plus the visitor's uploads of the last 24 hours.
+		const last = days.at(-1);
+		const sampleToday = last
+			? last.uploaded_bytes - this.#uploadsBetween(Math.floor(now / DAY) * DAY, now + 1)
+			: 0;
+		const uploadedToday = sampleToday + this.#uploadsBetween(now - DAY, now + 1);
 		const allowance = DEMO_LIMITS.download_allowance_bytes;
 		return {
 			as_of: iso(now),
@@ -656,7 +682,7 @@ export class DemoApi {
 			// An edited seed key is copied into the state; its creation event is the seed one.
 			if (!SEED_KEYS.some((k) => k.id === id))
 				out.push({ t: t * 1000, type: 'key.created', subject: id, data: { key_id: id } });
-		if (this.state.d)
+		if (this.#deletionAt())
 			out.push({
 				t: this.state.d * 1000,
 				type: 'account.deletion_requested',
@@ -891,7 +917,7 @@ async function readJson(req: Request): Promise<unknown> {
 	if (media !== 'application/json')
 		throw new HttpProblem('unsupported_media_type', 'Send the body as application/json.');
 	const text = await req.text();
-	if (text.length > 64 * 1024)
+	if (new TextEncoder().encode(text).length > 64 * 1024)
 		throw new HttpProblem('payload_too_large', 'The body is over 64 KiB.');
 	try {
 		return JSON.parse(text);

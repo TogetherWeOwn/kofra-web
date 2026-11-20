@@ -327,6 +327,40 @@ describe('demo API edge cases', () => {
 		expect(fits(demo.state)).toBe(true);
 	});
 
+	it('lets an unconfirmed deletion request lapse after 7 days', async () => {
+		let now = NOW;
+		const state = emptyState();
+		const demo = new DemoApi(state, { now: () => now });
+		const client = new Kofra({ token: DEMO_TOKEN, fetch: demo.fetch, maxRetries: 0 });
+		await client.account.delete();
+		now += 7 * 86_400_000 + 1000;
+		expect((await client.account.get()).deletion).toBeNull();
+		expect(await problemCode(client.account.cancelDeletion())).toBe('deletion_not_requested');
+		expect(await client.account.delete()).toMatchObject({ status: 'pending_confirmation' });
+	});
+
+	it('counts only the last 24 hours of uploads against the upload limit', async () => {
+		let now = NOW;
+		const demo = new DemoApi(emptyState(), { now: () => now });
+		const client = new Kofra({ token: DEMO_TOKEN, fetch: demo.fetch, maxRetries: 0 });
+		const base = (await client.usage.get()).upload_24h.used_bytes;
+		expect(demo.recordUpload('projects', 'a.bin', 7_000, 'application/octet-stream')).toBeNull();
+		expect((await client.usage.get()).upload_24h.used_bytes).toBe(base + 7_000);
+		now += 86_400_000 + 1000;
+		const later = await client.usage.get();
+		const sample = (await client.usage.days()).data.at(-1)!.uploaded_bytes;
+		expect(later.upload_24h.used_bytes).toBe(sample);
+	});
+
+	it('names the grants a bucket deletion removes in its plan', async () => {
+		const { client } = harness();
+		await client.buckets.create({ body: { name: 'granted' } });
+		await client.keys.create({ body: { grants: [{ bucket: 'granted', access: 'read' }] } });
+		const plan = await client.buckets.delete({ bucket: 'granted', dry_run: true });
+		expect(plan).toMatchObject({ totals: { keys: 1 } });
+		expect((plan as { summary: string }).summary).toContain('grants on it of 1 access key');
+	});
+
 	it('drops grants on a deleted bucket', async () => {
 		const { client } = harness();
 		await client.buckets.create({ body: { name: 'short-lived' } });

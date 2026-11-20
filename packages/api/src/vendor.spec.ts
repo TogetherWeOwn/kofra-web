@@ -16,6 +16,19 @@ describe('vendored SDK and contract', () => {
 		expect(manifest.commit).toMatch(/^[0-9a-f]{40}$/);
 	});
 
+	it('lists exactly the vendored files', () => {
+		expect(manifest.files.map((f) => f.path).sort()).toEqual(
+			[
+				'errors.json',
+				'openapi.json',
+				'sdk/core.ts',
+				'sdk/index.ts',
+				'sdk/operations.ts',
+				'sdk/schema.ts'
+			].sort()
+		);
+	});
+
 	it('has vendored-tree metadata for the same commit', () => {
 		const meta = JSON.parse(readFileSync(vendor('VENDORED.json'), 'utf8'));
 		expect(Object.keys(meta)).toEqual(['dependencies']);
