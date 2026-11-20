@@ -81,6 +81,34 @@ test('two batches picked during an upload are both kept', async ({ page }) => {
 	await expect(page.getByRole('rowheader', { name: 'second.txt' })).toBeVisible();
 });
 
+test('leaving the bucket page while an upload is starting sends no file', async ({ page }) => {
+	await page.goto('/buckets/projects');
+	await ready(page);
+	const puts: string[] = [];
+	page.on('request', (r) => {
+		if (r.method() === 'PUT') puts.push(r.url());
+	});
+	// Hold the upload-address request until the visitor has left the page.
+	await page.route('**/buckets/projects/upload', async (route) => {
+		await new Promise((r) => setTimeout(r, 1500));
+		await route.continue();
+	});
+	await page.locator('input[type="file"]').setInputFiles({
+		name: 'left-behind.txt',
+		mimeType: 'text/plain',
+		buffer: Buffer.from('never sent')
+	});
+	await page
+		.getByRole('navigation', { name: 'Console sections' })
+		.getByRole('link', { name: 'Usage' })
+		.click();
+	await expect(page).toHaveURL(/\/usage$/);
+	await page.waitForTimeout(2500);
+	expect(puts).toEqual([]);
+	await page.goto('/buckets/projects');
+	await expect(page.getByRole('rowheader', { name: 'left-behind.txt' })).toHaveCount(0);
+});
+
 test('a bucket that holds files cannot be deleted', async ({ page }) => {
 	await page.goto('/buckets/backups/delete');
 	await expect(page.getByText('This bucket still holds files')).toBeVisible();
