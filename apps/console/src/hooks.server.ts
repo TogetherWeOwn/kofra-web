@@ -1,3 +1,4 @@
-import { noindex } from '#lib/noindex.js';
+import { config } from '#lib/server/env.js';
+import { makeHandle } from '#lib/server/handle.js';
 
-export const handle = noindex;
+export const handle = makeHandle(config);
