@@ -1,6 +1,6 @@
 // Copies the TypeScript SDK and the published contract from a checkout of the kofra-api
 // repository into vendor/, and records the source commit and SHA-256 of every file in
-// vendor/VENDOR.json. A unit test (src/vendor.spec.ts) fails when a vendored file no longer
+// vendor/VENDOR.json (plus the standard vendored-tree metadata in vendor/VENDORED.json). A unit test (src/vendor.spec.ts) fails when a vendored file no longer
 // matches its recorded hash, so the copies are never edited by hand.
 //
 // Usage: node scripts/sync.mjs <path to a kofra-api checkout>
@@ -52,5 +52,21 @@ for (const [from, to] of FILES) {
 writeFileSync(
 	path.join(vendor, 'VENDOR.json'),
 	JSON.stringify({ repository: 'TogetherWeOwn/kofra-api', commit, files }, null, '\t') + '\n'
+);
+// The organisation's security gate requires this standard metadata for every vendored tree.
+const version = JSON.parse(
+	readFileSync(path.join(source, 'sdk/typescript/package.json'), 'utf8')
+).version;
+writeFileSync(
+	path.join(vendor, 'VENDORED.json'),
+	JSON.stringify(
+		{
+			dependencies: [
+				{ purl: `pkg:github/togetherweown/kofra-api@${commit}`, version, upstream_commit: commit }
+			]
+		},
+		null,
+		'\t'
+	) + '\n'
 );
 console.log(`vendored ${FILES.length} files from kofra-api ${commit.slice(0, 12)}`);

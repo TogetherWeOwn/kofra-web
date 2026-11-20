@@ -16,6 +16,18 @@ describe('vendored SDK and contract', () => {
 		expect(manifest.commit).toMatch(/^[0-9a-f]{40}$/);
 	});
 
+	it('has vendored-tree metadata for the same commit', () => {
+		const meta = JSON.parse(readFileSync(vendor('VENDORED.json'), 'utf8'));
+		expect(Object.keys(meta)).toEqual(['dependencies']);
+		expect(meta.dependencies).toEqual([
+			{
+				purl: `pkg:github/togetherweown/kofra-api@${manifest.commit}`,
+				version: expect.stringMatching(/^\d+\.\d+\.\d+/),
+				upstream_commit: manifest.commit
+			}
+		]);
+	});
+
 	// Edit nothing under vendor/ by hand: re-run scripts/sync.mjs against a kofra-api checkout.
 	for (const { path: file, sha256: hash } of manifest.files) {
 		it(`${file} matches its recorded hash`, () => {

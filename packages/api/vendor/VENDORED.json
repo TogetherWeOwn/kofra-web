@@ -1,0 +1,9 @@
+{
+	"dependencies": [
+		{
+			"purl": "pkg:github/togetherweown/kofra-api@e2bdfc973b2d8658cb08f02b098078c9cc48e23f",
+			"version": "0.1.0-alpha.1",
+			"upstream_commit": "e2bdfc973b2d8658cb08f02b098078c9cc48e23f"
+		}
+	]
+}
