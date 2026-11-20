@@ -156,6 +156,20 @@ export class DemoApi {
 		return st.t;
 	}
 
+	/**
+	 * Applies a change to the state, keeping it only if the state still fits one cookie;
+	 * otherwise restores the state and refuses with a demo limit. Every write goes through here.
+	 */
+	#commit(change: (st: DemoState) => void) {
+		const before = structuredClone(this.state);
+		change(this.state);
+		if (!fits(this.state)) {
+			Object.assign(this.state, before);
+			throw new DemoLimit('The demo has no room to record this change.');
+		}
+		this.dirty = true;
+	}
+
 	/** Bytes the visitor uploaded with a creation time in [from, to) (milliseconds). */
 	#uploadsBetween(from: number, to: number): number {
 		return this.state.o
@@ -350,8 +364,9 @@ export class DemoApi {
 					totals
 				} satisfies S['Plan']
 			};
-		this.state.d = this.#stamp();
-		this.dirty = true;
+		this.#commit((st) => {
+			st.d = this.#stamp();
+		});
 		return { status: 202, body: this.account().deletion };
 	}
 
@@ -429,20 +444,14 @@ export class DemoApi {
 					totals: { buckets: 1, objects: 0, stored_bytes: 0, keys: granted.length }
 				} satisfies S['Plan']
 			};
-		const before = { b: this.state.b, xb: this.state.xb };
-		const added = this.state.b.some(([n]) => n === name);
-		if (added) this.state.b = this.state.b.filter(([n]) => n !== name);
-		else this.state.xb = [...this.state.xb, name];
-		if (!fits(this.state)) {
-			this.state.b = before.b;
-			this.state.xb = before.xb;
-			throw new DemoLimit('The demo has no room to record this change.');
-		}
-		this.state.o = this.state.o.filter((o) => o[0] !== name);
-		// Deleting a bucket removes every grant on it. (Seed keys reach only seed buckets, which
-		// hold files and so can never be deleted.)
-		for (const k of this.state.k) k[2] = k[2].filter(([bucket]) => bucket !== name);
-		this.dirty = true;
+		this.#commit((st) => {
+			if (st.b.some(([n]) => n === name)) st.b = st.b.filter(([n]) => n !== name);
+			else st.xb.push(name);
+			st.o = st.o.filter((o) => o[0] !== name);
+			// Deleting a bucket removes every grant on it (sample keys reach only buckets that
+			// hold files, which cannot be deleted).
+			for (const k of st.k) k[2] = k[2].filter(([bucket]) => bucket !== name);
+		});
 		return { status: 204 };
 	}
 
@@ -579,10 +588,10 @@ export class DemoApi {
 				} satisfies S['Plan']
 			};
 		}
-		const added = this.state.k.findIndex((k) => k[0] === id);
-		if (added >= 0) this.state.k.splice(added, 1);
-		if (SEED_KEYS.some((k) => k.id === id) && !this.state.xk.includes(id)) this.state.xk.push(id);
-		this.dirty = true;
+		this.#commit((st) => {
+			st.k = st.k.filter((k) => k[0] !== id);
+			if (SEED_KEYS.some((k) => k.id === id) && !st.xk.includes(id)) st.xk.push(id);
+		});
 		return { status: 204 };
 	}
 
