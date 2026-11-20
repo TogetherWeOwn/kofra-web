@@ -1,0 +1,30 @@
+{
+	"repository": "TogetherWeOwn/kofra-api",
+	"commit": "e2bdfc973b2d8658cb08f02b098078c9cc48e23f",
+	"files": [
+		{
+			"path": "sdk/core.ts",
+			"sha256": "097bd28285264ae58a26e54ff6581a50d34ddeaa1e9d9bef0842377fe88c8a35"
+		},
+		{
+			"path": "sdk/index.ts",
+			"sha256": "fbb43a01bd54dbaaaaed4db5e9f168a0bb1a8bd1cf932f5206ef1c31feae4614"
+		},
+		{
+			"path": "sdk/operations.ts",
+			"sha256": "a0e8510b10d2db147a7c158354d91a7a9b8a39e999d80ec695a2926583878c73"
+		},
+		{
+			"path": "sdk/schema.ts",
+			"sha256": "e48706b2cdfa162b1ea90cd87a340d76f2b22060ce76fd9789db0b7466a711ab"
+		},
+		{
+			"path": "openapi.json",
+			"sha256": "ee8e3df8b639aec7bf63d3addca0f91d3d883b35eadef5d4fdc46bc96e6c9f4d"
+		},
+		{
+			"path": "errors.json",
+			"sha256": "0d1b1aff21e3cb80f7a98bbf324240fd6d0f7696b997a512132a325dfd7c2d54"
+		}
+	]
+}
