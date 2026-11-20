@@ -6,7 +6,7 @@
 // Usage: node scripts/sync.mjs <path to a kofra-api checkout>
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -42,26 +42,30 @@ if (dirty) {
 	console.error('the kofra-api checkout has uncommitted changes under sdk/ or generated/');
 	process.exit(1);
 }
+// Read everything that can fail before writing anything, so a failed run leaves vendor/ as it was.
+const version = JSON.parse(
+	execFileSync('git', ['-C', source, 'show', `${commit}:sdk/typescript/package.json`], {
+		encoding: 'utf8'
+	})
+).version;
+const blobs = FILES.map(([from, to]) => [
+	to,
+	execFileSync('git', ['-C', source, 'show', `${commit}:${from}`], { maxBuffer: 64 << 20 })
+]);
 const files = [];
-for (const [from, to] of FILES) {
+// The committed blobs, not working-tree files: line-ending or other checkout filters cannot
+// change what is vendored, so the bytes are exactly those of `commit`.
+for (const [to, bytes] of blobs) {
 	const dest = path.join(vendor, to);
 	mkdirSync(path.dirname(dest), { recursive: true });
-	// The committed blob, not the working-tree file: line-ending or other checkout filters
-	// cannot change what is vendored, so the bytes are exactly those of `commit`.
-	writeFileSync(
-		dest,
-		execFileSync('git', ['-C', source, 'show', `${commit}:${from}`], { maxBuffer: 64 << 20 })
-	);
-	files.push({ path: to, sha256: createHash('sha256').update(readFileSync(dest)).digest('hex') });
+	writeFileSync(dest, bytes);
+	files.push({ path: to, sha256: createHash('sha256').update(bytes).digest('hex') });
 }
 writeFileSync(
 	path.join(vendor, 'VENDOR.json'),
 	JSON.stringify({ repository: 'TogetherWeOwn/kofra-api', commit, files }, null, '\t') + '\n'
 );
 // The organisation's security gate requires this standard metadata for every vendored tree.
-const version = JSON.parse(
-	readFileSync(path.join(source, 'sdk/typescript/package.json'), 'utf8')
-).version;
 writeFileSync(
 	path.join(vendor, 'VENDORED.json'),
 	JSON.stringify(
