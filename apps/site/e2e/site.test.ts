@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { PAGES, THEMES, VIEWPORTS } from './pages';
+import { PAGES, THEMES, VIEWPORTS, WAITLIST_RESULT_PAGES } from './pages';
 
 for (const path of PAGES) {
 	test(`${path}: one h1, a title, a description, security headers, no console errors`, async ({
@@ -37,7 +37,7 @@ for (const path of PAGES) {
 
 // Hard gate: zero serious or critical axe violations on every page, in both themes, at
 // phone and desktop widths. Lesser findings are printed so they stay visible.
-for (const path of PAGES) {
+for (const path of [...PAGES, ...WAITLIST_RESULT_PAGES]) {
 	for (const theme of THEMES) {
 		for (const vp of VIEWPORTS) {
 			test(`axe ${path} ${theme} ${vp.name}`, async ({ browser }) => {

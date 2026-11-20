@@ -9,7 +9,7 @@ placeholder. Pages, static assets and error responses carry `X-Robots-Tag: noind
 
 | Path              | Package          | What it is                                                    |
 | ----------------- | ---------------- | ------------------------------------------------------------- |
-| `apps/site`       | `@kofra/site`    | Marketing site; every route is prerendered                    |
+| `apps/site`       | `@kofra/site`    | Marketing site; prerendered (plus the waitlist, off for now)  |
 | `apps/console`    | `@kofra/console` | Customer console; server-rendered                             |
 | `packages/ui`     | `@kofra/ui`      | Shared Svelte 5 components, base styles and the theme script  |
 | `packages/tokens` | `@kofra/tokens`  | Design tokens (DTCG `tokens.json`) and generated `tokens.css` |
@@ -36,6 +36,11 @@ The site is fully prerendered and ships no JavaScript except the theme switch. C
 - **Warnings (noisy on shared runners):** Lighthouse performance, best practices and SEO ≥ 95, LCP
   and TBT, as medians of three runs. On pull requests Lighthouse runs only when site-affecting files
   change (a skip counts as a pass in `ci-ok`); the job summary lists every warning and failure. See [docs/PERF-BACKLOG.md](docs/PERF-BACKLOG.md).
+
+## Early-access waitlist
+
+An email waitlist with double opt-in exists but is switched off. What it stores, what it costs
+and how to enable it: [docs/waitlist.md](docs/waitlist.md).
 
 ## Search engines and AI assistants
 

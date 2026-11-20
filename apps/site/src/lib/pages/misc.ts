@@ -1,5 +1,6 @@
 // Copy for the FAQ, security, early access and licences pages.
 import type { Block } from '#lib/blocks.js';
+import { WAITLIST } from '#lib/site.js';
 import plexSans from '#lib/licences/ibm-plex-sans.txt?raw';
 import plexMono from '#lib/licences/ibm-plex-mono.txt?raw';
 import lucide from '#lib/licences/lucide.txt?raw';
@@ -30,13 +31,17 @@ export const SECURITY_BLOCKS: Block[] = [
 export const EARLY = {
 	heading: 'Early access',
 	description: 'Kofra is in early access and not yet open for sign-ups.',
-	lead: 'Kofra is not open for sign-ups yet.'
+	lead: WAITLIST
+		? 'Kofra is not open for sign-ups yet. Join the list and we will email you once when it opens.'
+		: 'Kofra is not open for sign-ups yet.'
 };
 
 export const EARLY_BLOCKS: Block[] = [
 	{
 		type: 'p',
-		text: 'We are finishing the service and the customer console. When accounts open, this page will say so and explain how to sign up.'
+		text: WAITLIST
+			? 'Enter your email address on this page and confirm it from the email we send. The form uses a privacy-friendly anti-spam check that needs JavaScript.'
+			: 'We are finishing the service and the customer console. When accounts open, this page will say so and explain how to sign up.'
 	},
 	{ type: 'h2', text: 'What you can do now' },
 	{

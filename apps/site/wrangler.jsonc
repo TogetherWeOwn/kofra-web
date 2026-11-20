@@ -1,10 +1,31 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
-	// Placeholder name. Not deployed: there is no deploy workflow until the
-	// owner approves one; production values will come from the CI environment.
+	// Placeholder name. Not deployed from this file by CI: there is no deploy workflow
+	// until the owner approves one; production values will come from the CI environment.
 	"name": "kofra-site",
 	"compatibility_date": "2026-11-19",
-	// No public workers.dev or preview URL until launch.
+	// No public workers.dev or preview URL.
 	"workers_dev": false,
-	"preview_urls": false
+	"preview_urls": false,
+	"vars": {
+		// Early-access waitlist (docs/waitlist.md). Off until a privacy policy is in force.
+		// Enabling also needs the D1 and email bindings and three secrets; without them the
+		// endpoints answer 404 (src/lib/server/waitlist-env.ts).
+		// The build reads these too: the form is rendered only when enabled with a site key.
+		"WAITLIST_ENABLED": "false",
+		"WAITLIST_FROM": "",
+		// Confirmation emails a day over all addresses; empty means the built-in default.
+		"WAITLIST_DAILY_SEND_CAP": "",
+		"TURNSTILE_SITE_KEY": ""
+	},
+	// Hourly: waitlist retention (src/lib/waitlist-purge.js). Does nothing without the database.
+	"triggers": { "crons": ["17 * * * *"] },
+	// Per-client limit (an IPv4 address or an IPv6 /64) for the waitlist form and confirmation (5 requests a minute).
+	"ratelimits": [
+		{
+			"name": "WAITLIST_RATE",
+			"namespace_id": "1001",
+			"simple": { "limit": 5, "period": 60 }
+		}
+	]
 }
