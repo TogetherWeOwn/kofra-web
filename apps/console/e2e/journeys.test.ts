@@ -13,6 +13,8 @@ async function ready(page: Page) {
 
 test('create a bucket, refuse a wrong confirmation, then delete it', async ({ page }) => {
 	await page.goto('/buckets');
+	// Typing before the page is interactive could be undone by hydration on a slow link.
+	await ready(page);
 	await page.getByRole('link', { name: 'Create bucket' }).first().click();
 	await expect(page).toHaveURL(/\/buckets\?create$/);
 	await page.getByLabel('Bucket name').fill('Bad_Name');
@@ -50,6 +52,7 @@ test('create a bucket, refuse a wrong confirmation, then delete it', async ({ pa
 
 test('a bucket may be named like a page, such as "new"', async ({ page }) => {
 	await page.goto('/buckets?create');
+	await ready(page);
 	await page.getByLabel('Bucket name').fill('new');
 	await page.getByRole('button', { name: 'Create bucket' }).click();
 	await expect(page).toHaveURL(/\/buckets\/new\?created=1$/);
@@ -88,6 +91,7 @@ test('create an access key: the secret is shown once, then revoke it with confir
 	page
 }) => {
 	await page.goto('/keys/new');
+	await ready(page);
 	await page.getByRole('button', { name: 'Create access key' }).click();
 	await expect(page.getByText('Give the key access to at least one bucket.')).toBeVisible();
 	await page.getByLabel('Name (optional)').fill('e2e-key');
@@ -216,6 +220,7 @@ test('request and cancel workspace deletion', async ({ page }) => {
 
 test('reset the demo after a change', async ({ page }) => {
 	await page.goto('/buckets?create');
+	await ready(page);
 	await page.getByLabel('Bucket name').fill('to-be-reset');
 	await page.getByRole('button', { name: 'Create bucket' }).click();
 	await expect(page).toHaveURL(/to-be-reset/);
