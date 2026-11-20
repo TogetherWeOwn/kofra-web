@@ -106,9 +106,9 @@ export const SEED_FILES: Record<string, [string, number, string, number][]> = {
 
 /** Account limits of the demo plan. */
 export const DEMO_LIMITS = {
-	storage_bytes: 1_099_511_627_776,
-	upload_24h_bytes: 214_748_364_800,
-	download_allowance_bytes: 1_099_511_627_776,
+	storage_bytes: 1_000_000_000_000,
+	upload_24h_bytes: 200_000_000_000,
+	download_allowance_bytes: 1_000_000_000_000,
 	active_keys: 20
 };
 

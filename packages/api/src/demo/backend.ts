@@ -82,7 +82,9 @@ class HttpProblem extends Error {
 	constructor(
 		readonly code: string,
 		readonly detail: string,
-		readonly fieldErrors?: S['FieldError'][]
+		readonly fieldErrors?: S['FieldError'][],
+		/** For 405: the methods the path accepts. */
+		readonly allow?: string
 	) {
 		super(detail);
 	}
@@ -129,8 +131,10 @@ export class DemoApi {
 			headers.set('content-type', 'application/json');
 			return new Response(JSON.stringify(result.body), { status: result.status, headers });
 		} catch (err) {
-			if (!(err instanceof HttpProblem)) throw err;
-			return problemResponse(err, requestId);
+			if (err instanceof HttpProblem) return problemResponse(err, requestId);
+			if (err instanceof DemoLimit) throw err;
+			// Anything else is a defect in the demo; answer as the API would, not with a throw.
+			return problemResponse(new HttpProblem('internal_error', 'Something went wrong.'), requestId);
 		}
 	};
 
@@ -174,6 +178,9 @@ export class DemoApi {
 		}
 		if (path === '/v1/account/deletion/cancel' && m === 'POST') {
 			only(q, []);
+			// The operation takes no body; anything sent is an unknown field.
+			if ((await req.text()).trim() !== '')
+				throw new HttpProblem('unknown_field', 'This operation accepts no request body.');
 			if (!this.state.d) throw new HttpProblem('deletion_not_requested', 'No deletion is pending.');
 			this.state.d = 0;
 			this.dirty = true;
@@ -190,7 +197,7 @@ export class DemoApi {
 			}
 		}
 		if ((match = /^\/v1\/buckets\/([^/]+)$/.exec(path))) {
-			const name = decodeURIComponent(match[1]!);
+			const name = pathParam(match[1]!, '#path/bucket', BUCKET_NAME);
 			if (m === 'GET') {
 				only(q, []);
 				return { status: 200, body: this.#bucket(name) };
@@ -211,7 +218,7 @@ export class DemoApi {
 			}
 		}
 		if ((match = /^\/v1\/keys\/([^/]+)$/.exec(path))) {
-			const id = decodeURIComponent(match[1]!);
+			const id = pathParam(match[1]!, '#path/key_id', /^[A-Z0-9]{16,128}$/);
 			if (m === 'PATCH') {
 				only(q, []);
 				return this.#updateKey(id, await body());
@@ -228,7 +235,7 @@ export class DemoApi {
 		if (path === '/v1/usage/days' && m === 'GET') {
 			only(q, ['after', 'limit', 'cursor']);
 			const after = q.get('after');
-			if (after !== null && !/^\d{4}-\d{2}-\d{2}$/.test(after))
+			if (after !== null && (!/^\d{4}-\d{2}-\d{2}$/.test(after) || !isDate(after)))
 				throw invalid('/after', 'Must be a date (YYYY-MM-DD).');
 			return page(
 				this.usageDays().filter((d) => after === null || d.day > after),
@@ -276,6 +283,9 @@ export class DemoApi {
 			only(q, []);
 			return this.#presign(await body());
 		}
+		const allow = allowedMethods(path);
+		if (allow)
+			throw new HttpProblem('method_not_allowed', `${m} is not allowed here.`, undefined, allow);
 		throw new HttpProblem('not_found', `No operation answers ${m} ${path}.`);
 	}
 
@@ -681,10 +691,15 @@ export class DemoApi {
 			['bucket', 'key', 'method']
 		);
 		if (typeof body.bucket !== 'string') throw invalid('/bucket', 'Must be a bucket name.');
-		if (typeof body.key !== 'string' || body.key.length < 1 || body.key.length > 1024)
-			throw invalid('/key', 'Must be 1 to 1024 characters.');
+		if (
+			typeof body.key !== 'string' ||
+			body.key.length < 1 ||
+			body.key.length > 1024 ||
+			!wellFormed(body.key)
+		)
+			throw invalid('/key', 'Must be 1 to 1024 characters of valid text.');
 		if (body.method !== 'GET') throw invalid('/method', 'Only "GET" is offered.');
-		const ttl = body.expires_in_seconds ?? 900;
+		const ttl = body.expires_in_seconds === undefined ? 900 : body.expires_in_seconds;
 		if (typeof ttl !== 'number' || !Number.isInteger(ttl) || ttl < 1 || ttl > 900)
 			throw invalid('/expires_in_seconds', 'Must be 1 to 900.');
 		this.#bucket(body.bucket);
@@ -743,6 +758,7 @@ export class DemoApi {
 	/** Records a finished upload; the bytes themselves are not kept. */
 	recordUpload(bucket: string, key: string, size: number, type: string): DemoRefusal | null {
 		if (!this.buckets().some((b) => b.name === bucket)) return 'bucket_not_found';
+		if (!Number.isSafeInteger(size) || size < 0 || !wellFormed(key)) return 'invalid_key';
 		if (
 			key.length < 1 ||
 			key.length > 1024 ||
@@ -777,6 +793,46 @@ export class DemoLimit extends Error {
 
 // ---- Helpers ---------------------------------------------------------------------------------
 
+/** A real calendar date in YYYY-MM-DD form. */
+function isDate(day: string): boolean {
+	const t = Date.parse(`${day}T00:00:00Z`);
+	return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === day;
+}
+
+/** The methods a known path accepts, or null for an unknown path. */
+function allowedMethods(path: string): string | null {
+	if (path === '/v1/account') return 'GET, DELETE';
+	if (path === '/v1/account/deletion/cancel' || path === '/v1/objects/presign') return 'POST';
+	if (path === '/v1/buckets' || path === '/v1/keys') return 'GET, POST';
+	if (/^\/v1\/buckets\/[^/]+$/.test(path)) return 'GET, DELETE';
+	if (/^\/v1\/keys\/[^/]+$/.test(path)) return 'PATCH, DELETE';
+	if (['/v1/usage', '/v1/usage/days', '/v1/usage/buckets', '/v1/events'].includes(path))
+		return 'GET';
+	return null;
+}
+
+/** True when the text has no lone surrogate (it can be encoded as UTF-8). */
+function wellFormed(s: string): boolean {
+	try {
+		encodeURIComponent(s);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/** A decoded path parameter that matches its pattern, or a validation_failed problem. */
+function pathParam(raw: string, pointer: string, pattern: RegExp): string {
+	let value: string;
+	try {
+		value = decodeURIComponent(raw);
+	} catch {
+		throw invalid(pointer, 'Not a valid escaped path segment.');
+	}
+	if (!pattern.test(value)) throw invalid(pointer, 'Does not match the required pattern.');
+	return value;
+}
+
 /** The sample files of a seed bucket; own properties only, so "constructor" is just a name. */
 const seedFiles = (bucket: string) =>
 	Object.hasOwn(SEED_FILES, bucket) ? SEED_FILES[bucket]! : [];
@@ -801,6 +857,7 @@ function problemResponse(err: HttpProblem, requestId: string): Response {
 		'kofra-request-id': requestId
 	});
 	if (entry.status === 401) headers.set('www-authenticate', 'Bearer realm="kofra"');
+	if (err.allow) headers.set('allow', err.allow);
 	return new Response(JSON.stringify(problem), { status: entry.status, headers });
 }
 
@@ -830,7 +887,8 @@ function dryRun(q: URLSearchParams): boolean {
 }
 
 async function readJson(req: Request): Promise<unknown> {
-	if (!(req.headers.get('content-type') ?? '').startsWith('application/json'))
+	const media = (req.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase();
+	if (media !== 'application/json')
 		throw new HttpProblem('unsupported_media_type', 'Send the body as application/json.');
 	const text = await req.text();
 	if (text.length > 64 * 1024)
@@ -862,7 +920,7 @@ function object(
 }
 
 function keyName(v: unknown): string | null {
-	if (v === undefined || v === null) return null;
+	if (v === undefined) return null;
 	if (typeof v !== 'string' || v.length < 1 || v.length > 64)
 		throw invalid('/name', 'Must be 1 to 64 characters.');
 	return v;
@@ -871,6 +929,8 @@ function keyName(v: unknown): string | null {
 /** One page of a list, with an offset cursor. */
 function limitOf(q: URLSearchParams): number {
 	const limitRaw = q.get('limit');
+	if (limitRaw !== null && !/^\d{1,3}$/.test(limitRaw))
+		throw invalid('/limit', 'Must be 1 to 200.');
 	const limit = limitRaw === null ? 50 : Number(limitRaw);
 	if (!Number.isInteger(limit) || limit < 1 || limit > 200)
 		throw invalid('/limit', 'Must be 1 to 200.');

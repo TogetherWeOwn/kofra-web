@@ -388,12 +388,61 @@ describe('demo API edge cases', () => {
 	});
 });
 
+describe('demo API refusals', () => {
+	const auth = { authorization: `Bearer ${DEMO_TOKEN}` };
+	const code = async (res: Response) => ((await res.json()) as { code: string }).code;
+
+	it('answers bad path parameters with validation_failed, never a throw', async () => {
+		const { demo } = harness();
+		for (const path of ['/v1/buckets/%', '/v1/buckets/Bad_Name', '/v1/keys/%ZZ']) {
+			const res = await demo.fetch(`https://api.kofra.app${path}`, { headers: auth });
+			expect(res.status, path).toBe(400);
+			expect(await code(res)).toBe('validation_failed');
+		}
+	});
+
+	it('refuses null for fields that are not nullable, and bodies where none is taken', async () => {
+		const { client, demo } = harness();
+		expect(
+			await problemCode(
+				client.keys.create({
+					body: { name: null, grants: [{ bucket: 'backups', access: 'read' }] } as never
+				})
+			)
+		).toBe('validation_failed');
+		const res = await demo.fetch('https://api.kofra.app/v1/account/deletion/cancel', {
+			method: 'POST',
+			headers: { ...auth, 'content-type': 'application/json' },
+			body: '{"confirm":true}'
+		});
+		expect(await code(res)).toBe('unknown_field');
+	});
+
+	it('answers 405 with Allow for a known path and a wrong method', async () => {
+		const { demo } = harness();
+		const res = await demo.fetch('https://api.kofra.app/v1/usage', {
+			method: 'POST',
+			headers: auth
+		});
+		expect(res.status).toBe(405);
+		expect(res.headers.get('allow')).toBe('GET');
+	});
+
+	it('refuses odd numbers and dates in the query', async () => {
+		const { client } = harness();
+		expect(await problemCode(client.buckets.list({ limit: '1e1' as never }))).toBe(
+			'validation_failed'
+		);
+		expect(await problemCode(client.usage.days({ after: '2026-13-45' }))).toBe('validation_failed');
+	});
+});
+
 describe('demo state', () => {
 	it('round-trips and treats anything malformed as empty', () => {
 		const s: DemoState = {
 			...emptyState(),
 			b: [['a-b', 5]],
-			k: [['KFX', null, [['a-b', 'rw']], 6]],
+			k: [['KFABCDEFGHJKLMNP', null, [['a-b', 'rw']], 6]],
 			d: 7
 		};
 		expect(decodeState(encodeState(s))).toEqual(s);
@@ -401,6 +450,21 @@ describe('demo state', () => {
 		expect(decodeState('not base64 !!')).toEqual(emptyState());
 		expect(decodeState(encodeState({ ...s, v: 2 } as unknown as DemoState))).toEqual(emptyState());
 		expect(decodeState(encodeState({ ...s, b: [['a', -1]] }))).toEqual(emptyState());
-		expect(decodeState('x'.repeat(MAX_STATE_BYTES * 2 + 1))).toEqual(emptyState());
+		expect(decodeState('x'.repeat(MAX_STATE_BYTES + 1))).toEqual(emptyState());
+		// Only state this code could have written: names, IDs, times and no duplicates.
+		expect(decodeState(encodeState({ ...s, b: [['A', 1]] }))).toEqual(emptyState());
+		expect(decodeState(encodeState({ ...s, d: 9e12 }))).toEqual(emptyState());
+		expect(
+			decodeState(
+				encodeState({
+					...s,
+					b: [
+						['a-b', 1],
+						['a-b', 2]
+					]
+				})
+			)
+		).toEqual(emptyState());
+		expect(decodeState(encodeState({ ...s, k: [['x', null, [], 1]] }))).toEqual(emptyState());
 	});
 });
