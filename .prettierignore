@@ -1,3 +1,5 @@
 pnpm-lock.yaml
 LICENSE
 packages/tokens/tokens.css
+# Vendored unchanged from kofra-api (packages/api/scripts/sync.mjs checks the hashes)
+packages/api/vendor

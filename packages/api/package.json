@@ -1,0 +1,28 @@
+{
+	"name": "@kofra/api",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./src/index.ts"
+		},
+		"./demo": {
+			"types": "./src/demo/index.ts",
+			"default": "./src/demo/index.ts"
+		}
+	},
+	"scripts": {
+		"check": "tsc --noEmit",
+		"test:unit": "vitest --run",
+		"sync": "node scripts/sync.mjs"
+	},
+	"devDependencies": {
+		"@types/node": "^24",
+		"ajv": "8.20.0",
+		"ajv-formats": "3.0.1",
+		"typescript": "^6.0.3",
+		"vitest": "^5.1.1"
+	}
+}

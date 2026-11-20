@@ -1,0 +1,304 @@
+{
+  "errors": [
+    {
+      "code": "validation_failed",
+      "status": 400,
+      "title": "Request is not valid",
+      "retryable": false,
+      "hint": "Fix each field listed in `errors` (the `pointer` names it), then send the request again.",
+      "meaning": "One or more request fields, path parameters or query parameters do not match the API description. The `errors` list names each field with a JSON pointer.",
+      "type": "https://kofra.app/docs/errors/validation_failed",
+      "docs_url": "https://kofra.app/docs/errors/validation_failed.md"
+    },
+    {
+      "code": "unknown_field",
+      "status": 400,
+      "title": "Request has a field the API does not know",
+      "retryable": false,
+      "hint": "Remove or correct the field or parameter named by `errors[].pointer`; the API reference lists what each operation accepts.",
+      "meaning": "The request body has a field, or the query has a parameter, that the operation does not accept. Unknown fields and parameters are refused so that a misspelt one never silently does nothing.",
+      "type": "https://kofra.app/docs/errors/unknown_field",
+      "docs_url": "https://kofra.app/docs/errors/unknown_field.md"
+    },
+    {
+      "code": "invalid_bucket_name",
+      "status": 400,
+      "title": "Bucket name is not valid",
+      "retryable": false,
+      "hint": "Choose a name of 3 to 63 lowercase letters, digits or hyphens that starts and ends with a letter or digit.",
+      "meaning": "Bucket names are 3 to 63 characters of lowercase letters, digits and hyphens, and start and end with a letter or digit.",
+      "type": "https://kofra.app/docs/errors/invalid_bucket_name",
+      "docs_url": "https://kofra.app/docs/errors/invalid_bucket_name.md"
+    },
+    {
+      "code": "invalid_cursor",
+      "status": 400,
+      "title": "Cursor is not valid",
+      "retryable": false,
+      "hint": "Start again without `cursor`, then pass only the `next_cursor` values the API returns.",
+      "meaning": "The `cursor` value was not returned by this operation, was changed, or has expired.",
+      "type": "https://kofra.app/docs/errors/invalid_cursor",
+      "docs_url": "https://kofra.app/docs/errors/invalid_cursor.md"
+    },
+    {
+      "code": "unauthenticated",
+      "status": 401,
+      "title": "Authentication required",
+      "retryable": false,
+      "hint": "Send `Authorization: Bearer <token>` with an API token from the console (Account, API tokens).",
+      "meaning": "The request has no `Authorization` header, or the bearer token in it is not a valid Kofra API token.",
+      "type": "https://kofra.app/docs/errors/unauthenticated",
+      "docs_url": "https://kofra.app/docs/errors/unauthenticated.md"
+    },
+    {
+      "code": "token_expired",
+      "status": 401,
+      "title": "API token has expired",
+      "retryable": false,
+      "hint": "Create a new API token in the console and use it in place of the expired one.",
+      "meaning": "The API token was valid but has passed its expiry time.",
+      "type": "https://kofra.app/docs/errors/token_expired",
+      "docs_url": "https://kofra.app/docs/errors/token_expired.md"
+    },
+    {
+      "code": "insufficient_scope",
+      "status": 403,
+      "title": "Token lacks a required scope",
+      "retryable": false,
+      "hint": "Use a token that has the scope named in `detail`, or create one with that scope in the console.",
+      "meaning": "The API token is valid but does not carry the scope this operation needs. The scopes needed are listed in the operation's description.",
+      "type": "https://kofra.app/docs/errors/insufficient_scope",
+      "docs_url": "https://kofra.app/docs/errors/insufficient_scope.md"
+    },
+    {
+      "code": "role_forbidden",
+      "status": 403,
+      "title": "Your role does not allow this",
+      "retryable": false,
+      "hint": "Ask a workspace Owner or Admin to change your role, or to perform the operation.",
+      "meaning": "The token has the scope, but the member it belongs to has a workspace role that does not allow the operation. Effective permission is the token's scopes limited by the member's role.",
+      "type": "https://kofra.app/docs/errors/role_forbidden",
+      "docs_url": "https://kofra.app/docs/errors/role_forbidden.md"
+    },
+    {
+      "code": "account_read_only",
+      "status": 403,
+      "title": "Account is read-only",
+      "retryable": false,
+      "hint": "Resolve the reason shown under Account in the console (often a payment); writes work again as soon as the account is active.",
+      "meaning": "The account is suspended in read-only mode. Reads, lists and deletes work; anything that adds data or credentials is refused.",
+      "type": "https://kofra.app/docs/errors/account_read_only",
+      "docs_url": "https://kofra.app/docs/errors/account_read_only.md"
+    },
+    {
+      "code": "account_unavailable",
+      "status": 403,
+      "title": "Account is not available",
+      "retryable": false,
+      "hint": "Open Account in the console to see the reason; a deletion can be cancelled there or with POST /v1/account/deletion/cancel.",
+      "meaning": "The account is blocked or is being deleted, so only reading the account itself and cancelling a deletion are possible.",
+      "type": "https://kofra.app/docs/errors/account_unavailable",
+      "docs_url": "https://kofra.app/docs/errors/account_unavailable.md"
+    },
+    {
+      "code": "not_found",
+      "status": 404,
+      "title": "No such endpoint",
+      "retryable": false,
+      "hint": "Check the path against the API reference at https://api.kofra.app/openapi.json.",
+      "meaning": "The path does not name an operation of this API version.",
+      "type": "https://kofra.app/docs/errors/not_found",
+      "docs_url": "https://kofra.app/docs/errors/not_found.md"
+    },
+    {
+      "code": "bucket_not_found",
+      "status": 404,
+      "title": "Bucket not found",
+      "retryable": false,
+      "hint": "List your buckets with GET /v1/buckets and use one of the returned names.",
+      "meaning": "The workspace has no bucket with this name.",
+      "type": "https://kofra.app/docs/errors/bucket_not_found",
+      "docs_url": "https://kofra.app/docs/errors/bucket_not_found.md"
+    },
+    {
+      "code": "key_not_found",
+      "status": 404,
+      "title": "Access key not found",
+      "retryable": false,
+      "hint": "List your access keys with GET /v1/keys and use one of the returned IDs.",
+      "meaning": "The workspace has no active access key with this ID. Revoked keys are removed, so a second revoke of the same key also answers this code.",
+      "type": "https://kofra.app/docs/errors/key_not_found",
+      "docs_url": "https://kofra.app/docs/errors/key_not_found.md"
+    },
+    {
+      "code": "method_not_allowed",
+      "status": 405,
+      "title": "Method not allowed",
+      "retryable": false,
+      "hint": "Use one of the methods in the `Allow` header.",
+      "meaning": "The path exists, but not with this HTTP method. The `Allow` header lists the methods it accepts.",
+      "type": "https://kofra.app/docs/errors/method_not_allowed",
+      "docs_url": "https://kofra.app/docs/errors/method_not_allowed.md"
+    },
+    {
+      "code": "payload_too_large",
+      "status": 413,
+      "title": "Request body is too large",
+      "retryable": false,
+      "hint": "Send a smaller body; upload object data through the S3 endpoint or a presigned URL instead.",
+      "meaning": "Management requests carry small JSON bodies. Object data is never sent to this API; it goes to the S3 endpoint.",
+      "type": "https://kofra.app/docs/errors/payload_too_large",
+      "docs_url": "https://kofra.app/docs/errors/payload_too_large.md"
+    },
+    {
+      "code": "unsupported_media_type",
+      "status": 415,
+      "title": "Body must be JSON",
+      "retryable": false,
+      "hint": "Send the body as JSON with the header `Content-Type: application/json`.",
+      "meaning": "Request bodies must be sent as `application/json`.",
+      "type": "https://kofra.app/docs/errors/unsupported_media_type",
+      "docs_url": "https://kofra.app/docs/errors/unsupported_media_type.md"
+    },
+    {
+      "code": "bucket_already_exists",
+      "status": 409,
+      "title": "Bucket already exists",
+      "retryable": false,
+      "hint": "Choose another name, or use the existing bucket.",
+      "meaning": "The workspace already has a bucket with this name.",
+      "type": "https://kofra.app/docs/errors/bucket_already_exists",
+      "docs_url": "https://kofra.app/docs/errors/bucket_already_exists.md"
+    },
+    {
+      "code": "bucket_not_empty",
+      "status": 409,
+      "title": "Bucket is not empty",
+      "retryable": false,
+      "hint": "Delete every object in the bucket with your S3 tool, then delete the bucket again.",
+      "meaning": "A bucket can be deleted only when it holds no objects. Objects are deleted through the S3 endpoint.",
+      "type": "https://kofra.app/docs/errors/bucket_not_empty",
+      "docs_url": "https://kofra.app/docs/errors/bucket_not_empty.md"
+    },
+    {
+      "code": "key_limit_reached",
+      "status": 409,
+      "title": "Too many active access keys",
+      "retryable": false,
+      "hint": "Revoke an access key you no longer use with DELETE /v1/keys/{key_id}, then create the new one.",
+      "meaning": "A workspace can have at most 20 active access keys at once.",
+      "type": "https://kofra.app/docs/errors/key_limit_reached",
+      "docs_url": "https://kofra.app/docs/errors/key_limit_reached.md"
+    },
+    {
+      "code": "grant_narrowing_refused",
+      "status": 409,
+      "title": "Access can only be widened",
+      "retryable": false,
+      "hint": "Create a new key with the narrower access, move your tools to it, then revoke the old key.",
+      "meaning": "An access key's permission on a bucket can be added or widened (from read to read_write), never narrowed. A narrowed grant could silently become wide again after a recovery, so narrowing is refused.",
+      "type": "https://kofra.app/docs/errors/grant_narrowing_refused",
+      "docs_url": "https://kofra.app/docs/errors/grant_narrowing_refused.md"
+    },
+    {
+      "code": "grant_limit_reached",
+      "status": 409,
+      "title": "Too many grants on one key",
+      "retryable": false,
+      "hint": "Create a second access key for the remaining buckets.",
+      "meaning": "An access key can hold grants on at most 32 buckets.",
+      "type": "https://kofra.app/docs/errors/grant_limit_reached",
+      "docs_url": "https://kofra.app/docs/errors/grant_limit_reached.md"
+    },
+    {
+      "code": "deletion_already_requested",
+      "status": 409,
+      "title": "Deletion already requested",
+      "retryable": false,
+      "hint": "Read GET /v1/account to see the deletion and its dates; cancel it with POST /v1/account/deletion/cancel if it was a mistake.",
+      "meaning": "The account already has a deletion in progress or awaiting confirmation.",
+      "type": "https://kofra.app/docs/errors/deletion_already_requested",
+      "docs_url": "https://kofra.app/docs/errors/deletion_already_requested.md"
+    },
+    {
+      "code": "deletion_not_requested",
+      "status": 409,
+      "title": "No deletion to cancel",
+      "retryable": false,
+      "hint": "No action is needed; the account is not being deleted.",
+      "meaning": "The account has no deletion in progress, so there is nothing to cancel.",
+      "type": "https://kofra.app/docs/errors/deletion_not_requested",
+      "docs_url": "https://kofra.app/docs/errors/deletion_not_requested.md"
+    },
+    {
+      "code": "deletion_final",
+      "status": 409,
+      "title": "Deletion can no longer be cancelled",
+      "retryable": false,
+      "hint": "No action can restore this data; contact support with the `request_id` if you believe this is wrong.",
+      "meaning": "The deletion has passed its last cancellation time. Deleted data is cryptographically erased (its encryption key is destroyed), so it can never be read again.",
+      "type": "https://kofra.app/docs/errors/deletion_final",
+      "docs_url": "https://kofra.app/docs/errors/deletion_final.md"
+    },
+    {
+      "code": "feed_reset",
+      "status": 409,
+      "title": "Event feed was reset",
+      "retryable": false,
+      "hint": "Re-read the current state (GET /v1/account, /v1/keys, /v1/usage), then read the feed again without a cursor.",
+      "meaning": "The event feed was rebuilt, so cursors issued before the rebuild no longer apply. Some events may not appear in the new feed.",
+      "type": "https://kofra.app/docs/errors/feed_reset",
+      "docs_url": "https://kofra.app/docs/errors/feed_reset.md"
+    },
+    {
+      "code": "idempotency_key_in_use",
+      "status": 409,
+      "title": "Same request is still running",
+      "retryable": true,
+      "hint": "Wait for the number of seconds in `Retry-After`, then send the identical request again with the same key.",
+      "meaning": "A request with this `Idempotency-Key` is still being processed.",
+      "type": "https://kofra.app/docs/errors/idempotency_key_in_use",
+      "docs_url": "https://kofra.app/docs/errors/idempotency_key_in_use.md"
+    },
+    {
+      "code": "idempotency_key_reused",
+      "status": 422,
+      "title": "Idempotency key used with another request",
+      "retryable": false,
+      "hint": "Use a new Idempotency-Key for a different request; reuse a key only to repeat the identical request.",
+      "meaning": "An `Idempotency-Key` is bound to the first request sent with it for 24 hours, that is to its method, path, query and body. The same key with a different method, path, query or body is refused, so `dry_run=true` and the same request without it need different keys (`dry_run=false` and an omitted `dry_run` are the same request).",
+      "type": "https://kofra.app/docs/errors/idempotency_key_reused",
+      "docs_url": "https://kofra.app/docs/errors/idempotency_key_reused.md"
+    },
+    {
+      "code": "rate_limited",
+      "status": 429,
+      "title": "Too many requests",
+      "retryable": true,
+      "hint": "Wait for the number of seconds in `Retry-After`, then retry; spread requests out to stay under the limit.",
+      "meaning": "The credential or workspace has used up its request allowance for now. The `RateLimit` and `RateLimit-Policy` headers describe the limit that applied.",
+      "type": "https://kofra.app/docs/errors/rate_limited",
+      "docs_url": "https://kofra.app/docs/errors/rate_limited.md"
+    },
+    {
+      "code": "internal_error",
+      "status": 500,
+      "title": "Internal error",
+      "retryable": false,
+      "hint": "Contact support and quote the `request_id`; repeating the same request is not expected to help.",
+      "meaning": "The request failed for a reason that is not one of the codes above. No detail of the cause is returned.",
+      "type": "https://kofra.app/docs/errors/internal_error",
+      "docs_url": "https://kofra.app/docs/errors/internal_error.md"
+    },
+    {
+      "code": "service_unavailable",
+      "status": 503,
+      "title": "Service is busy",
+      "retryable": true,
+      "hint": "Wait for the number of seconds in `Retry-After`, then send the same request again.",
+      "meaning": "The service is temporarily busy or a dependency is briefly unavailable. Nothing was changed.",
+      "type": "https://kofra.app/docs/errors/service_unavailable",
+      "docs_url": "https://kofra.app/docs/errors/service_unavailable.md"
+    }
+  ]
+}

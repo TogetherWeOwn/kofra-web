@@ -96,7 +96,7 @@ importers:
         version: link:../../packages/ui
       '@lhci/cli':
         specifier: ^0.16.1
-        version: 0.16.1(@types/node@24.19.2)
+        version: 0.16.1(@types/node@24.19.2)(ajv@8.20.0)
       '@lucide/svelte':
         specifier: ^1.75.0
         version: 1.75.0(svelte@5.58.0(@typescript-eslint/types@8.73.0))
@@ -133,6 +133,24 @@ importers:
       wrangler:
         specifier: ^4.165.0
         version: 4.165.0(@types/node@24.19.2)(vitest@5.1.1(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(jsdom@31.0.1)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)))
+
+  packages/api:
+    devDependencies:
+      '@types/node':
+        specifier: ^24
+        version: 24.19.2
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
+      ajv-formats:
+        specifier: 3.0.1
+        version: 3.0.1(ajv@8.20.0)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^5.1.1
+        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(jsdom@31.0.1)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2))
 
   packages/tokens:
     devDependencies:
@@ -1279,6 +1297,9 @@ packages:
   ajv@6.15.0:
     resolution: {integrity: sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw==}
 
+  ajv@8.20.0:
+    resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
+
   ansi-colors@4.1.3:
     resolution: {integrity: sha512-/6w/C21Pm1A7aZitlI5Ni/2J6FFQN8i1Cvz3kHABAAbw93v/NlvKdVOqz7CCWz/3iv/JplRSEEZ83XION15ovw==}
     engines: {node: '>=6'}
@@ -1808,6 +1829,9 @@ packages:
   fast-levenshtein@2.0.6:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==}
 
+  fast-uri@3.1.9:
+    resolution: {integrity: sha512-hS/0Wt3Ya043oKXs0sIxrMpKQITXhMLIrVAKKXi4gozGC9v7YRWVnXIZzjNPTO02M9BdxLCWqK1yRXgNziVyJQ==}
+
   fdir@6.5.0:
     resolution: {integrity: sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==}
     engines: {node: '>=12.0.0'}
@@ -2110,6 +2134,9 @@ packages:
 
   json-schema-traverse@0.4.1:
     resolution: {integrity: sha512-xbbCH5dCYU5T8LcEhhuh7HJ88HXuW3qsI3Y0zOZFKfZEHcpWiHU/Jxzk629Brsab/mMiHQti9wMP+845RPe3Vg==}
+
+  json-schema-traverse@1.0.0:
+    resolution: {integrity: sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==}
 
   json-stable-stringify-without-jsonify@1.0.1:
     resolution: {integrity: sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==}
@@ -2620,6 +2647,10 @@ packages:
 
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
+    engines: {node: '>=0.10.0'}
+
+  require-from-string@2.0.2:
+    resolution: {integrity: sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==}
     engines: {node: '>=0.10.0'}
 
   require-main-filename@2.0.0:
@@ -3646,16 +3677,16 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@lhci/cli@0.16.1(@types/node@24.19.2)':
+  '@lhci/cli@0.16.1(@types/node@24.19.2)(ajv@8.20.0)':
     dependencies:
-      '@lhci/utils': 0.16.1(proxy-agent@8.0.3)
+      '@lhci/utils': 0.16.1(ajv@8.20.0)(proxy-agent@8.0.3)
       chrome-launcher: 0.13.4
       compression: 1.8.2
       debug: 4.4.3
       express: 4.22.3
       inquirer: 8.2.7(@types/node@24.19.2)
       isomorphic-fetch: 3.0.0
-      lighthouse: 13.6.0(proxy-agent@8.0.3)
+      lighthouse: 13.6.0(ajv@8.20.0)(proxy-agent@8.0.3)
       lighthouse-logger: 1.2.0
       open: 8.4.2
       proxy-agent: 8.0.3
@@ -3674,12 +3705,12 @@ snapshots:
       - webpack
       - yauzl
 
-  '@lhci/utils@0.16.1(proxy-agent@8.0.3)':
+  '@lhci/utils@0.16.1(ajv@8.20.0)(proxy-agent@8.0.3)':
     dependencies:
       debug: 4.4.3
       isomorphic-fetch: 3.0.0
       js-yaml: 5.5.0
-      lighthouse: 13.6.0(proxy-agent@8.0.3)
+      lighthouse: 13.6.0(ajv@8.20.0)(proxy-agent@8.0.3)
       tree-kill: 1.2.2
     transitivePeerDependencies:
       - ajv
@@ -4120,7 +4151,9 @@ snapshots:
     dependencies:
       humanize-ms: 1.2.1
 
-  ajv-formats@3.0.1: {}
+  ajv-formats@3.0.1(ajv@8.20.0):
+    optionalDependencies:
+      ajv: 8.20.0
 
   ajv@6.15.0:
     dependencies:
@@ -4128,6 +4161,13 @@ snapshots:
       fast-json-stable-stringify: 2.1.0
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
+
+  ajv@8.20.0:
+    dependencies:
+      fast-deep-equal: 3.1.3
+      fast-uri: 3.1.9
+      json-schema-traverse: 1.0.0
+      require-from-string: 2.0.2
 
   ansi-colors@4.1.3: {}
 
@@ -4702,6 +4742,8 @@ snapshots:
 
   fast-levenshtein@2.0.6: {}
 
+  fast-uri@3.1.9: {}
+
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
       picomatch: 4.0.7
@@ -5030,6 +5072,8 @@ snapshots:
 
   json-schema-traverse@0.4.1: {}
 
+  json-schema-traverse@1.0.0: {}
+
   json-stable-stringify-without-jsonify@1.0.1: {}
 
   keyv@5.6.0:
@@ -5061,11 +5105,11 @@ snapshots:
 
   lighthouse-stack-packs@1.12.3: {}
 
-  lighthouse@13.6.0(proxy-agent@8.0.3):
+  lighthouse@13.6.0(ajv@8.20.0)(proxy-agent@8.0.3):
     dependencies:
       '@paulirish/trace_engine': 0.0.67
       '@sentry/node': 11.14.0
-      ajv-formats: 3.0.1
+      ajv-formats: 3.0.1(ajv@8.20.0)
       axe-core: 4.14.0
       chrome-launcher: 1.2.3
       configstore: 8.0.0
@@ -5527,6 +5571,8 @@ snapshots:
   readdirp@4.1.2: {}
 
   require-directory@2.1.1: {}
+
+  require-from-string@2.0.2: {}
 
   require-main-filename@2.0.0: {}
 
