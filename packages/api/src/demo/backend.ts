@@ -134,6 +134,24 @@ export class DemoApi {
 		}
 	};
 
+	/**
+	 * A creation time in Unix seconds, later than every time handed out before (even for items
+	 * since removed), so two changes in the same second still have a clear order: the event
+	 * feed's cursor relies on it.
+	 */
+	#stamp(): number {
+		const st = this.state;
+		const latest = Math.max(
+			st.t ?? 0,
+			st.d,
+			...st.b.map((b) => b[1]),
+			...st.k.map((k) => k[3]),
+			...st.o.map((o) => o[4])
+		);
+		st.t = Math.max(sec(this.#now()), latest + 1);
+		return st.t;
+	}
+
 	// ---- Operations ------------------------------------------------------------------------
 
 	async #route(req: Request): Promise<{ status: number; body?: unknown }> {
@@ -232,12 +250,27 @@ export class DemoApi {
 		}
 		if (path === '/v1/events' && m === 'GET') {
 			only(q, ['limit', 'cursor']);
+			const limit = limitOf(q);
 			const events = this.events();
-			const res = page(events, q);
+			const cursor = q.get('cursor');
+			// The cursor holds the time and ID of the last event delivered; the next page starts
+			// after that position, so events removed since (a revoked key) shift nothing.
+			const pos = (e: S['Event']) => [Date.parse(e.created_at), e.id] as const;
+			const after = (e: S['Event'], t: number, id: string) => {
+				const [et, eid] = pos(e);
+				return et > t || (et === t && eid > id);
+			};
+			let rest = events;
+			if (cursor !== null) {
+				const c = /^e_(\d{1,15})_(evt_[a-z0-9]{1,64})$/.exec(cursor);
+				if (!c) throw new HttpProblem('invalid_cursor', 'The cursor is not one this list issued.');
+				rest = events.filter((e) => after(e, Number(c[1]), c[2]!));
+			}
+			const data = rest.slice(0, limit);
+			const last = data.at(-1);
 			// The feed always hands back a position to poll from.
-			const body = res.body as { next_cursor: string | null };
-			body.next_cursor ??= `c${events.length}`;
-			return res;
+			const next = last ? `e_${pos(last)[0]}_${last.id}` : (cursor ?? 'e_0_evt_0');
+			return { status: 200, body: { data, next_cursor: next } };
 		}
 		if (path === '/v1/objects/presign' && m === 'POST') {
 			only(q, []);
@@ -293,7 +326,7 @@ export class DemoApi {
 					totals
 				} satisfies S['Plan']
 			};
-		this.state.d = sec(this.#now());
+		this.state.d = this.#stamp();
 		this.dirty = true;
 		return { status: 202, body: this.account().deletion };
 	}
@@ -302,12 +335,17 @@ export class DemoApi {
 		const now = this.#now();
 		const uploads = (name: string) => this.state.o.filter((o) => o[0] === name);
 		const sum = (name: string) => uploads(name).reduce((n, o) => n + o[2], 0);
+		// An upload over a sample file replaces it: its bytes and count leave the seed totals.
+		const replaced = (name: string) => {
+			const keys = new Set(uploads(name).map((o) => o[1]));
+			return seedFiles(name).filter(([key]) => keys.has(key));
+		};
 		const list: Bucket[] = [
 			...SEED_BUCKETS.filter((b) => !this.state.xb.includes(b.name)).map((b) => ({
 				name: b.name,
 				created_at: iso(now - b.createdDaysAgo * DAY),
-				stored_bytes: b.storedBytes + sum(b.name),
-				object_count: b.objectCount + uploads(b.name).length
+				stored_bytes: b.storedBytes + sum(b.name) - replaced(b.name).reduce((n, f) => n + f[1], 0),
+				object_count: b.objectCount + uploads(b.name).length - replaced(b.name).length
 			})),
 			...this.state.b.map(([name, created]) => ({
 				name,
@@ -329,7 +367,7 @@ export class DemoApi {
 		const body = object(input, ['name'], ['name']);
 		const name = body.name;
 		if (typeof name !== 'string') throw invalid('/name', 'Must be a string.');
-		if (!BUCKET_NAME.test(name) || name.includes('--'))
+		if (!BUCKET_NAME.test(name))
 			throw new HttpProblem(
 				'invalid_bucket_name',
 				`"${name}" is not a valid bucket name: use 3 to 63 lowercase letters, digits or hyphens, starting and ending with a letter or digit.`
@@ -338,8 +376,7 @@ export class DemoApi {
 			throw new HttpProblem('bucket_already_exists', `A bucket named "${name}" already exists.`);
 		if (this.buckets().length >= this.#maxBuckets)
 			throw new DemoLimit(`The demo holds at most ${this.#maxBuckets} buckets.`);
-		const created = sec(this.#now());
-		this.state.b.push([name, created]);
+		this.state.b.push([name, this.#stamp()]);
 		if (!fits(this.state)) {
 			this.state.b.pop();
 			throw new DemoLimit('The demo has no room for another bucket.');
@@ -371,6 +408,9 @@ export class DemoApi {
 		if (added >= 0) this.state.b.splice(added, 1);
 		else this.state.xb.push(name);
 		this.state.o = this.state.o.filter((o) => o[0] !== name);
+		// Deleting a bucket removes every grant on it. (Seed keys reach only seed buckets, which
+		// hold files and so can never be deleted.)
+		for (const k of this.state.k) k[2] = k[2].filter(([bucket]) => bucket !== name);
 		this.dirty = true;
 		return { status: 204 };
 	}
@@ -432,7 +472,7 @@ export class DemoApi {
 				`The workspace already has ${DEMO_LIMITS.active_keys} active keys.`
 			);
 		const id = `KF${randomId('ABCDEFGHJKLMNPQRSTUVWXYZ0123456789', 14)}`;
-		this.state.k.push([id, name, grants, sec(this.#now())]);
+		this.state.k.push([id, name, grants, this.#stamp()]);
 		if (!fits(this.state)) {
 			this.state.k.pop();
 			throw new DemoLimit('The demo has no room for another key.');
@@ -456,32 +496,36 @@ export class DemoApi {
 		if (Object.keys(body).length === 0) throw invalid('', 'Give `name`, `grants` or both.');
 		const current = this.keys().find((k) => k.id === id);
 		if (!current) throw new HttpProblem('key_not_found', `There is no access key ${id}.`);
-		// A seed key is copied into the state the first time it changes.
-		let row = this.state.k.find((k) => k[0] === id);
-		if (!row) {
-			row = [
-				id,
-				current.name,
-				current.grants.map((g) => [g.bucket, g.access === 'read_write' ? 'rw' : 'r']),
-				sec(Date.parse(current.created_at))
-			];
-			this.state.xk.push(id);
-			this.state.k.push(row);
-		}
-		if (body.name !== undefined) row[1] = keyName(body.name);
+		// Work on copies: a refused edit must change nothing.
+		const name = body.name !== undefined ? keyName(body.name) : current.name;
+		const grants: CompactGrant[] = current.grants.map((g) => [
+			g.bucket,
+			g.access === 'read_write' ? 'rw' : 'r'
+		]);
 		if (body.grants !== undefined) {
 			for (const [bucket, access] of this.#grants(body.grants, '/grants')) {
-				const had = row[2].find((g) => g[0] === bucket);
+				const had = grants.find((g) => g[0] === bucket);
 				if (had && had[1] === 'rw' && access === 'r')
 					throw new HttpProblem(
 						'grant_narrowing_refused',
 						`The key already has read and write access to "${bucket}".`
 					);
 				if (had) had[1] = access;
-				else row[2].push([bucket, access]);
+				else grants.push([bucket, access]);
 			}
-			if (row[2].length > 32)
+			if (grants.length > 32)
 				throw new HttpProblem('grant_limit_reached', 'A key holds at most 32 grants.');
+		}
+		// A seed key is copied into the state the first time it changes.
+		const before = { k: this.state.k, xk: this.state.xk };
+		const created = sec(Date.parse(current.created_at));
+		this.state.k = [...this.state.k.filter((k) => k[0] !== id), [id, name, grants, created]];
+		if (SEED_KEYS.some((k) => k.id === id) && !this.state.xk.includes(id))
+			this.state.xk = [...this.state.xk, id];
+		if (!fits(this.state)) {
+			this.state.k = before.k;
+			this.state.xk = before.xk;
+			throw new DemoLimit('The demo has no room for this change.');
 		}
 		this.dirty = true;
 		return { status: 200, body: this.keys().find((k) => k.id === id) };
@@ -570,35 +614,59 @@ export class DemoApi {
 	}
 
 	/** The event feed, oldest first. */
+	/**
+	 * The event feed, oldest first. Seed events are anchored to the start of the current UTC
+	 * day and every ID derives from the event itself, so a saved cursor stays valid.
+	 */
 	events(): S['Event'][] {
-		const now = this.#now();
-		const out: { t: number; type: string; data: Record<string, unknown> }[] = [];
+		const day0 = Math.floor(this.#now() / DAY) * DAY;
+		const out: { t: number; type: string; subject: string; data: Record<string, unknown> }[] = [];
 		for (const b of SEED_BUCKETS)
 			out.push({
-				t: now - b.createdDaysAgo * DAY,
+				t: day0 - b.createdDaysAgo * DAY,
 				type: 'bucket.created',
+				subject: b.name,
 				data: { bucket: b.name }
 			});
 		for (const k of SEED_KEYS)
 			out.push({
-				t: now - k.createdDaysAgo * DAY + HOUR,
+				t: day0 - k.createdDaysAgo * DAY + HOUR,
 				type: 'key.created',
+				subject: k.id,
 				data: { key_id: k.id }
 			});
 		for (const [name, t] of this.state.b)
-			out.push({ t: t * 1000, type: 'bucket.created', data: { bucket: name } });
+			out.push({ t: t * 1000, type: 'bucket.created', subject: name, data: { bucket: name } });
 		for (const [id, , , t] of this.state.k)
-			out.push({ t: t * 1000, type: 'key.created', data: { key_id: id } });
+			// An edited seed key is copied into the state; its creation event is the seed one.
+			if (!SEED_KEYS.some((k) => k.id === id))
+				out.push({ t: t * 1000, type: 'key.created', subject: id, data: { key_id: id } });
 		if (this.state.d)
-			out.push({ t: this.state.d * 1000, type: 'account.deletion_requested', data: {} });
+			out.push({
+				t: this.state.d * 1000,
+				type: 'account.deletion_requested',
+				subject: 'ws',
+				data: {}
+			});
 		return out
-			.sort((a, b) => a.t - b.t)
-			.map((e, i) => ({
-				id: `evt_demo${i.toString().padStart(4, '0')}`,
+			.map((e) => ({
+				id: `evt_${e.t.toString(36)}${e.type.replace(/[^a-z]/g, '').slice(0, 12)}${e.subject.toLowerCase().replace(/[^a-z0-9]/g, '')}`.slice(
+					0,
+					68
+				),
 				type: e.type,
 				created_at: iso(e.t),
 				data: e.data
-			}));
+			}))
+			.sort((x, y) =>
+				x.created_at === y.created_at
+					? x.id < y.id
+						? -1
+						: 1
+					: x.created_at < y.created_at
+						? -1
+						: 1
+			);
 	}
 
 	#presign(input: unknown) {
@@ -633,7 +701,7 @@ export class DemoApi {
 		if (!this.buckets().some((b) => b.name === bucket)) return null;
 		const now = this.#now();
 		const all = [
-			...(this.state.xb.includes(bucket) ? [] : (SEED_FILES[bucket] ?? [])).map(
+			...(this.state.xb.includes(bucket) ? [] : seedFiles(bucket)).map(
 				([key, size, type, days]) => ({
 					key,
 					size,
@@ -683,7 +751,7 @@ export class DemoApi {
 		const before = this.state.o;
 		this.state.o = [
 			...others,
-			[bucket, key, size, type.slice(0, 100) || 'application/octet-stream', sec(this.#now())]
+			[bucket, key, size, type.slice(0, 100) || 'application/octet-stream', this.#stamp()]
 		];
 		if (!fits(this.state)) {
 			this.state.o = before;
@@ -703,6 +771,10 @@ export class DemoLimit extends Error {
 }
 
 // ---- Helpers ---------------------------------------------------------------------------------
+
+/** The sample files of a seed bucket; own properties only, so "constructor" is just a name. */
+const seedFiles = (bucket: string) =>
+	Object.hasOwn(SEED_FILES, bucket) ? SEED_FILES[bucket]! : [];
 
 function problemResponse(err: HttpProblem, requestId: string): Response {
 	const entry = ERRORS.get(err.code);
@@ -792,11 +864,16 @@ function keyName(v: unknown): string | null {
 }
 
 /** One page of a list, with an offset cursor. */
-function page<T>(items: T[], q: URLSearchParams) {
+function limitOf(q: URLSearchParams): number {
 	const limitRaw = q.get('limit');
 	const limit = limitRaw === null ? 50 : Number(limitRaw);
 	if (!Number.isInteger(limit) || limit < 1 || limit > 200)
 		throw invalid('/limit', 'Must be 1 to 200.');
+	return limit;
+}
+
+function page<T>(items: T[], q: URLSearchParams) {
+	const limit = limitOf(q);
 	const cursor = q.get('cursor');
 	let start = 0;
 	if (cursor !== null) {

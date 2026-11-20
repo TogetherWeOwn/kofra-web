@@ -73,16 +73,17 @@ function harness(state: DemoState = emptyState()) {
 		const responses = op.node.responses as Record<string, { content?: Record<string, unknown> }>;
 		if (!responses[status]) problems.push(`${op.id}: undeclared status ${status}`);
 		const text = await res.clone().text();
-		if (text) {
-			const type = res.headers.get('content-type') ?? '';
-			const media = type.startsWith('application/problem+json')
-				? 'application~1problem+json'
-				: 'application~1json';
-			const content = responses[status]?.content ?? {};
-			if (!(media.replace('~1', '/') in content))
-				problems.push(`${op.id} ${status}: undeclared ${type}`);
+		const type = res.headers.get('content-type') ?? '';
+		const declared = responses[status]?.content ?? {};
+		if (Object.keys(declared).length === 0) {
+			if (text) problems.push(`${op.id} ${status}: body on a response declared without one`);
+		} else if (!text) {
+			problems.push(`${op.id} ${status}: empty body on a response declared with one`);
+		} else {
+			const media = type.split(';')[0]!.trim();
+			if (!(media in declared)) problems.push(`${op.id} ${status}: undeclared ${type}`);
 			else {
-				const v = validator(`${base}/responses/${status}/content/${media}/schema`);
+				const v = validator(`${base}/responses/${status}/content/${ptr(media)}/schema`);
 				if (!v(JSON.parse(text))) problems.push(`${op.id} ${status}: ${ajv.errorsText(v.errors)}`);
 			}
 		}
@@ -279,6 +280,99 @@ describe('demo API', () => {
 		expect(demo.recordUpload('backups', 'bad//key', 1, '')).toBe('invalid_key');
 		expect(demo.recordUpload('nope', 'a', 1, '')).toBe('bucket_not_found');
 		expect(demo.listFiles('nope', '')).toBeNull();
+	});
+});
+
+describe('demo API edge cases', () => {
+	it('changes nothing when a key edit is refused', async () => {
+		const { client } = harness();
+		const before = (await client.keys.list()).data.find((k) => k.id === 'KF7Q2M8X4T7R5N0B')!;
+		expect(
+			await problemCode(
+				client.keys.update({
+					key_id: 'KF7Q2M8X4T7R5N0B',
+					body: {
+						grants: [
+							{ bucket: 'projects', access: 'read' },
+							{ bucket: 'backups', access: 'read' }
+						]
+					}
+				})
+			)
+		).toBe('grant_narrowing_refused');
+		const after = (await client.keys.list()).data.find((k) => k.id === 'KF7Q2M8X4T7R5N0B')!;
+		expect(after.grants).toEqual(before.grants);
+	});
+
+	it('refuses a key edit that would overflow the cookie', async () => {
+		const { demo, client } = harness();
+		for (let i = 0; i < 8; i++)
+			await client.buckets.create({ body: { name: `b${i}-${'x'.repeat(55)}` } });
+		const names = (await client.buckets.list()).data.map((b) => b.name);
+		const key = await client.keys.create({
+			body: { grants: [{ bucket: 'backups', access: 'read' }] }
+		});
+		const grants = names.map((bucket) => ({ bucket, access: 'read_write' as const }));
+		// Fill the cookie with uploads until the demo refuses one.
+		let full = null;
+		for (let i = 0; i < 40 && !full; i++)
+			full = demo.recordUpload('backups', `${'f'.repeat(120)}-${i}`, 1, 'text/plain');
+		expect(full).toBe('demo_full');
+		const snapshot = JSON.stringify(demo.state);
+		await expect(client.keys.update({ key_id: key.id, body: { grants } })).rejects.toBeInstanceOf(
+			DemoLimit
+		);
+		expect(JSON.stringify(demo.state)).toBe(snapshot);
+		expect(fits(demo.state)).toBe(true);
+	});
+
+	it('drops grants on a deleted bucket', async () => {
+		const { client } = harness();
+		await client.buckets.create({ body: { name: 'short-lived' } });
+		const key = await client.keys.create({
+			body: {
+				grants: [
+					{ bucket: 'short-lived', access: 'read' },
+					{ bucket: 'projects', access: 'read' }
+				]
+			}
+		});
+		await client.buckets.delete({ bucket: 'short-lived' });
+		await client.buckets.create({ body: { name: 'short-lived' } });
+		const after = (await client.keys.list()).data.find((k) => k.id === key.id)!;
+		expect(after.grants).toEqual([{ bucket: 'projects', access: 'read' }]);
+	});
+
+	it('accepts any name the contract allows, including "constructor" and double hyphens', async () => {
+		const { demo, client } = harness();
+		await client.buckets.create({ body: { name: 'constructor' } });
+		await client.buckets.create({ body: { name: 'project--backup' } });
+		expect(demo.listFiles('constructor', '')).toEqual({ folders: [], files: [] });
+	});
+
+	it('counts an upload over a sample file once', async () => {
+		const { demo, client } = harness();
+		const before = await client.buckets.get({ bucket: 'backups' });
+		expect(demo.recordUpload('backups', 'README.txt', 10, 'text/plain')).toBeNull();
+		const after = await client.buckets.get({ bucket: 'backups' });
+		expect(after.object_count).toBe(before.object_count);
+		expect(after.stored_bytes).toBe(before.stored_bytes - 1204 + 10);
+	});
+
+	it('keeps the event cursor valid when earlier events disappear', async () => {
+		const { client } = harness();
+		const a = await client.keys.create({
+			body: { grants: [{ bucket: 'backups', access: 'read' }] }
+		});
+		const first = await client.events.list();
+		const cursor = first.next_cursor!;
+		await client.keys.revoke({ key_id: a.id });
+		await client.buckets.create({ body: { name: 'after-cursor' } });
+		const next = await client.events.list({ cursor });
+		expect(next.data.map((e) => e.data)).toEqual([{ bucket: 'after-cursor' }]);
+		const empty = await client.events.list({ cursor: next.next_cursor! });
+		expect(empty.data).toEqual([]);
+		expect(empty.next_cursor).toBe(next.next_cursor);
 	});
 });
 

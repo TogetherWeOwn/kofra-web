@@ -18,6 +18,8 @@ export interface DemoState {
 	o: [string, string, number, string, number][];
 	/** Workspace deletion requested at (Unix seconds), or 0. */
 	d: number;
+	/** The latest creation time handed out (Unix seconds), kept after the item is removed. */
+	t?: number;
 }
 
 export const emptyState = (): DemoState => ({ v: 1, b: [], xb: [], k: [], xk: [], o: [], d: 0 });
@@ -76,7 +78,8 @@ function validState(x: unknown): x is DemoState {
 			s.o,
 			(i) => tuple(i, 5) && isStr(i[0]) && isStr(i[1]) && isNum(i[2]) && isStr(i[3]) && isNum(i[4])
 		) &&
-		isNum(s.d)
+		isNum(s.d) &&
+		(s.t === undefined || isNum(s.t))
 	);
 }
 

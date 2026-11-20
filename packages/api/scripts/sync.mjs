@@ -6,7 +6,7 @@
 // Usage: node scripts/sync.mjs <path to a kofra-api checkout>
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -46,7 +46,12 @@ const files = [];
 for (const [from, to] of FILES) {
 	const dest = path.join(vendor, to);
 	mkdirSync(path.dirname(dest), { recursive: true });
-	copyFileSync(path.join(source, from), dest);
+	// The committed blob, not the working-tree file: line-ending or other checkout filters
+	// cannot change what is vendored, so the bytes are exactly those of `commit`.
+	writeFileSync(
+		dest,
+		execFileSync('git', ['-C', source, 'show', `${commit}:${from}`], { maxBuffer: 64 << 20 })
+	);
 	files.push({ path: to, sha256: createHash('sha256').update(readFileSync(dest)).digest('hex') });
 }
 writeFileSync(
