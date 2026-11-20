@@ -405,6 +405,15 @@ describe('demo API edge cases', () => {
 		expect(after.stored_bytes).toBe(before.stored_bytes - 1204 + 10);
 	});
 
+	it('answers feed_reset for a cursor from another day', async () => {
+		let now = NOW;
+		const demo = new DemoApi(emptyState(), { now: () => now });
+		const client = new Kofra({ token: DEMO_TOKEN, fetch: demo.fetch, maxRetries: 0 });
+		const cursor = (await client.events.list()).next_cursor!;
+		now += 86_400_000;
+		expect(await problemCode(client.events.list({ cursor }))).toBe('feed_reset');
+	});
+
 	it('keeps the event cursor valid when earlier events disappear', async () => {
 		const { client } = harness();
 		const a = await client.keys.create({

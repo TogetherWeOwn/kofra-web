@@ -164,6 +164,8 @@ export class DemoApi {
 		const before = structuredClone(this.state);
 		change(this.state);
 		if (!fits(this.state)) {
+			const st = this.state as unknown as Record<string, unknown>;
+			for (const k of Object.keys(st)) if (!(k in before)) delete st[k];
 			Object.assign(this.state, before);
 			throw new DemoLimit('The demo has no room to record this change.');
 		}
@@ -295,16 +297,22 @@ export class DemoApi {
 				const [et, eid] = pos(e);
 				return et > t || (et === t && eid > id);
 			};
+			// Sample events are placed relative to the current UTC day, so a cursor also names
+			// that day; on another day the feed answers feed_reset, as the API does when a
+			// position can no longer be trusted, and the reader starts over.
+			const day = Math.floor(this.#now() / DAY);
 			let rest = events;
 			if (cursor !== null) {
-				const c = /^e_(\d{1,15})_(evt_[a-z0-9]{1,64})$/.exec(cursor);
+				const c = /^e_(\d{1,6})_(\d{1,15})_(evt_[a-z0-9]{1,64})$/.exec(cursor);
 				if (!c) throw new HttpProblem('invalid_cursor', 'The cursor is not one this list issued.');
-				rest = events.filter((e) => after(e, Number(c[1]), c[2]!));
+				if (Number(c[1]) !== day)
+					throw new HttpProblem('feed_reset', 'The feed was reset since this cursor was issued.');
+				rest = events.filter((e) => after(e, Number(c[2]), c[3]!));
 			}
 			const data = rest.slice(0, limit);
 			const last = data.at(-1);
 			// The feed always hands back a position to poll from.
-			const next = last ? `e_${pos(last)[0]}_${last.id}` : (cursor ?? 'e_0_evt_0');
+			const next = last ? `e_${day}_${pos(last)[0]}_${last.id}` : (cursor ?? `e_${day}_0_evt_0`);
 			return { status: 200, body: { data, next_cursor: next } };
 		}
 		if (path === '/v1/objects/presign' && m === 'POST') {
@@ -415,12 +423,9 @@ export class DemoApi {
 			throw new HttpProblem('bucket_already_exists', `A bucket named "${name}" already exists.`);
 		if (this.buckets().length >= this.#maxBuckets)
 			throw new DemoLimit(`The demo holds at most ${this.#maxBuckets} buckets.`);
-		this.state.b.push([name, this.#stamp()]);
-		if (!fits(this.state)) {
-			this.state.b.pop();
-			throw new DemoLimit('The demo has no room for another bucket.');
-		}
-		this.dirty = true;
+		this.#commit((st) => {
+			st.b.push([name, this.#stamp()]);
+		});
 		return { status: 201, body: this.#bucket(name) };
 	}
 
@@ -512,12 +517,9 @@ export class DemoApi {
 				`The workspace already has ${DEMO_LIMITS.active_keys} active keys.`
 			);
 		const id = `KF${randomId('ABCDEFGHJKLMNPQRSTUVWXYZ0123456789', 14)}`;
-		this.state.k.push([id, name, grants, this.#stamp()]);
-		if (!fits(this.state)) {
-			this.state.k.pop();
-			throw new DemoLimit('The demo has no room for another key.');
-		}
-		this.dirty = true;
+		this.#commit((st) => {
+			st.k.push([id, name, grants, this.#stamp()]);
+		});
 		const key = this.keys().find((k) => k.id === id)!;
 		// The secret exists only in this response; nothing keeps it.
 		const secret = randomId('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', 40);
@@ -557,17 +559,11 @@ export class DemoApi {
 				throw new HttpProblem('grant_limit_reached', 'A key holds at most 32 grants.');
 		}
 		// A seed key is copied into the state the first time it changes.
-		const before = { k: this.state.k, xk: this.state.xk };
 		const created = sec(Date.parse(current.created_at));
-		this.state.k = [...this.state.k.filter((k) => k[0] !== id), [id, name, grants, created]];
-		if (SEED_KEYS.some((k) => k.id === id) && !this.state.xk.includes(id))
-			this.state.xk = [...this.state.xk, id];
-		if (!fits(this.state)) {
-			this.state.k = before.k;
-			this.state.xk = before.xk;
-			throw new DemoLimit('The demo has no room for this change.');
-		}
-		this.dirty = true;
+		this.#commit((st) => {
+			st.k = [...st.k.filter((k) => k[0] !== id), [id, name, grants, created]];
+			if (SEED_KEYS.some((k) => k.id === id) && !st.xk.includes(id)) st.xk.push(id);
+		});
 		return { status: 200, body: this.keys().find((k) => k.id === id) };
 	}
 
@@ -612,9 +608,13 @@ export class DemoApi {
 			days.push({
 				day: new Date(d * DAY).toISOString().slice(0, 10),
 				status: i <= 1 ? 'provisional' : 'final',
+				// Final days are sample figures only, so nothing a visitor does can change them;
+				// the visitor's uploads count from the provisional days on.
 				peak_stored_bytes:
-					Math.max(0, Math.round(seedStored - i * 1.35e9 - r * 0.6e9)) + uploadedBy(end),
-				uploaded_bytes: Math.round(1.1e9 + r * 4.8e9) + uploadedBy(end) - uploadedBy(d * DAY),
+					Math.max(0, Math.round(seedStored - i * 1.35e9 - r * 0.6e9)) +
+					(i <= 1 ? uploadedBy(end) : 0),
+				uploaded_bytes:
+					Math.round(1.1e9 + r * 4.8e9) + (i <= 1 ? uploadedBy(end) - uploadedBy(d * DAY) : 0),
 				downloaded_bytes: Math.round(
 					1.8e9 + noise(d + 7) * 15e9 * (new Date(d * DAY).getUTCDay() % 6 === 0 ? 0.4 : 1)
 				),
@@ -725,7 +725,8 @@ export class DemoApi {
 			['bucket', 'key', 'method', 'expires_in_seconds'],
 			['bucket', 'key', 'method']
 		);
-		if (typeof body.bucket !== 'string') throw invalid('/bucket', 'Must be a bucket name.');
+		if (typeof body.bucket !== 'string' || !BUCKET_NAME.test(body.bucket))
+			throw invalid('/bucket', 'Must be a bucket name.');
 		if (
 			typeof body.key !== 'string' ||
 			body.key.length < 1 ||
@@ -804,16 +805,21 @@ export class DemoApi {
 			return 'invalid_key';
 		const others = this.state.o.filter((o) => !(o[0] === bucket && o[1] === key));
 		if (others.length >= this.#maxUploads) return 'demo_full';
-		const before = this.state.o;
-		this.state.o = [
-			...others,
-			[bucket, key, size, type.slice(0, 100) || 'application/octet-stream', this.#stamp()]
-		];
-		if (!fits(this.state)) {
-			this.state.o = before;
+		// The demo's own stand-in for the 24-hour upload limit.
+		const now = this.#now();
+		if (this.#uploadsBetween(now - DAY, now + 1) + size > DEMO_LIMITS.upload_24h_bytes)
 			return 'demo_full';
+		try {
+			this.#commit((st) => {
+				st.o = [
+					...others,
+					[bucket, key, size, type.slice(0, 100) || 'application/octet-stream', this.#stamp()]
+				];
+			});
+		} catch (err) {
+			if (err instanceof DemoLimit) return 'demo_full';
+			throw err;
 		}
-		this.dirty = true;
 		return null;
 	}
 }
