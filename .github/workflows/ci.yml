@@ -182,6 +182,9 @@ jobs:
       - name: Byte budgets (site)
         working-directory: apps/site
         run: node scripts/budgets.mjs
+      - name: Byte budgets (console)
+        working-directory: apps/console
+        run: node scripts/budgets.mjs
       - name: Forbidden words (build output)
         run: node scripts/forbidden-words.mjs apps/site/.svelte-kit/cloudflare apps/console/.svelte-kit/cloudflare
       # The adapter output plus the pointer wrangler uses to find it; the

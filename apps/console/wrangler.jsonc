@@ -1,10 +1,21 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
-	// Placeholder name. Not deployed: there is no deploy workflow until the
-	// owner approves one; production values will come from the CI environment.
+	// Placeholder name. The staging copy is deployed by hand under its own name and host;
+	// there is no deploy workflow until the owner approves one.
 	"name": "kofra-console",
 	"compatibility_date": "2026-11-19",
-	// No public workers.dev or preview URL until launch.
+	// No public workers.dev or preview URL.
 	"workers_dev": false,
-	"preview_urls": false
+	"preview_urls": false,
+	"vars": {
+		// "demo" is the only mode today: an in-memory API with per-visitor sample data and no
+		// sign-in. Any other value makes every page answer 503 (see src/lib/server/config.ts),
+		// so a build can never serve real data without real sign-in.
+		"CONSOLE_MODE": "demo",
+		// "off" or "test". "test" also needs the STRIPE_SECRET_KEY secret (a test-mode key) and
+		// STRIPE_PRICE_ID; see src/lib/server/stripe.ts.
+		"BILLING": "off",
+		"STRIPE_PRICE_ID": "",
+		"STRIPE_PORTAL_CUSTOMER": ""
+	}
 }

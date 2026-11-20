@@ -24,3 +24,11 @@ Open follow-ups from the org web standard (STANDARD.md rules 23 and 24), outside
 No open score items. First full build (2026-11-19, 3-run medians, local Workers runtime): every page
 scored 100 for performance, accessibility, best practices and SEO (the `is-crawlable` audit is
 skipped because every page is `noindex` until launch), LCP about 0.9 s, TBT 0 ms, CLS 0.
+
+Console (added with the first console build, 2026-11-20):
+
+- **Lighthouse for the console** (warn-only, as for the site): not wired yet. The console's hard
+  gates run on every PR: axe on every page in both themes at both widths, the console byte budgets
+  (`apps/console/scripts/budgets.mjs`; first build: largest route 54.6 KB JS, 5.9 KB CSS, all
+  client JS 82.5 KB gzip) and the e2e journeys. Add a warn-only Lighthouse run of the main console
+  routes once the console has sign-in (Lighthouse needs a session to reach them then).

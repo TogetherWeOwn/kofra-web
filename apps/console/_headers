@@ -1,2 +1,9 @@
+# Static assets. Pages rendered by the Worker get the same headers from src/hooks.server.ts,
+# plus a Content-Security-Policy with a per-response nonce (vite.config.ts).
 /*
   X-Robots-Tag: noindex
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains

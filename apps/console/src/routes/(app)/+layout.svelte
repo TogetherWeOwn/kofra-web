@@ -1,0 +1,39 @@
+<script lang="ts">
+	import { page } from '$app/state';
+	import Shell from '#lib/components/Shell.svelte';
+	import Notice from '#lib/components/Notice.svelte';
+	import { dateTime } from '#lib/format.js';
+	import type { Crumb } from '#lib/nav.js';
+
+	let { data, children } = $props();
+	const crumbs = $derived((page.data.crumbs as Crumb[] | undefined) ?? []);
+	const deletion = $derived(data.account.deletion);
+</script>
+
+<Shell path={page.url.pathname} {crumbs} workspace={data.workspace}>
+	<Notice tone="info" title="Demo workspace">
+		<p>
+			Everything here is sample data. Your changes stay in this browser for 7 days, and nothing is
+			stored or charged. Sign-in comes later.
+		</p>
+	</Notice>
+	{#if deletion}
+		<Notice tone="warning" title="Workspace deletion requested">
+			<p>
+				An Owner must confirm the deletion by {deletion.confirm_by
+					? dateTime(deletion.confirm_by)
+					: 'the deadline'}, or the request lapses. Until then nothing is deleted.
+			</p>
+			<form method="POST" action="/settings?/cancelDeletion" class="inline-form">
+				<button class="btn-plain btn-sm" type="submit">Cancel deletion</button>
+			</form>
+		</Notice>
+	{/if}
+	{@render children()}
+</Shell>
+
+<style>
+	.inline-form {
+		margin-top: var(--space-2);
+	}
+</style>
