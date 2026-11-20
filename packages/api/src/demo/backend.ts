@@ -806,9 +806,9 @@ export class DemoApi {
 		const others = this.state.o.filter((o) => !(o[0] === bucket && o[1] === key));
 		if (others.length >= this.#maxUploads) return 'demo_full';
 		// The demo's own stand-in for the 24-hour upload limit.
-		const now = this.#now();
-		if (this.#uploadsBetween(now - DAY, now + 1) + size > DEMO_LIMITS.upload_24h_bytes)
-			return 'demo_full';
+		// Checked against the same figure the usage endpoint reports.
+		const remaining = this.usage().upload_24h.remaining_bytes ?? Infinity;
+		if (size > remaining) return 'demo_full';
 		try {
 			this.#commit((st) => {
 				st.o = [
