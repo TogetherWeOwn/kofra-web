@@ -30,7 +30,10 @@
 		}
 	}
 	function onKey(e: KeyboardEvent) {
-		if (e.key !== 'Escape' || !open) return;
+		if (e.key !== 'Escape' || !open || e.defaultPrevented) return;
+		// Only when focus is in the menu or on its button: Escape elsewhere belongs to the page.
+		const at = document.activeElement;
+		if (at !== menuButton && !(at && side?.contains(at))) return;
 		open = false;
 		menuButton?.focus();
 	}

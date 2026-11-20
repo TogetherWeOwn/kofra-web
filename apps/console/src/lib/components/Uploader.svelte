@@ -27,7 +27,8 @@
 		const res = await fetch(`/buckets/${encodeURIComponent(bucket)}/upload`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json', accept: 'application/json' },
-			body: JSON.stringify({ key, size })
+			body: JSON.stringify({ key, size }),
+			signal: controller.signal
 		});
 		const body = (await res.json().catch(() => ({}))) as {
 			url?: string;
@@ -68,8 +69,12 @@
 	let running = false;
 	let current: XMLHttpRequest | null = null;
 	// Leaving the bucket page stops the upload in flight and drops the rest of the queue.
+	let stopped = false;
+	const controller = new AbortController();
 	onDestroy(() => {
+		stopped = true;
 		queue.length = 0;
+		controller.abort();
 		current?.abort();
 	});
 
@@ -102,7 +107,10 @@
 			}
 			it.state = 'uploading';
 			try {
-				await put(it, file, await presign(it.key, file.size));
+				const target = await presign(it.key, file.size);
+				// The visitor may have left while the address was being prepared.
+				if (stopped) break;
+				await put(it, file, target);
 				it.state = 'done';
 				it.sent = it.size;
 				ok++;
@@ -113,6 +121,7 @@
 			}
 		}
 		running = false;
+		if (stopped) return;
 		announce = `${ok} uploaded${failed ? `, ${failed} failed` : ''}.`;
 		await invalidateAll();
 	}
