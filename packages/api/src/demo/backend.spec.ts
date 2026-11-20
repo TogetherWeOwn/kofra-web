@@ -119,10 +119,11 @@ describe('demo API', () => {
 			'backups',
 			'family-photos',
 			'media-archive',
-			'projects'
+			'projects',
+			'shared-docs'
 		]);
 		expect((await client.buckets.list({ limit: 2 })).next_cursor).toBe('c2');
-		expect((await client.buckets.list({ limit: 2, cursor: 'c2' })).next_cursor).toBeNull();
+		expect((await client.buckets.list({ limit: 3, cursor: 'c2' })).next_cursor).toBeNull();
 
 		const created = await client.buckets.create({ body: { name: 'new-bucket' } });
 		expect(created).toMatchObject({ name: 'new-bucket', object_count: 0, stored_bytes: 0 });
@@ -181,7 +182,7 @@ describe('demo API', () => {
 			'2026-11-19',
 			'2026-11-20'
 		]);
-		expect((await client.usage.buckets()).data).toHaveLength(4);
+		expect((await client.usage.buckets()).data).toHaveLength(5);
 		const events = await client.events.list();
 		expect(events.next_cursor).not.toBeNull();
 		expect(events.data.some((e) => e.type === 'bucket.created')).toBe(true);
@@ -248,7 +249,7 @@ describe('demo API', () => {
 
 	it('stops at the demo limits instead of overflowing the cookie', async () => {
 		const { demo, client } = harness();
-		for (let i = 0; i < 8; i++)
+		for (let i = 0; i < 7; i++)
 			await client.buckets.create({ body: { name: `b-${i}-${'x'.repeat(50)}` } });
 		await expect(client.buckets.create({ body: { name: 'one-too-many' } })).rejects.toBeInstanceOf(
 			DemoLimit
@@ -306,7 +307,7 @@ describe('demo API edge cases', () => {
 
 	it('refuses a key edit that would overflow the cookie', async () => {
 		const { demo, client } = harness();
-		for (let i = 0; i < 8; i++)
+		for (let i = 0; i < 7; i++)
 			await client.buckets.create({ body: { name: `b${i}-${'x'.repeat(55)}` } });
 		const names = (await client.buckets.list()).data.map((b) => b.name);
 		const key = await client.keys.create({
@@ -348,6 +349,17 @@ describe('demo API edge cases', () => {
 		await client.buckets.create({ body: { name: 'constructor' } });
 		await client.buckets.create({ body: { name: 'project--backup' } });
 		expect(demo.listFiles('constructor', '')).toEqual({ folders: [], files: [] });
+	});
+
+	it('changes only today when a file is uploaded, never a final day', async () => {
+		const { demo, client } = harness();
+		const before = (await client.usage.days()).data;
+		expect(demo.recordUpload('projects', 'new.bin', 5_000, 'application/octet-stream')).toBeNull();
+		const after = (await client.usage.days()).data;
+		expect(after.slice(0, -1)).toEqual(before.slice(0, -1));
+		expect(after.at(-1)!.peak_stored_bytes).toBe(before.at(-1)!.peak_stored_bytes + 5_000);
+		expect(after.at(-1)!.uploaded_bytes).toBe(before.at(-1)!.uploaded_bytes + 5_000);
+		expect((await client.usage.get()).upload_24h.used_bytes).toBe(after.at(-1)!.uploaded_bytes);
 	});
 
 	it('counts an upload over a sample file once', async () => {

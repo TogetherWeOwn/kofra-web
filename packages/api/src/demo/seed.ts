@@ -26,7 +26,9 @@ export const SEED_BUCKETS: SeedBucket[] = [
 		createdDaysAgo: 18,
 		storedBytes: Math.round(26.1 * GB),
 		objectCount: 179
-	}
+	},
+	// Empty, so the demo has a bucket that can be deleted.
+	{ name: 'shared-docs', createdDaysAgo: 2, storedBytes: 0, objectCount: 0 }
 ];
 
 export interface SeedKey {

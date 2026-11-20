@@ -559,16 +559,22 @@ export class DemoApi {
 	usageDays(): S['UsageDay'][] {
 		const now = this.#now();
 		const today = Math.floor(now / DAY);
-		const stored = this.buckets().reduce((n, b) => n + b.stored_bytes, 0);
+		// History comes from the sample workspace plus the visitor's uploads up to each day, so
+		// a new upload changes today's figures only, never a day already marked final.
+		const seedStored = SEED_BUCKETS.reduce((n, b) => n + b.storedBytes, 0);
+		const uploadedBy = (end: number) =>
+			this.state.o.filter((o) => o[4] * 1000 < end).reduce((n, o) => n + o[2], 0);
 		const days: S['UsageDay'][] = [];
 		for (let i = 29; i >= 0; i--) {
 			const d = today - i;
 			const r = noise(d);
+			const end = (d + 1) * DAY;
 			days.push({
 				day: new Date(d * DAY).toISOString().slice(0, 10),
 				status: i <= 1 ? 'provisional' : 'final',
-				peak_stored_bytes: Math.max(0, Math.round(stored - i * 1.35e9 - r * 0.6e9)),
-				uploaded_bytes: Math.round(1.1e9 + r * 4.8e9),
+				peak_stored_bytes:
+					Math.max(0, Math.round(seedStored - i * 1.35e9 - r * 0.6e9)) + uploadedBy(end),
+				uploaded_bytes: Math.round(1.1e9 + r * 4.8e9) + uploadedBy(end) - uploadedBy(d * DAY),
 				downloaded_bytes: Math.round(
 					1.8e9 + noise(d + 7) * 15e9 * (new Date(d * DAY).getUTCDay() % 6 === 0 ? 0.4 : 1)
 				),
@@ -588,8 +594,7 @@ export class DemoApi {
 		const downloaded = days
 			.filter((d) => Date.parse(d.day) >= periodStart)
 			.reduce((n, d) => n + d.downloaded_bytes, 0);
-		const uploadedToday =
-			(days.at(-1)?.uploaded_bytes ?? 0) + this.state.o.reduce((n, o) => n + o[2], 0);
+		const uploadedToday = days.at(-1)?.uploaded_bytes ?? 0;
 		const allowance = DEMO_LIMITS.download_allowance_bytes;
 		return {
 			as_of: iso(now),
