@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import type { Snippet } from 'svelte';
+	import { tick, type Snippet } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import LogIn from '@lucide/svelte/icons/log-in';
 	import Menu from '@lucide/svelte/icons/menu';
 	import X from '@lucide/svelte/icons/x';
 	import { Logo, ThemeToggle } from '@kofra/ui';
-	import { currentEntry, DOCS_URL, NAV, type Crumb } from '#lib/nav.js';
+	import { currentEntry, DOCS_URL, LICENCES_URL, NAV, type Crumb } from '#lib/nav.js';
 
 	let {
 		path,
@@ -17,15 +17,32 @@
 	}: { path: string; crumbs?: Crumb[]; workspace: string; children: Snippet } = $props();
 
 	let open = $state(false);
+	let menuButton = $state<HTMLButtonElement>();
+	let side = $state<HTMLElement>();
+
+	// On phones the menu opens above the page: move focus into it, and back to the button
+	// when Escape closes it, so keyboard users never lose their place.
+	async function toggle() {
+		open = !open;
+		if (open) {
+			await tick();
+			side?.querySelector<HTMLElement>('nav a')?.focus();
+		}
+	}
+	function onKey(e: KeyboardEvent) {
+		if (e.key !== 'Escape' || !open) return;
+		open = false;
+		menuButton?.focus();
+	}
 	const current = $derived(currentEntry(path));
 	afterNavigate(() => (open = false));
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && open && (open = false)} />
+<svelte:window onkeydown={onKey} />
 
 <a class="skip-link" href="#main">Skip to content</a>
 <div class="app">
-	<aside class="side" class:open id="side" aria-label="Console">
+	<aside class="side" class:open id="side" aria-label="Console" bind:this={side}>
 		<div class="side-top">
 			<Logo href={resolve('/(app)')} />
 		</div>
@@ -51,6 +68,7 @@
 					<BookOpen class="icon" aria-hidden="true" />Documentation
 				</a>
 			</li>
+			<li><a href={LICENCES_URL} rel="external">Licences</a></li>
 			<li>
 				<a href={resolve('/(auth)/sign-in')}><LogIn class="icon" aria-hidden="true" />Sign in</a>
 			</li>
@@ -63,7 +81,8 @@
 				type="button"
 				aria-expanded={open}
 				aria-controls="side"
-				onclick={() => (open = !open)}
+				onclick={toggle}
+				bind:this={menuButton}
 			>
 				{#if open}<X class="icon" aria-hidden="true" />{:else}<Menu
 						class="icon"
@@ -239,11 +258,12 @@
 			border-right: 0;
 			border-bottom: 1px solid var(--color-line);
 		}
-		/* With script, the menu button shows and hides the navigation; without, it stays open. */
-		:global(html.js) .side:not(.open) {
+		/* Once the page is interactive, the menu button shows and hides the navigation;
+		   until then (or without script) the navigation stays open. */
+		:global(html[data-ready]) .side:not(.open) {
 			display: none;
 		}
-		:global(html.js) .side-btn {
+		:global(html[data-ready]) .side-btn {
 			display: inline-flex;
 		}
 		.side-foot {

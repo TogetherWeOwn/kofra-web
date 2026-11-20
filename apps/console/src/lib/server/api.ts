@@ -4,11 +4,31 @@ import { error, fail } from '@sveltejs/kit';
 
 import type { ShownProblem } from '#lib/types.js';
 
+/**
+ * Next steps worded for the console. The API's own hints are written for programs (they
+ * name endpoints and headers); a code without an entry here shows no hint.
+ */
+const CONSOLE_HINTS: Record<string, string> = {
+	bucket_not_found: 'Check the name in the bucket list; it may have been deleted.',
+	key_not_found: 'The key may already be revoked. Check the list of access keys.',
+	bucket_not_empty: 'Delete every file in the bucket first, then delete the bucket.',
+	bucket_already_exists: 'Choose another name.',
+	invalid_bucket_name: 'Use 3 to 63 lowercase letters, digits or hyphens.',
+	key_limit_reached: 'Revoke a key you no longer use, then create the new one.',
+	grant_narrowing_refused: 'Create a new key with the narrower access, then revoke this one.',
+	grant_limit_reached: 'Create another key for the remaining buckets.',
+	deletion_already_requested: 'Cancel the pending request first if you want to start again.',
+	account_read_only: 'Your workspace is read-only for now. See Billing.',
+	rate_limited: 'Wait a moment, then try again.',
+	service_unavailable: 'Try again in a minute.',
+	internal_error: 'Try again. If it keeps happening, contact support with the request ID.'
+};
+
 export function describe(err: unknown): ShownProblem {
 	if (err instanceof KofraError)
 		return {
 			message: err.problem.detail,
-			hint: err.hint,
+			hint: CONSOLE_HINTS[err.code],
 			requestId: err.requestId,
 			code: err.code
 		};

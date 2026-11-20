@@ -9,6 +9,8 @@ describe('paths', () => {
 		expect(validPrefix('/a/')).toBe(false);
 		expect(validPrefix('a//')).toBe(false);
 		expect(validPrefix('a\n/')).toBe(false);
+		expect(validPrefix('../')).toBe(false);
+		expect(validPrefix('a/./')).toBe(false);
 	});
 	it('accepts upload keys', () => {
 		expect(validKey('a/b.txt')).toBe(true);

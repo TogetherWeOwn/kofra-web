@@ -36,12 +36,18 @@ async function post(
 		'content-type': 'application/x-www-form-urlencoded'
 	};
 	if (call.idempotencyKey) headers['idempotency-key'] = call.idempotencyKey;
-	const res = await (call.fetch ?? fetch)(`${API}${path}`, {
-		method: 'POST',
-		headers,
-		body: new URLSearchParams(form).toString(),
-		redirect: 'manual'
-	});
+	let res: Response;
+	try {
+		res = await (call.fetch ?? fetch)(`${API}${path}`, {
+			method: 'POST',
+			headers,
+			body: new URLSearchParams(form).toString(),
+			redirect: 'manual',
+			signal: AbortSignal.timeout(10_000)
+		});
+	} catch {
+		throw new StripeError('The payment provider did not answer.', 0);
+	}
 	const body = (await res.json().catch(() => null)) as {
 		url?: unknown;
 		livemode?: unknown;

@@ -23,7 +23,7 @@
 {#if form?.problem}<ProblemNotice problem={form.problem} />{/if}
 {#if data.checkout === 'done'}
 	<Notice tone="success" title="Checkout finished" live>
-		<p>Thank you. The plan change shows here once the payment is confirmed.</p>
+		<p>This was a test-mode payment: nothing was charged, and the demo plan stays as it is.</p>
 	</Notice>
 {:else if data.checkout === 'cancelled'}
 	<Notice tone="info" title="Checkout cancelled" live><p>Nothing was charged.</p></Notice>

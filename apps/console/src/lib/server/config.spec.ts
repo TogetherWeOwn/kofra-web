@@ -42,3 +42,29 @@ describe('readConfig', () => {
 		expect(isTestKey('sk_test_')).toBe(false);
 	});
 });
+
+describe('console wording of API problems', async () => {
+	const { KofraError } = await import('@kofra/api');
+	const { describe: describeProblem } = await import('./api.js');
+	const problem = (code: string, hint: string) =>
+		new KofraError({
+			type: 't',
+			title: 't',
+			status: 404,
+			code,
+			detail: 'There is no bucket "x".',
+			hint,
+			docs_url: 'u',
+			request_id: 'req_1',
+			retryable: false
+		});
+
+	it('replaces hints written for programs with console wording, or drops them', () => {
+		expect(
+			describeProblem(problem('bucket_not_found', 'List your buckets with GET /v1/buckets.')).hint
+		).toBe('Check the name in the bucket list; it may have been deleted.');
+		expect(
+			describeProblem(problem('unknown_field', 'Remove the field named by errors[].pointer.')).hint
+		).toBeUndefined();
+	});
+});

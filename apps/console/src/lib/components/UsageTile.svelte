@@ -23,11 +23,16 @@
 	const sub = $derived(
 		limit === null ? noLimit : (detail ?? `${percent(used, limit)} of ${bytes(limit)}`)
 	);
+	// Screen readers always hear the amounts; the visible line may say something else.
+	const amounts = $derived(
+		limit === null ? '' : `${bytes(used)} used, ${percent(used, limit)} of ${bytes(limit)}`
+	);
+	const valueText = $derived(detail ? `${amounts}. ${detail}` : amounts);
 </script>
 
 <li class="tile">
 	<p class="tile-l">{label}</p>
 	<p class="tile-v">{bytes(used)}</p>
-	{#if limit !== null}<Meter value={used} max={limit} label={meterLabel} text={sub} />{/if}
+	{#if limit !== null}<Meter value={used} max={limit} label={meterLabel} text={valueText} />{/if}
 	<p class="tile-s">{sub}</p>
 </li>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Upload from '@lucide/svelte/icons/upload';
+	import { onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { bytes } from '#lib/format.js';
 	import { uploadKey, validKey } from '#lib/paths.js';
@@ -41,6 +42,7 @@
 	function put(item: Item, file: File, target: { url: string; method: string }) {
 		return new Promise<void>((resolve, reject) => {
 			const xhr = new XMLHttpRequest();
+			current = xhr;
 			xhr.open(target.method, target.url);
 			if (file.type) xhr.setRequestHeader('content-type', file.type);
 			xhr.upload.onprogress = (e) => (item.sent = e.loaded);
@@ -55,12 +57,24 @@
 				reject(new Error(msg));
 			};
 			xhr.onerror = () => reject(new Error('The connection dropped.'));
+			xhr.onabort = () => reject(new Error('The upload was stopped.'));
 			xhr.send(file);
 		});
 	}
 
+	// One upload at a time, in the order picked: each upload's answer saves the demo state, so
+	// overlapping uploads could overwrite each other's record. New picks join the queue.
+	const queue: { id: number; file: File }[] = [];
+	let running = false;
+	let current: XMLHttpRequest | null = null;
+	// Leaving the bucket page stops the upload in flight and drops the rest of the queue.
+	onDestroy(() => {
+		queue.length = 0;
+		current?.abort();
+	});
+
 	async function start(files: { file: File; path: string }[]) {
-		const batch = files.map(({ file, path }) => {
+		for (const { file, path } of files) {
 			const item: Item = {
 				id: next++,
 				key: uploadKey(prefix, path),
@@ -68,18 +82,22 @@
 				sent: 0,
 				state: 'waiting'
 			};
-			return { item, file };
-		});
-		items = [...items.filter((i) => i.state !== 'done'), ...batch.map((b) => b.item)];
-		// Reach the proxied copies in `items`, so progress updates are reactive.
-		const live = (id: number) => items.find((i) => i.id === id)!;
-		announce = `Uploading ${batch.length} file${batch.length === 1 ? '' : 's'}.`;
+			items = [...items, item];
+			queue.push({ id: item.id, file });
+		}
+		if (running) return;
+		running = true;
 		let ok = 0;
-		for (const { item, file } of batch) {
-			const it = live(item.id);
+		let failed = 0;
+		announce = 'Uploading.';
+		while (queue.length) {
+			const { id, file } = queue.shift()!;
+			// The proxied copy in `items`, so progress updates are reactive.
+			const it = items.find((i) => i.id === id)!;
 			if (!validKey(it.key)) {
 				it.state = 'failed';
 				it.message = 'That file name or path is not allowed.';
+				failed++;
 				continue;
 			}
 			it.state = 'uploading';
@@ -91,9 +109,10 @@
 			} catch (err) {
 				it.state = 'failed';
 				it.message = err instanceof Error ? err.message : 'The upload failed.';
+				failed++;
 			}
 		}
-		const failed = batch.length - ok;
+		running = false;
 		announce = `${ok} uploaded${failed ? `, ${failed} failed` : ''}.`;
 		await invalidateAll();
 	}

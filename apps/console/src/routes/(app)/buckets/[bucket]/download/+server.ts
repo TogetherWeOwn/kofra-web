@@ -1,6 +1,7 @@
 import { error, redirect } from '@sveltejs/kit';
 import { KofraError } from '@kofra/api';
 import { validKey } from '#lib/paths.js';
+import { describe } from '#lib/server/api.js';
 import type { RequestHandler } from './$types';
 
 /** Signs a short-lived download URL through the API and sends the browser to it. */
@@ -14,8 +15,7 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 		});
 		target = p.url;
 	} catch (err) {
-		if (err instanceof KofraError)
-			error(err.status, { message: err.problem.detail, hint: err.hint, requestId: err.requestId });
+		if (err instanceof KofraError) error(err.status, describe(err));
 		throw err;
 	}
 	redirect(303, target);

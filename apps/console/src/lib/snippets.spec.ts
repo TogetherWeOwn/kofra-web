@@ -16,7 +16,9 @@ describe('key snippets', () => {
 	it('builds an rclone remote and aws-cli profile', () => {
 		expect(rcloneConfig(k)).toContain('[kofra]\ntype = s3\nprovider = Other');
 		expect(rcloneConfig(k)).toContain('endpoint = https://s3.kofra.io');
-		expect(awsCliCommands(k).split('\n')).toHaveLength(5);
+		expect(rcloneConfig(k)).toContain('force_path_style = true');
+		expect(awsCliCommands(k).split('\n')).toHaveLength(6);
+		expect(awsCliCommands(k)).toContain('s3.addressing_style path');
 		expect(awsCliCommands(k)).toContain('endpoint_url https://s3.kofra.io');
 	});
 });

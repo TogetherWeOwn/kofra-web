@@ -2,10 +2,11 @@
 export const PAGES = [
 	'/',
 	'/buckets',
-	'/buckets/new',
+	'/buckets?create',
 	'/buckets/backups',
 	'/buckets/backups?prefix=server/db/',
 	'/buckets/backups/delete',
+	'/buckets/shared-docs/delete',
 	'/keys',
 	'/keys/new',
 	'/keys/KF7Q2M8X4T7R5N0B/revoke',

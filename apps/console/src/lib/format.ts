@@ -14,7 +14,10 @@ export function bytes(n: number): string {
 	}
 	if (i === 0) return `${n} B`;
 	const digits = v >= 100 ? 0 : v >= 10 ? 1 : 2;
-	return `${Number(v.toFixed(digits))} ${UNITS[i]}`;
+	const shown = Number(v.toFixed(digits));
+	// 999,999 bytes rounds to "1000 KB": show it as "1 MB" instead.
+	if (shown >= 1000 && i < UNITS.length - 1) return `1 ${UNITS[i + 1]}`;
+	return `${shown} ${UNITS[i]}`;
 }
 
 /** The unit and divisor that suit a set of values (for chart axes and tables). */

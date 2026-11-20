@@ -60,6 +60,15 @@ describe('Stripe sessions', () => {
 		expect(calls).toHaveLength(0);
 	});
 
+	it('turns a network failure into a StripeError', async () => {
+		const failing = (async () => {
+			throw new TypeError('network down');
+		}) as unknown as typeof fetch;
+		await expect(
+			createPortalSession({ customer: 'c', returnUrl: 'r' }, { key: KEY, fetch: failing })
+		).rejects.toThrow('did not answer');
+	});
+
 	it('refuses answers that are live, error or point elsewhere', async () => {
 		const args = { customer: 'c', returnUrl: 'r' };
 		await expect(

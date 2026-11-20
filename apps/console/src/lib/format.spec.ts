@@ -10,6 +10,8 @@ describe('format', () => {
 		expect(bytes(1_099_511_627_776)).toBe('1.1 TB');
 		expect(bytes(18_400_000_000)).toBe('18.4 GB');
 		expect(bytes(-1)).toBe('–');
+		expect(bytes(999_999)).toBe('1 MB');
+		expect(bytes(999_499)).toBe('999 KB');
 	});
 
 	it('picks an axis unit', () => {

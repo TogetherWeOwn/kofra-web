@@ -35,3 +35,5 @@ export interface Crumb {
 }
 
 export const DOCS_URL = 'https://kofra.app/docs';
+/** Licences of the fonts and icons the console ships (served by the marketing site). */
+export const LICENCES_URL = 'https://kofra.app/licences';

@@ -11,7 +11,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			keys: keys.data,
 			limit: account.limits.active_keys,
 			endpoint: account.s3_endpoint,
-			revoked: url.searchParams.get('revoked'),
+			// Shown only for a well-formed key ID that is really gone.
+			revoked: ((id) =>
+				id && /^[A-Z0-9]{16,128}$/.test(id) && !keys.data.some((k) => k.id === id) ? id : null)(
+				url.searchParams.get('revoked')
+			),
 			crumbs: [{ label: 'Access keys' }]
 		};
 	} catch (err) {

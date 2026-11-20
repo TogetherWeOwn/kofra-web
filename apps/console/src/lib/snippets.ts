@@ -26,7 +26,9 @@ export function rcloneConfig(k: KeyMaterial, remote = 'kofra'): string {
 		`access_key_id = ${k.id}`,
 		`secret_access_key = ${k.secret}`,
 		`endpoint = ${k.endpoint}`,
-		`region = ${REGION}`
+		`region = ${REGION}`,
+		// Buckets are addressed by path on the endpoint, not as subdomains.
+		'force_path_style = true'
 	].join('\n');
 }
 
@@ -36,6 +38,7 @@ export function awsCliCommands(k: KeyMaterial, profile = 'kofra'): string {
 		`aws configure set aws_secret_access_key ${k.secret} --profile ${profile}`,
 		`aws configure set region ${REGION} --profile ${profile}`,
 		`aws configure set endpoint_url ${k.endpoint} --profile ${profile}`,
+		`aws configure set s3.addressing_style path --profile ${profile}`,
 		`aws s3 ls --profile ${profile}`
 	].join('\n');
 }

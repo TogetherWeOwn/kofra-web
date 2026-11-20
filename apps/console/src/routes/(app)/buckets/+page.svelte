@@ -4,10 +4,11 @@
 	import Database from '@lucide/svelte/icons/database';
 	import Plus from '@lucide/svelte/icons/plus';
 	import { Button } from '@kofra/ui';
+	import CreateBucketForm from '#lib/components/CreateBucketForm.svelte';
 	import Notice from '#lib/components/Notice.svelte';
 	import { bytes, count, date } from '#lib/format.js';
 
-	let { data } = $props();
+	let { data, form } = $props();
 	const total = $derived(data.buckets.reduce((n, b) => n + b.stored_bytes, 0));
 </script>
 
@@ -25,9 +26,13 @@
 		<p>A bucket holds files. Reach it with any S3 tool, or browse it here.</p>
 	</div>
 	<div class="ph-act">
-		<Button href={resolve('/(app)/buckets/new')}><Plus aria-hidden="true" />Create bucket</Button>
+		<Button href={resolve('/(app)/buckets?create')}>
+			<Plus aria-hidden="true" />Create bucket
+		</Button>
 	</div>
 </div>
+
+{#if data.create || form?.problem}<CreateBucketForm {form} />{/if}
 
 {#if data.deleted}
 	<Notice tone="success" title="Bucket deleted" live>
@@ -90,7 +95,9 @@
 	{:else}
 		<div class="empty">
 			<p>No buckets yet. Create one to start storing files.</p>
-			<Button href={resolve('/(app)/buckets/new')}><Plus aria-hidden="true" />Create bucket</Button>
+			<Button href={resolve('/(app)/buckets?create')}>
+				<Plus aria-hidden="true" />Create bucket
+			</Button>
 		</div>
 	{/if}
 </section>

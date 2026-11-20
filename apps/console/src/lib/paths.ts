@@ -16,7 +16,8 @@ export function validPrefix(prefix: string): boolean {
 		!prefix.startsWith('/') &&
 		!prefix.includes('//') &&
 		byteLength(prefix) < MAX_KEY_BYTES &&
-		!hasControl(prefix)
+		!hasControl(prefix) &&
+		!prefix.split('/').some((seg) => seg === '.' || seg === '..')
 	);
 }
 

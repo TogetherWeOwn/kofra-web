@@ -1,4 +1,5 @@
 import { loadFailed } from '#lib/server/api.js';
+import { allDays } from '#lib/server/lists.js';
 import { usageCsv } from '#lib/csv.js';
 import type { RequestHandler } from './$types';
 
@@ -6,7 +7,7 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ locals }) => {
 	let days;
 	try {
-		days = (await locals.api.usage.days({ limit: 200 })).data;
+		days = await allDays(locals.api);
 	} catch (err) {
 		loadFailed(err);
 	}

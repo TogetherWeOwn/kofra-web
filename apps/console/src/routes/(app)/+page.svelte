@@ -24,7 +24,9 @@
 		<p>Updated {dateTime(u.as_of)}.</p>
 	</div>
 	<div class="ph-act">
-		<Button href={resolve('/(app)/buckets/new')}><Plus aria-hidden="true" />Create bucket</Button>
+		<Button href={resolve('/(app)/buckets?create')}>
+			<Plus aria-hidden="true" />Create bucket
+		</Button>
 		<Button href={resolve('/(app)/keys/new')} variant="secondary">
 			<Plus aria-hidden="true" />Create access key
 		</Button>

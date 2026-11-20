@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { focusFirstInvalid } from '#lib/forms.js';
 	import { resolve } from '$app/paths';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import { enhance } from '$app/forms';
@@ -39,9 +40,10 @@
 		method="POST"
 		use:enhance={() => {
 			busy = true;
-			return async ({ update }) => {
+			return async ({ update, result }) => {
 				await update({ reset: false });
 				busy = false;
+				if (result.type === 'failure') await focusFirstInvalid();
 			};
 		}}
 	>
@@ -76,7 +78,13 @@
 					{#each data.buckets as b (b)}
 						<li>
 							<label class="mono" for="access-{b}">{b}</label>
-							<select class="select" id="access-{b}" name="access:{b}">
+							<select
+								class="select"
+								id="access-{b}"
+								name="access:{b}"
+								aria-invalid={invalid === 'grants' ? 'true' : undefined}
+								aria-describedby={invalid === 'grants' ? 'grants-err' : undefined}
+							>
 								<option value="none" selected={!chosen[b]}>No access</option>
 								<option value="read" selected={chosen[b] === 'read'}>Read only</option>
 								<option value="read_write" selected={chosen[b] === 'read_write'}>
@@ -88,7 +96,7 @@
 				</ul>
 			{:else}
 				<p>
-					There are no buckets yet. <a href={resolve('/(app)/buckets/new')}>Create a bucket</a> first.
+					There are no buckets yet. <a href={resolve('/(app)/buckets?create')}>Create a bucket</a> first.
 				</p>
 			{/if}
 			{#if invalid === 'grants'}<p class="err" id="grants-err">

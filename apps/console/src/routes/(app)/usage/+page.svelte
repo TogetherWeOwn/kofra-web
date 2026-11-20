@@ -27,7 +27,6 @@
 	);
 	const requests = $derived(data.days.reduce((n, d) => n + d.requests_approx, 0));
 	const totalStored = $derived(data.buckets.reduce((n, b) => n + b.stored_bytes, 0));
-	const biggest = $derived(Math.max(1, ...data.buckets.map((b) => b.stored_bytes)));
 	const sorted = $derived([...data.buckets].sort((a, b) => b.stored_bytes - a.stored_bytes));
 	const range = $derived(
 		data.days.length
@@ -147,7 +146,10 @@
 								<svg width="120" height="8" aria-hidden="true">
 									<rect class="share-track" width="120" height="8" rx="4" /><rect
 										class="share-fill"
-										width={Math.max(b.stored_bytes > 0 ? 2 : 0, (b.stored_bytes / biggest) * 120)}
+										width={Math.max(
+											b.stored_bytes > 0 ? 2 : 0,
+											(totalStored > 0 ? b.stored_bytes / totalStored : 0) * 120
+										)}
 										height="8"
 										rx="4"
 									/>

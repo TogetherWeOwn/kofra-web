@@ -14,6 +14,7 @@ async function ready(page: Page) {
 test('create a bucket, refuse a wrong confirmation, then delete it', async ({ page }) => {
 	await page.goto('/buckets');
 	await page.getByRole('link', { name: 'Create bucket' }).first().click();
+	await expect(page).toHaveURL(/\/buckets\?create$/);
 	await page.getByLabel('Bucket name').fill('Bad_Name');
 	await page.getByRole('button', { name: 'Create bucket' }).click();
 	await expect(page.getByText('is not a valid bucket name')).toBeVisible();
@@ -45,6 +46,36 @@ test('create a bucket, refuse a wrong confirmation, then delete it', async ({ pa
 	await expect(
 		(await main(page)).getByRole('link', { name: 'e2e-bucket', exact: true })
 	).toHaveCount(0);
+});
+
+test('a bucket may be named like a page, such as "new"', async ({ page }) => {
+	await page.goto('/buckets?create');
+	await page.getByLabel('Bucket name').fill('new');
+	await page.getByRole('button', { name: 'Create bucket' }).click();
+	await expect(page).toHaveURL(/\/buckets\/new\?created=1$/);
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('new');
+});
+
+test('two batches picked during an upload are both kept', async ({ page }) => {
+	await page.goto('/buckets/projects');
+	await ready(page);
+	const input = page.locator('input[type="file"]');
+	const big = Buffer.alloc(3_000_000, 1);
+	await input.setInputFiles({
+		name: 'first.bin',
+		mimeType: 'application/octet-stream',
+		buffer: big
+	});
+	await input.setInputFiles({
+		name: 'second.txt',
+		mimeType: 'text/plain',
+		buffer: Buffer.from('two')
+	});
+	await expect(page.getByText('Uploaded, 3 B')).toBeVisible();
+	await expect(page.getByText('Uploaded, 3 MB')).toBeVisible();
+	await page.reload();
+	await expect(page.getByRole('rowheader', { name: 'first.bin' })).toBeVisible();
+	await expect(page.getByRole('rowheader', { name: 'second.txt' })).toBeVisible();
 });
 
 test('a bucket that holds files cannot be deleted', async ({ page }) => {
@@ -96,6 +127,16 @@ test('the server refuses destructive actions without confirmation', async ({ pag
 		headers: { origin, accept: 'application/json', 'x-sveltekit-action': 'true' }
 	});
 	expect(((await bucket.json()) as { status: number }).status).toBe(400);
+	const workspace = await request.post('/settings/delete-workspace', {
+		form: { confirm: 'ws_wrong' },
+		headers: { origin, accept: 'application/json', 'x-sveltekit-action': 'true' }
+	});
+	expect(((await workspace.json()) as { status: number }).status).toBe(400);
+	const reset = await request.post('/settings/reset-demo', {
+		form: {},
+		headers: { origin, accept: 'application/json', 'x-sveltekit-action': 'true' }
+	});
+	expect(((await reset.json()) as { status: number }).status).toBe(400);
 	const cross = await request.post('/keys/KF7Q2M8X4T7R5N0B/revoke', {
 		form: { confirm: 'yes' },
 		headers: { origin: 'https://evil.example' }
@@ -103,6 +144,32 @@ test('the server refuses destructive actions without confirmation', async ({ pag
 	expect(cross.status()).toBe(403);
 	await page.goto('/keys');
 	await expect(page.getByRole('row', { name: /nightly-backup/ })).toBeVisible();
+	await page.goto('/settings');
+	await expect(page.getByText('Workspace deletion requested')).toHaveCount(0);
+});
+
+test('a refused form moves focus to the field at fault', async ({ page }) => {
+	await page.goto('/keys/new');
+	await ready(page);
+	await page.getByRole('button', { name: 'Create access key' }).click();
+	await expect(page.getByText('Give the key access to at least one bucket.')).toBeVisible();
+	await expect(page.locator('select').first()).toBeFocused();
+});
+
+test('the phone menu takes focus and gives it back on Escape', async ({ browser }) => {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	const page = await context.newPage();
+	await page.goto('/');
+	await ready(page);
+	const button = page.getByRole('button', { name: 'Menu' });
+	await button.click();
+	await expect(
+		page.getByRole('navigation', { name: 'Console sections' }).getByRole('link').first()
+	).toBeFocused();
+	await page.keyboard.press('Escape');
+	await expect(button).toBeFocused();
+	await expect(page.getByRole('navigation', { name: 'Console sections' })).toBeHidden();
+	await context.close();
 });
 
 test('upload a file, see it listed, and download it through a presigned link', async ({ page }) => {
@@ -148,7 +215,7 @@ test('request and cancel workspace deletion', async ({ page }) => {
 });
 
 test('reset the demo after a change', async ({ page }) => {
-	await page.goto('/buckets/new');
+	await page.goto('/buckets?create');
 	await page.getByLabel('Bucket name').fill('to-be-reset');
 	await page.getByRole('button', { name: 'Create bucket' }).click();
 	await expect(page).toHaveURL(/to-be-reset/);
@@ -194,6 +261,22 @@ test('the phone menu opens and closes', async ({ browser }) => {
 	await nav.getByRole('link', { name: 'Usage' }).click();
 	await expect(page).toHaveURL(/\/usage$/);
 	await expect(nav).toBeHidden();
+	await context.close();
+});
+
+test('toggles added by client navigation show the current theme', async ({ browser }) => {
+	const context = await browser.newContext({ colorScheme: 'dark' });
+	const page = await context.newPage();
+	await page.goto('/');
+	await ready(page);
+	await page
+		.getByRole('navigation', { name: 'Console sections' })
+		.getByRole('link', { name: 'Settings' })
+		.click();
+	await expect(page).toHaveURL(/\/settings$/);
+	const toggles = page.getByRole('button', { name: 'Dark theme' });
+	await expect(toggles).toHaveCount(2);
+	for (const t of await toggles.all()) await expect(t).toHaveAttribute('aria-pressed', 'true');
 	await context.close();
 });
 
