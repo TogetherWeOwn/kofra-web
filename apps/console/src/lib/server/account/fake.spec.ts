@@ -148,7 +148,7 @@ it('requires a recent step for sensitive actions and issues ten recovery codes o
 	}
 });
 
-it('confirms an address change without a password, revokes sessions and voids other links', async () => {
+it('confirms an address change without a password, keeps sessions and voids other links', async () => {
 	const { client, token } = setup();
 	const guest = client();
 	const email = 'owner@example.com';
@@ -163,8 +163,9 @@ it('confirms an address change without a password, revokes sessions and voids ot
 	await expect(guest.verifyEmail(await token('other@example.com'))).rejects.toMatchObject({
 		code: 'token_invalid'
 	});
+	// As the service: an address change keeps the signed-in devices.
 	for (const device of [first, second]) {
-		await expect(device.resolve()).rejects.toMatchObject({ code: 'session_invalid' });
+		await expect(device.resolve()).resolves.toMatchObject({ user: { email: 'next@example.com' } });
 	}
 	await expect(guest.loginPassword('next@example.com', password)).resolves.toMatchObject({
 		state: 'signed_in'
@@ -269,24 +270,48 @@ it('expires passkey challenges after five minutes', async () => {
 	try {
 		const { client } = setup();
 		const guest = client();
-		const { challenge_id } = await guest.passkeyLoginBegin();
+		const active = client((await guest.loginPassword('owner@example.com', password)).session.token);
+		const begin = await active.passkeyRegisterBegin();
+		const common = {
+			id: 'ZXhwaXJ5',
+			rawId: 'ZXhwaXJ5',
+			type: 'public-key',
+			clientExtensionResults: {}
+		};
+		await active.passkeyRegisterFinish({
+			challenge_id: begin.challenge_id,
+			name: 'Expiry test',
+			password,
+			credential: {
+				...common,
+				response: {
+					clientDataJSON: 'dGVzdA',
+					attestationObject: 'dGVzdA',
+					authenticatorData: 'dGVzdA',
+					publicKeyAlgorithm: -7,
+					transports: ['internal']
+				}
+			}
+		});
+		const assertion = {
+			...common,
+			response: {
+				clientDataJSON: 'dGVzdA',
+				authenticatorData: 'dGVzdA',
+				signature: 'dGVzdA',
+				userHandle: 'dGVzdA'
+			}
+		};
+		// Before the deadline the registered credential works...
+		const early = await guest.passkeyLoginBegin();
+		await expect(
+			guest.passkeyLoginFinish({ challenge_id: early.challenge_id, credential: assertion })
+		).resolves.toMatchObject({ state: 'signed_in' });
+		// ...and the same credential fails once its challenge is older than five minutes.
+		const late = await guest.passkeyLoginBegin();
 		vi.setSystemTime(Date.now() + 300_001);
 		await expect(
-			guest.passkeyLoginFinish({
-				challenge_id,
-				credential: {
-					id: 'dGVzdA',
-					rawId: 'dGVzdA',
-					type: 'public-key',
-					clientExtensionResults: {},
-					response: {
-						clientDataJSON: 'dGVzdA',
-						authenticatorData: 'dGVzdA',
-						signature: 'dGVzdA',
-						userHandle: 'dGVzdA'
-					}
-				}
-			})
+			guest.passkeyLoginFinish({ challenge_id: late.challenge_id, credential: assertion })
 		).rejects.toMatchObject({ status: 401, code: 'passkey_invalid' });
 	} finally {
 		vi.useRealTimers();

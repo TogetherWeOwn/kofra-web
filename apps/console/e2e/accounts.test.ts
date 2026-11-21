@@ -198,9 +198,30 @@ test('a passkey-only account completes the second step with a recovery code', as
 	expect(codes).toHaveLength(10);
 	await page.goto('/sign-out');
 	await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+	await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 	await login(page, 'recovery@example.com');
 	await expect(page.getByRole('heading', { name: 'Two-step verification' })).toBeVisible();
 	await page.getByLabel('Recovery code').fill(codes[0]!);
 	await page.getByRole('button', { name: 'Continue' }).click();
+	await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+});
+
+test('an address change is confirmed without a password and the new address signs in', async ({
+	page
+}) => {
+	await login(page, 'change@example.com');
+	await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+	await page.goto('/account');
+	await page.getByLabel('New email address').fill('changed@example.com');
+	await page.getByRole('button', { name: 'Change email' }).click();
+	await expect(page.getByText('We sent a link to changed@example.com')).toBeVisible();
+	await page.goto(`/verify?token=${await token(page, 'changed@example.com')}`);
+	await page.reload();
+	await page.getByRole('button', { name: 'Confirm email address' }).click();
+	await expect(page.getByText('Your new email address is confirmed.')).toBeVisible();
+	await page.goto('/sign-out');
+	await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+	await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+	await login(page, 'changed@example.com');
 	await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
 });

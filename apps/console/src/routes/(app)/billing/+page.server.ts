@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			billing: {
 				enabled: b.enabled,
 				reason: b.reason,
-				portal: b.enabled && b.portalCustomer !== null
+				portal: locals.mode === 'demo' && b.enabled && b.portalCustomer !== null
 			},
 			checkout: url.searchParams.get('checkout'),
 			crumbs: [{ label: 'Billing' }]

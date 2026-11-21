@@ -75,7 +75,7 @@ it('signs each live API call for the selected member workspace', async () => {
 		user: { id: 'usr_example' },
 		session: { id: 'ses_example' },
 		workspaces: [ws('ws_first'), ws('ws_selected')],
-		csrf: 'csrf_test',
+		csrf: 'csrf_test_0123456789',
 		needs: null
 	};
 	const handle = makeHandle(() => ({
@@ -155,7 +155,7 @@ describe('live-fake stage gating', () => {
 	it('refuses a POST to an account route without a session', async () => {
 		const res = await run('/account?/profile', {
 			method: 'POST',
-			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			headers: { 'content-type': 'application/x-www-form-urlencoded', 'content-length': '6' },
 			body: 'name=x'
 		});
 		expect(res.status).toBe(403);

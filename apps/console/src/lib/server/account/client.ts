@@ -94,8 +94,12 @@ export class AccountClient {
 	loginRecovery(code: string) {
 		return this.call<SignInAnswer>('login/recovery', 'POST', { code });
 	}
-	resolve() {
-		return this.call<Resolved>('session/resolve');
+	async resolve() {
+		const me = await this.call<Resolved>('session/resolve');
+		// The CSRF check depends on this value: an answer without one is unusable.
+		if (typeof me?.csrf !== 'string' || me.csrf.length < 16)
+			throw new AccountProblem(503, 'service_unavailable', '');
+		return me;
 	}
 	logout() {
 		return this.call<void>('logout');

@@ -1,5 +1,5 @@
 import { resolve } from '$app/paths';
-import { requireFreshStep } from '#lib/server/account/actions.js';
+import { hasFreshStep, requireFreshStep } from '#lib/server/account/actions.js';
 import { fail } from '@sveltejs/kit';
 import { paginate } from '@kofra/api';
 import { grantsFromForm } from '#lib/grants.js';
@@ -17,6 +17,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 	try {
 		return {
 			buckets: await bucketNames(locals),
+			// Shown before the form, so a key that can write is not typed and then lost
+			// to the confirm-identity step.
+			writeNeedsStep: !hasFreshStep(locals),
 			crumbs: [
 				{ label: 'Access keys', href: resolve('/(app)/keys') },
 				{ label: 'Create access key' }

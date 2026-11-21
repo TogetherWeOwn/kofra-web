@@ -30,7 +30,7 @@ export const load: PageServerLoad = async (event) => {
 function action<T extends Record<string, unknown>>(
 	section: string,
 	run: (client: AccountClient, form: FormData, event: RequestEvent) => Promise<T>,
-	fields?: Record<string, string>
+	fields?: Record<string, string> | ((form: FormData) => Record<string, string>)
 ) {
 	return async (event: RequestEvent) => {
 		const client = account(event);
@@ -38,7 +38,8 @@ function action<T extends Record<string, unknown>>(
 		try {
 			return { section, ...(await run(client, form, event)) };
 		} catch (err) {
-			return refused(err, '/account', { section, confirming: section === 'totpConfirm' }, fields);
+			const shown = typeof fields === 'function' ? fields(form) : fields;
+			return refused(err, '/account', { section, confirming: section === 'totpConfirm' }, shown);
 		}
 	};
 }
@@ -71,7 +72,10 @@ export const actions = {
 			setSession(event.cookies, answer.session);
 			redirect(303, '/account?password=changed');
 		},
-		{ ...passwordFields, invalid_credentials: 'current' }
+		// A refusal goes to the current-password field only when it was shown; otherwise
+		// it shows as a notice for the whole form.
+		(form) =>
+			form.has('current') ? { ...passwordFields, invalid_credentials: 'current' } : passwordFields
 	),
 	totpBegin: action('totpBegin', async (client) => {
 		const { secret, uri } = await client.totpBegin();

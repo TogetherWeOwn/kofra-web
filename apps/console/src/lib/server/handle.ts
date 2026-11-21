@@ -80,6 +80,12 @@ export function makeHandle(getConfig: () => ConsoleConfig): Handle {
 			);
 		if (cfg.mode === 'unconfigured' || (cfg.mode === 'live-fake' && !loopback(url)))
 			return unavailable();
+		// WebAuthn refuses IP addresses as RP IDs: the fake serves passkeys on localhost only.
+		if (cfg.mode === 'live-fake' && url.hostname !== 'localhost') {
+			const to = new URL(url);
+			to.hostname = 'localhost';
+			return finish(new Response(null, { status: 307, headers: { location: to.href } }));
+		}
 
 		locals.mode = cfg.mode;
 		locals.billing = cfg.billing;
@@ -122,9 +128,16 @@ export function makeHandle(getConfig: () => ConsoleConfig): Handle {
 				finish(new Response(null, { status: 303, headers: { location: to } }));
 			const read = ['GET', 'HEAD'].includes(event.request.method);
 			// Account and sign-in requests are small; refuse large bodies before parsing them.
-			const length = Number(event.request.headers.get('content-length') ?? '0');
-			if (!read && accountRoute(path) && (!Number.isFinite(length) || length > MAX_ACCOUNT_BODY))
-				return finish(new Response('This request is too large.', { status: 413 }));
+			// A body without a length (streamed) is refused too: forms and the console's own
+			// scripts always send one.
+			const declared = event.request.headers.get('content-length');
+			const length = declared === null ? NaN : Number(declared);
+			if (!read && accountRoute(path) && event.request.body !== null) {
+				if (declared === null)
+					return finish(new Response('A length is required.', { status: 411 }));
+				if (!Number.isFinite(length) || length > MAX_ACCOUNT_BODY)
+					return finish(new Response('This request is too large.', { status: 413 }));
+			}
 			if (!read && (!publicRoute || (passkey && me))) {
 				if (!me) return finish(new Response('This request was refused.', { status: 403 }));
 				const type = event.request.headers.get('content-type') ?? '';

@@ -162,6 +162,7 @@ export function createFakeAccount(): Upstream {
 	add('mfa@example.com', 'MFA', seedPassword, true, true);
 	add('passkeys@example.com', 'Passkeys', seedPassword, true);
 	add('recovery@example.com', 'Recovery', seedPassword, true);
+	add('change@example.com', 'Change', seedPassword, true);
 
 	async function route(req: Request) {
 		const url = new URL(req.url);
@@ -267,7 +268,8 @@ export function createFakeAccount(): Upstream {
 				if (kind === 'verify' && person.password !== value('password'))
 					return refuse('invalid_credentials');
 				if (kind === 'change' && people.has(address)) return refuse('token_invalid');
-				endSessions(person);
+				// As the service: only the first confirmation of a new account ends sessions.
+				if (kind === 'verify') endSessions(person);
 				voidLinks(person, kind === 'verify');
 				if (kind === 'change') {
 					people.delete(person.user.email);

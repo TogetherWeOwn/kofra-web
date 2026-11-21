@@ -21,7 +21,7 @@
 {:else}
 	<div class="card pad">
 		<ActionForm csrf={data.csrf} result={form}>
-			<Field name="name" label="Name" value={input?.name ?? ''} result={form} />
+			<Field name="name" label="Name" defaultValue={input?.name ?? ''} result={form} />
 			{#if scopeProblem}<p class="err" id="scopes-error">{scopeProblem.message}</p>{/if}
 			{#each scopeGroups as group, i (group.label)}
 				<fieldset class="field">
@@ -46,7 +46,7 @@
 				label="Buckets (optional)"
 				hint="Separate bucket names with commas."
 				required={false}
-				value={input?.buckets ?? ''}
+				defaultValue={input?.buckets ?? ''}
 			/>
 			<div class="field">
 				<label for="addresses">Allowed addresses (optional)</label>

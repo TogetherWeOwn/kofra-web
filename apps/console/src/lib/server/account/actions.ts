@@ -21,11 +21,15 @@ export function requireIdentity(path: string): never {
  * sign-in step in the last 10 minutes, and one that used the second factor when the user
  * has one. Demo mode has no sessions and passes.
  */
-export function requireFreshStep(locals: App.Locals, path: string) {
+export function hasFreshStep(locals: App.Locals) {
 	const me = locals.me;
-	if (!me) return;
+	if (!me) return true;
 	const hasFactor = me.user.totp || me.user.passkeys > 0;
-	if (!freshStep(me.session.step_at) || (hasFactor && me.session.level < 2)) requireIdentity(path);
+	return freshStep(me.session.step_at) && (!hasFactor || me.session.level === 2);
+}
+
+export function requireFreshStep(locals: App.Locals, path: string) {
+	if (!hasFreshStep(locals)) requireIdentity(path);
 }
 
 function retryMinutes(value: string | null) {
