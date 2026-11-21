@@ -426,6 +426,14 @@ describe('tenant0 files', () => {
 		);
 		// Just started: may still be sending, so never offered.
 		expect(await files.openUploads('left')).toMatchObject({ stale: 0, recent: 1, empty: true });
+		// 12.5 hours: past the console's own token, but inside the extra hour, so still not stale.
+		const almost = new Tenant0Files(
+			tenant,
+			storage,
+			tokenKey(cfg.storage.secret),
+			() => Date.now() + 12.5 * 3600_000
+		);
+		expect(await almost.openUploads('left')).toMatchObject({ stale: 0, recent: 1 });
 		const later = new Tenant0Files(
 			tenant,
 			storage,

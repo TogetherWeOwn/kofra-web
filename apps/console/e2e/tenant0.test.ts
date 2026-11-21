@@ -224,6 +224,8 @@ test('a bucket with files and an unfinished upload offers no stop form', async (
 	expect(
 		((await (await request.get(`${FAKE}/__test/uploads`)).json()) as { open: number }).open
 	).toBe(1);
+	// Old enough to be stopped, yet the bucket holds a file: still no form.
+	expect((await request.post(`${FAKE}/__test/age-uploads`)).status()).toBe(204);
 	await page.goto('/buckets/scratch/delete');
 	await expect(page.getByText('This bucket still holds files')).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Stop unfinished uploads' })).toHaveCount(0);

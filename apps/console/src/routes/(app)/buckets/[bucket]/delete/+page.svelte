@@ -29,8 +29,8 @@
 		{#if data.recentUploads}
 			<p>
 				{data.recentUploads} upload{data.recentUploads === 1 ? ' was' : 's were'} started in the last
-				12 hours and may still be sending. One left behind by a closed page can be stopped here once it
-				is 12 hours old.
+				13 hours and may still be sending. One left behind by a closed page can be stopped here once it
+				is 13 hours old.
 			</p>
 		{/if}
 		{#if data.unreachableUploads}
@@ -47,7 +47,7 @@
 		<form class="card pad form" method="POST" action={stopUploadsAction(name)}>
 			<p>
 				{data.uploads} upload{data.uploads === 1 ? ' was' : 's were'} started in this bucket more than
-				12 hours ago and never finished, for example when a page was closed during an upload. Stopping
+				13 hours ago and never finished, for example when a page was closed during an upload. Stopping
 				{data.uploads === 1 ? 'it' : 'them'} drops the parts sent so far; finished files are not touched.
 			</p>
 			<input type="hidden" name="token" value={data.uploadsToken} />

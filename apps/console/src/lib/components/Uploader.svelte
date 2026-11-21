@@ -52,7 +52,7 @@
 			// Not cancelled when the page navigates: an upload the server has just started must reach
 			// the page, so it can still be stopped (see start()). Closing the tab during this request
 			// can still leave one unfinished: once the bucket holds no file, its delete page can stop
-			// it after 12 hours; otherwise an S3 tool can (abort-multipart-upload).
+			// it after 13 hours; otherwise an S3 tool can (abort-multipart-upload).
 			body: JSON.stringify(body)
 		});
 		return answer(res, `The request failed (${res.status}).`);

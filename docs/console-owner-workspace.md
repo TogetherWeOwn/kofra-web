@@ -97,7 +97,7 @@ log line or an error message; the browser only ever talks to the console.
   expired token (signature, purpose, bucket and upload id are checked). Closing the tab while an upload is
   being started can still leave one; the bucket's delete page lists unfinished uploads when
   nothing else is left and stops exactly the ones it showed (signed digest), only those older
-  than 12 hours (no console upload can still be running), 20 per request.
+  than 13 hours (no console upload can still be running), 20 per request.
 - `confirmDelete(bucket, keys)` and `deleteFiles(bucket, confirmed)`: up to 25 files (one storage call each, inside the platform's limit of 32 calls to another
   Worker per request). The
   confirmation page lists every file with its size; its form carries the keys, their ETags
