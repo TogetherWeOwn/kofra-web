@@ -101,16 +101,33 @@ export interface FileStore {
 	confirmDelete?(bucket: string, keys: string[]): Promise<DeleteConfirmation>;
 	deleteFiles?(bucket: string, items: DeleteItem[], token: string): Promise<DeleteResult>;
 	/** Unfinished multipart uploads (they keep a bucket from being deleted), and stopping them. */
-	/** `token` binds exactly the uploads counted; stopping refuses if the set changed since. */
-	openUploads?(bucket: string): Promise<{ count: number; token: string }>;
-	stopOpenUploads?(bucket: string, token: string): Promise<{ stopped: number; failed: number }>;
+	/**
+	 * Unfinished multipart uploads: `stale` ones (older than any console upload may run) can be
+	 * stopped, `recent` ones may still be sending. `empty`: no file in the bucket at all.
+	 * `token` binds exactly the stale uploads counted; stopping refuses if that set changed.
+	 */
+	openUploads?(bucket: string): Promise<OpenUploads>;
+	/** Stops at most STOP_BATCH of the counted uploads; `left` says how many remain. */
+	stopOpenUploads?(
+		bucket: string,
+		token: string
+	): Promise<{ stopped: number; failed: number; unreachable: number; left: number }>;
 	/** Present only where buckets can be connected. */
 	otherBuckets?(): Promise<OtherBucket[]>;
 	connect?(bucket: string, access: ConsoleAccess): Promise<void>;
 }
 
+export interface OpenUploads {
+	stale: number;
+	recent: number;
+	empty: boolean;
+	token: string;
+}
+
 /** Most files one delete confirmation may list. */
-export const MAX_DELETE = 50;
+// One storage call per file (HEAD on the confirmation, DELETE in the action), plus a few for
+// access: kept well inside the platform's limit of 32 calls to another Worker per request.
+export const MAX_DELETE = 25;
 
 const TTL_SECONDS = 900;
 const isoSeconds = (s: number) => new Date(s * 1000).toISOString().replace('.000Z', 'Z');

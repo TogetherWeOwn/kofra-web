@@ -29,6 +29,8 @@ interface Obj {
 interface Upload {
 	key: string;
 	type: string;
+	/** Start time (ms); missing means now. */
+	initiated?: number;
 	parts: Map<number, { body: Uint8Array; etag: string }>;
 }
 interface Bucket {
@@ -389,7 +391,8 @@ export class FakeStorage {
 				return xml(
 					`<ListMultipartUploadsResult><Bucket>${b.name}</Bucket><IsTruncated>${b.uploads.size > max}</IsTruncated>${ups
 						.map(
-							([id, u]) => `<Upload><Key>${xmlEsc(u.key)}</Key><UploadId>${id}</UploadId></Upload>`
+							([id, u]) =>
+								`<Upload><Key>${xmlEsc(u.key)}</Key><UploadId>${id}</UploadId><Initiated>${new Date(u.initiated ?? this.now()).toISOString()}</Initiated></Upload>`
 						)
 						.join('')}</ListMultipartUploadsResult>`
 				);
@@ -429,6 +432,7 @@ export class FakeStorage {
 		if (m === 'POST' && q.has('uploads')) {
 			const id = `up${++this.#ids}`;
 			b.uploads.set(id, {
+				initiated: this.now(),
 				key,
 				type: request.headers.get('content-type') ?? 'application/octet-stream',
 				parts: new Map()
@@ -540,6 +544,13 @@ export function serve(port: number) {
 		const url = `http://${req.headers.host ?? `127.0.0.1:${port}`}${req.url ?? '/'}`;
 		if (req.url === '/__test/reset' && req.method === 'POST') {
 			fake.reset();
+			res.writeHead(204).end();
+			return;
+		}
+		if (req.url === '/__test/age-uploads' && req.method === 'POST') {
+			// Makes every open upload look 13 hours old.
+			for (const b of fake.buckets.values())
+				for (const u of b.uploads.values()) u.initiated = Date.now() - 13 * 3600_000;
 			res.writeHead(204).end();
 			return;
 		}

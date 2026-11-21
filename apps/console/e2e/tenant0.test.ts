@@ -235,6 +235,11 @@ test('an unfinished upload left behind can be stopped from the delete page', asy
 		headers: origin
 	});
 	expect(((await start.json()) as { method: string }).method).toBe('MULTIPART');
+	// Just started: it may still be sending, so it is not offered.
+	await page.goto('/buckets/scratch/delete');
+	await expect(page.getByText('may still be sending')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Stop unfinished uploads' })).toHaveCount(0);
+	expect((await request.post(`${FAKE}/__test/age-uploads`)).status()).toBe(204);
 	await page.goto('/buckets/scratch/delete');
 	await expect(page.getByText('This bucket has unfinished uploads')).toBeVisible();
 	await ready(page);

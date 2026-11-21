@@ -19,11 +19,17 @@ export const actions: Actions = {
 			error(400, { message: 'Tick the box to confirm.', hint: 'Go back to the delete page.' });
 		try {
 			const r = await files.stopOpenUploads(params.bucket, String(form.get('token') ?? ''));
+			if (r.unreachable)
+				error(409, {
+					message: `${r.unreachable} unfinished upload${r.unreachable === 1 ? ' has a name' : 's have names'} the console cannot address.`,
+					hint: 'Stop them with an S3 tool (for example: aws s3api abort-multipart-upload).'
+				});
 			if (r.failed)
 				error(502, {
 					message: `${r.stopped} unfinished upload${r.stopped === 1 ? ' was' : 's were'} stopped; ${r.failed} could not be.`,
-					hint: 'Try again in a minute.'
+					hint: 'Open the delete page again to stop the rest.'
 				});
+			// Done, or more than one batch: the delete page counts again either way.
 		} catch (err) {
 			if (err instanceof FileError) error(err.status, { message: err.message, hint: err.hint });
 			throw err;

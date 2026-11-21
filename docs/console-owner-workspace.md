@@ -96,8 +96,10 @@ log line or an error message; the browser only ever talks to the console.
   page is left (keepalive request on `pagehide`), and the abort route still accepts an
   expired token (signature, purpose, bucket and upload id are checked). Closing the tab while an upload is
   being started can still leave one; the bucket's delete page lists unfinished uploads when
-  nothing else is left and stops exactly the ones it showed (signed digest).
-- `confirmDelete(bucket, keys)` and `deleteFiles(bucket, confirmed)`: up to 50 files. The
+  nothing else is left and stops exactly the ones it showed (signed digest), only those older
+  than 12 hours (no console upload can still be running), 20 per request.
+- `confirmDelete(bucket, keys)` and `deleteFiles(bucket, confirmed)`: up to 25 files (one storage call each, inside the platform's limit of 32 calls to another
+  Worker per request). The
   confirmation page lists every file with its size; its form carries the keys, their ETags
   and a signed SHA-256 digest of the bucket and the ordered (key, ETag) pairs. The action re-checks the HMAC and deletes each file with
   `If-Match: <ETag>`, so a file that changed after the page was shown is kept and reported.

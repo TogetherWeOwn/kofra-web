@@ -25,15 +25,22 @@
 {#if data.blocked}
 	<Notice tone="warning" title={data.blockedTitle ?? 'This bucket cannot be deleted'}>
 		<p>{data.blocked.message}</p>
-		{#if data.blocked.hint && !data.uploads}<p>{data.blocked.hint}</p>{/if}
+		{#if data.blocked.hint}<p>{data.blocked.hint}</p>{/if}
+		{#if data.recentUploads}
+			<p>
+				{data.recentUploads} upload{data.recentUploads === 1 ? ' was' : 's were'} started in the last
+				12 hours and may still be sending. Try again once {data.recentUploads === 1
+					? 'it has'
+					: 'they have'} finished or stopped.
+			</p>
+		{/if}
 	</Notice>
 	{#if data.uploads}
 		<form class="card pad form" method="POST" action={stopUploadsAction(name)}>
 			<p>
-				{data.uploads} upload{data.uploads === 1 ? ' was' : 's were'} started in this bucket and never
-				finished, for example when a page was closed during an upload. Stopping {data.uploads === 1
-					? 'it'
-					: 'them'} drops the parts sent so far; finished files are not touched.
+				{data.uploads} upload{data.uploads === 1 ? ' was' : 's were'} started in this bucket more than
+				12 hours ago and never finished, for example when a page was closed during an upload. Stopping
+				{data.uploads === 1 ? 'it' : 'them'} drops the parts sent so far; finished files are not touched.
 			</p>
 			<input type="hidden" name="token" value={data.uploadsToken} />
 			<label class="check">

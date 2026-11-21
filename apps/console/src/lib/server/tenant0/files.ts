@@ -11,6 +11,7 @@ import {
 	type FileListing,
 	type FileStore,
 	type MultipartTarget,
+	type OpenUploads,
 	type OtherBucket,
 	type PutTarget
 } from '../files.js';
@@ -26,6 +27,8 @@ export const MAX_UPLOAD = PART_SIZE * MAX_PARTS;
 const PUT_TTL_S = 15 * 60;
 const MULTIPART_TTL_S = 12 * 3600;
 const CONFIRM_TTL_S = 30 * 60;
+/** Uploads stopped per request: inside the platform's limit of 32 calls to another Worker. */
+const STOP_BATCH = 20;
 const PAGE = 200;
 
 const BUCKET_NAME = /^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/;
@@ -412,49 +415,72 @@ export class Tenant0Files implements FileStore {
 		}
 	}
 
-	async openUploads(bucket: string): Promise<{ count: number; token: string }> {
+	/** Uploads the console itself could no longer finish: older than its longest token. */
+	#stale<T extends { initiated: number }>(uploads: T[]): T[] {
+		const cutoff = this.#now() - MULTIPART_TTL_S * 1000;
+		return uploads.filter((u) => u.initiated < cutoff);
+	}
+
+	async openUploads(bucket: string): Promise<OpenUploads> {
 		await this.#need(bucket, false);
+		let first;
+		try {
+			// The same check the delete's dry run makes: any object at all, hidden or not.
+			first = await this.#storage.list(bucket, { delimiter: '', maxKeys: 1 });
+		} catch (err) {
+			storageFailure(err);
+		}
 		const uploads = await this.#open(bucket);
+		const stale = this.#stale(uploads);
 		const token = await seal(await this.#key, 'stop-uploads', this.#nowS() + CONFIRM_TTL_S, {
-			h: await Tenant0Files.#uploadsDigest(bucket, uploads)
+			h: await Tenant0Files.#uploadsDigest(bucket, stale)
 		});
-		return { count: uploads.length, token };
+		return {
+			stale: stale.length,
+			recent: uploads.length - stale.length,
+			empty: first.files.length === 0 && first.folders.length === 0,
+			token
+		};
 	}
 
 	/**
-	 * Stops exactly the unfinished uploads the page counted (a page left mid-upload leaves one).
-	 * If any started or ended since, nothing is stopped and the page is shown again.
+	 * Stops the stale unfinished uploads the page counted (a page closed mid-upload leaves
+	 * one), at most STOP_BATCH per request; the page then counts again for the rest. If the
+	 * stale set changed since the page was shown, nothing is stopped.
 	 */
 	async stopOpenUploads(
 		bucket: string,
 		token: string
-	): Promise<{ stopped: number; failed: number }> {
+	): Promise<{ stopped: number; failed: number; unreachable: number; left: number }> {
 		await this.#need(bucket, true);
 		const signed = await open<{ h: string }>(await this.#key, 'stop-uploads', token, this.#nowS());
-		const uploads = await this.#open(bucket);
-		if (!signed || signed.h !== (await Tenant0Files.#uploadsDigest(bucket, uploads)))
+		const stale = this.#stale(await this.#open(bucket));
+		if (!signed || signed.h !== (await Tenant0Files.#uploadsDigest(bucket, stale)))
 			throw new FileError(
 				409,
 				'The unfinished uploads changed since the page was shown.',
-				'Check the list again.'
+				'Open the delete page again.'
 			);
 		// Each one on its own: one that cannot be stopped does not keep the rest open.
 		let stopped = 0;
 		let failed = 0;
+		let unreachable = 0;
 		try {
-			for (const u of uploads) {
+			for (const u of stale.slice(0, STOP_BATCH)) {
 				try {
 					await this.#storage.abortUpload(bucket, u.key, u.uploadId);
 					stopped++;
 				} catch (err) {
 					if (err instanceof StorageError && err.code === 'NoSuchUpload') stopped++;
+					// A name with "." or ".." segments cannot be addressed from here.
+					else if (err instanceof StorageError && err.code === 'InvalidKey') unreachable++;
 					else failed++;
 				}
 			}
 		} finally {
 			this.#api.forget();
 		}
-		return { stopped, failed };
+		return { stopped, failed, unreachable, left: Math.max(0, stale.length - STOP_BATCH) };
 	}
 
 	async otherBuckets(): Promise<OtherBucket[]> {

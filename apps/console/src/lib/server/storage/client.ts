@@ -351,8 +351,10 @@ export function createStorageClient(cfg: Tenant0Config['storage'], now: () => nu
 
 		/** True when the bucket has at least one unfinished multipart upload. */
 		/** Unfinished multipart uploads in the bucket, up to MAX_PAGES pages of 1,000. */
-		async openUploads(bucket: string): Promise<{ key: string; uploadId: string }[]> {
-			const out: { key: string; uploadId: string }[] = [];
+		async openUploads(
+			bucket: string
+		): Promise<{ key: string; uploadId: string; initiated: number }[]> {
+			const out: { key: string; uploadId: string; initiated: number }[] = [];
 			let marker: [string, string] | null = null;
 			for (let i = 0; i < MAX_PAGES; i++) {
 				const query: Query = [
@@ -362,7 +364,13 @@ export function createStorageClient(cfg: Tenant0Config['storage'], now: () => nu
 				if (marker) query.push(['key-marker', marker[0]], ['upload-id-marker', marker[1]]);
 				const xml = await (await ok(await s3({ method: 'GET', bucket, query }))).text();
 				for (const b of blocks(xml, 'Upload')) {
-					const u = { key: text(b, 'Key') ?? '', uploadId: text(b, 'UploadId') ?? '' };
+					const t = Date.parse(text(b, 'Initiated') ?? '');
+					const u = {
+						key: text(b, 'Key') ?? '',
+						uploadId: text(b, 'UploadId') ?? '',
+						// Unknown start: treated as just started, so it is never stopped as stale.
+						initiated: Number.isFinite(t) ? t : Date.now()
+					};
 					if (u.key && u.uploadId) out.push(u);
 				}
 				const top = strip(xml, 'Upload');

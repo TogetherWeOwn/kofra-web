@@ -27,34 +27,34 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			blocked: null,
 			blockedTitle: null,
 			uploads: 0,
+			recentUploads: 0,
 			uploadsToken: null,
 			crumbs
 		};
 	} catch (err) {
 		if (err instanceof KofraError && err.code === 'bucket_not_empty') {
-			// Unfinished uploads also keep a bucket; when they are all that is left (no file), they
-			// can be stopped from here.
-			const listing = await locals.files.list(bucket.name, '').catch(() => null);
-			// Stopping needs write access; a read-only bucket never gets the form.
-			const onlyUploads =
-				listing !== null &&
-				listing.files.length === 0 &&
-				listing.folders.length === 0 &&
+			// Unfinished uploads also keep a bucket. When no file is left, the page says so, and
+			// stale ones (older than any console upload can run) can be stopped from here, with
+			// write access only.
+			const open = locals.files.openUploads
+				? await locals.files.openUploads(bucket.name).catch(() => null)
+				: null;
+			const onlyUploads = open !== null && open.empty;
+			const canStop =
+				onlyUploads &&
+				open.stale > 0 &&
 				(await locals.files.access(bucket.name).catch(() => null)) === 'read_write';
-			const open =
-				onlyUploads && locals.files.openUploads
-					? await locals.files.openUploads(bucket.name).catch(() => null)
-					: null;
-			const uploads = open?.count ?? 0;
+			const shown = describe(err);
 			return {
 				bucket,
 				plan: null,
-				blocked: describe(err),
-				blockedTitle: uploads
+				blocked: onlyUploads ? { ...shown, hint: undefined } : shown,
+				blockedTitle: onlyUploads
 					? 'This bucket has unfinished uploads'
 					: 'This bucket still holds files',
-				uploads,
-				uploadsToken: open?.token ?? null,
+				uploads: canStop ? open.stale : 0,
+				recentUploads: onlyUploads ? open.recent : 0,
+				uploadsToken: canStop ? open.token : null,
 				crumbs
 			};
 		}
@@ -65,6 +65,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 				blocked: describe(err),
 				blockedTitle: 'This bucket is protected',
 				uploads: 0,
+				recentUploads: 0,
 				uploadsToken: null,
 				crumbs
 			};

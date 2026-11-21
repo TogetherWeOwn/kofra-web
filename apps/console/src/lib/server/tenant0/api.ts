@@ -575,10 +575,13 @@ export class Tenant0Api {
 		const grants = grantsOf(body.grants);
 		const read = grants.filter((g) => g.access === 'read').map((g) => g.bucket);
 		const write = grants.filter((g) => g.access === 'read_write').map((g) => g.bucket);
-		// One permission per call: make the key with the narrower set, then widen.
-		const [first, firstPerm, rest] = read.length
-			? [read, 'ro' as const, write]
-			: [write, 'rw' as const, []];
+		// One permission per create call: make the key with the larger set, then grant the other
+		// buckets (each a bucket the key does not have yet, so nothing is narrowed). Fewer calls
+		// keep the request inside the platform's limit on calls to another Worker (32).
+		const [first, firstPerm, rest, restPerm] =
+			read.length >= write.length
+				? [read, 'ro' as const, write, 'rw' as const]
+				: [write, 'rw' as const, read, 'ro' as const];
 		let created: { access_key_id: string; secret: string };
 		try {
 			created = await this.#storage.createKey(first, firstPerm);
@@ -587,7 +590,7 @@ export class Tenant0Api {
 		}
 		for (const bucket of rest) {
 			try {
-				await this.#storage.grant(created.access_key_id, bucket, 'rw');
+				await this.#storage.grant(created.access_key_id, bucket, restPerm);
 			} catch (err) {
 				// A key with only some of its grants is never handed out.
 				try {
