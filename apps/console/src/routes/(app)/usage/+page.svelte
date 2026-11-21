@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { bucketHref } from '#lib/links.js';
+	import { bucketConnectHref, bucketHref } from '#lib/links.js';
 	import Download from '@lucide/svelte/icons/download';
 	import DailyChart from '#lib/charts/DailyChart.svelte';
 	import Notice from '#lib/components/Notice.svelte';
@@ -170,7 +170,11 @@
 				{#each sorted as b (b.bucket)}
 					<tr>
 						<th scope="row">
-							<a class="cell-link" href={bucketHref(b.bucket)}>{b.bucket}</a>
+							{#if data.open.includes(b.bucket) || !data.ws.features.connect}
+								<a class="cell-link" href={bucketHref(b.bucket)}>{b.bucket}</a>
+							{:else}
+								<a class="cell-link" href={bucketConnectHref(b.bucket)}>{b.bucket}</a>
+							{/if}
 						</th>
 						<td class="num">{bytes(b.stored_bytes)}</td>
 						<td class="hs">

@@ -34,7 +34,7 @@ function setup() {
 		maxRetries: 0
 	});
 	const files = new Tenant0Files(tenant, storage, tokenKey(cfg.storage.secret));
-	return { fake, cfg, tenant, api, files, problems: checked.problems };
+	return { fake, cfg, tenant, storage, api, files, problems: checked.problems };
 }
 
 async function code(p: Promise<unknown>): Promise<string> {
@@ -238,12 +238,21 @@ describe('tenant0 transport: the contract over the storage service', () => {
 		fake.now = () => later;
 		expect((await fake.fetch(new Request(p.url))).status).toBe(403);
 		expect(
-			await code(api.objects.presign({ body: { bucket: 'files', key: 'nope.txt', method: 'GET', expires_in_seconds: 60 } }))
+			await code(
+				api.objects.presign({
+					body: { bucket: 'files', key: 'nope.txt', method: 'GET', expires_in_seconds: 60 }
+				})
+			)
 		).toBe('not_found');
 		expect(
 			await code(
 				api.objects.presign({
-					body: { bucket: 'nntune', key: 'library/track.flac', method: 'GET', expires_in_seconds: 60 }
+					body: {
+						bucket: 'nntune',
+						key: 'library/track.flac',
+						method: 'GET',
+						expires_in_seconds: 60
+					}
 				})
 			)
 		).toBe('bucket_not_found');
@@ -359,6 +368,64 @@ describe('tenant0 files', () => {
 				)
 			)
 		).toBe('file:400');
+	});
+
+	it('still aborts a multipart upload after its token expired, and nothing else', async () => {
+		const { files, fake, tenant, storage, cfg } = setup();
+		const t = await files.startUpload(
+			'files',
+			'left.bin',
+			PART_SIZE * 2,
+			'application/octet-stream',
+			'https://c'
+		);
+		if (t.method !== 'MULTIPART') throw new Error('expected multipart');
+		const later = new Tenant0Files(
+			tenant,
+			storage,
+			tokenKey(cfg.storage.secret),
+			() => Date.now() + 13 * 3600_000
+		);
+		expect(await code(later.uploadGrant('files', t.token, 'multipart'))).toBe('file:403');
+		const g = await later.uploadGrant('files', t.token, 'multipart', { expired: true });
+		expect(fake.buckets.get('files')!.uploads.size).toBe(1);
+		await later.abort(g);
+		expect(fake.buckets.get('files')!.uploads.size).toBe(0);
+		expect(
+			await code(later.uploadGrant('files', `${t.token}x`, 'multipart', { expired: true }))
+		).toBe('file:403');
+	});
+
+	it('confirms and deletes 50 files with long paths', async () => {
+		const { files, fake } = setup();
+		const b = fake.buckets.get('files')!;
+		const keys = Array.from({ length: 50 }, (_, i) => `${'deep/'.repeat(40)}file-${i}.bin`);
+		for (const k of keys)
+			b.objects.set(k, {
+				body: new Uint8Array(1),
+				type: 't',
+				etag: `"${'e'.repeat(32)}"`,
+				modified: 0
+			});
+		const c = await files.confirmDelete('files', keys);
+		expect(c.token.length).toBeLessThan(400);
+		const r = await files.deleteFiles('files', c.items, c.token);
+		expect(r.deleted).toHaveLength(50);
+	});
+
+	it('opens an empty bucket the counters do not list yet', async () => {
+		const { files, fake } = setup();
+		fake.buckets.set('fresh', {
+			name: 'fresh',
+			id: 'b_fresh',
+			created: 0,
+			objects: new Map(),
+			uploads: new Map(),
+			held: false
+		});
+		expect((await files.otherBuckets()).map((b) => b.name)).not.toContain('fresh');
+		await files.connect('fresh', 'read_write');
+		expect(await files.access('fresh')).toBe('read_write');
 	});
 
 	it('connects a bucket read-only, then widens it; never narrows', async () => {

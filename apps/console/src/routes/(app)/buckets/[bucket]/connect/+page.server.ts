@@ -18,7 +18,10 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		]);
 		const other = others.find((b) => b.name === params.bucket) ?? null;
 		if (current === 'read_write') redirect(303, bucketHref(params.bucket));
-		if (!current && !other) error(404, { message: `There is no bucket "${params.bucket}".` });
+		// A bucket the counters do not list yet (empty) can still be opened; the action finds
+		// out whether it exists.
+		if (!/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(params.bucket))
+			error(404, { message: 'There is no such bucket.' });
 		return {
 			name: params.bucket,
 			current,

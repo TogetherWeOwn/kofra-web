@@ -184,6 +184,24 @@ test('upload a small and a multipart file; an existing name is never replaced', 
 	expect(await again.text()).toBe('hello there');
 });
 
+test('leaving the page during a multipart upload stops it on storage', async ({
+	page,
+	request
+}) => {
+	await page.goto('/buckets/scratch');
+	await ready(page);
+	await page.locator('input[type="file"]').setInputFiles({
+		name: 'leave.bin',
+		mimeType: 'application/octet-stream',
+		buffer: Buffer.alloc(48 * 1024 * 1024, 3)
+	});
+	const open = async () =>
+		((await (await request.get(`${FAKE}/__test/uploads`)).json()) as { open: number }).open;
+	await expect.poll(open).toBe(1);
+	await page.goto('/keys');
+	await expect.poll(open).toBe(0);
+});
+
 test('an upload address only works for what it was issued for', async ({ request }) => {
 	const origin = { origin: 'http://127.0.0.1:4177' };
 	const start = await request.post('/buckets/scratch/upload', {
@@ -336,6 +354,11 @@ test('usage shows stored amounts only, and the workspace cannot be deleted', asy
 	await expect(main(page).getByRole('link', { name: 'files', exact: true })).toBeVisible();
 	await expect(main(page).getByRole('link', { name: 'nntune', exact: true })).toBeVisible();
 	await expect(page.getByRole('link', { name: 'Download CSV' })).toHaveCount(0);
+	// A bucket the console cannot open yet links to its Open page, not to a missing file list.
+	await main(page).getByRole('link', { name: 'nntune', exact: true }).click();
+	await expect(page).toHaveURL(/\/buckets\/nntune\/connect$/);
+	expect((await request.get('/billing')).status()).toBe(404);
+	await page.goto('/usage');
 	expect((await request.get('/usage/export.csv')).status()).toBe(404);
 	await page.goto('/settings');
 	await expect(page.getByRole('heading', { name: 'Delete workspace' })).toHaveCount(0);

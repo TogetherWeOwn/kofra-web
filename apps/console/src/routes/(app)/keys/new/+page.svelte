@@ -32,7 +32,7 @@
 </div>
 
 {#if form && 'created' in form && form.created}
-	<KeyReveal created={form.created} />
+	<KeyReveal created={form.created} sample={data.ws.features.sample} />
 {:else}
 	{#if form && 'problem' in form && form.problem}<ProblemNotice problem={form.problem} />{/if}
 	<form

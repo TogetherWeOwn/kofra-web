@@ -96,11 +96,25 @@
 		});
 	}
 
+	/** The multipart upload in flight, so leaving the page can stop it on storage too. */
+	let openUpload: Extract<Target, { method: 'MULTIPART' }> | null = null;
+
+	/** Stops a multipart upload on storage; keepalive lets it finish while the page goes away. */
+	function abortUpload(target: Extract<Target, { method: 'MULTIPART' }>) {
+		fetch(target.abort_url, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ token: target.token }),
+			keepalive: true
+		}).catch(() => {});
+	}
+
 	async function send(item: Item, file: File, target: Target) {
 		if (target.method === 'PUT') {
 			await put(target.url, file, file.type, (n) => (item.sent = n));
 			return;
 		}
+		openUpload = target;
 		// Parts one after another; a failure stops the upload and drops the parts sent.
 		const parts: { part: number; etag: string }[] = [];
 		try {
@@ -117,14 +131,11 @@
 				if (stopped) throw new Error('The upload was stopped.');
 			}
 			await post(target.complete_url, { token: target.token, parts });
+			openUpload = null;
 		} catch (err) {
-			// Best effort: the console's storage also clears unfinished uploads later.
-			fetch(target.abort_url, {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ token: target.token }),
-				keepalive: true
-			}).catch(() => {});
+			// An unfinished upload is never cleared on its own: stop it, so its parts are dropped.
+			if (openUpload) abortUpload(openUpload);
+			openUpload = null;
 			throw err;
 		}
 	}
@@ -136,12 +147,15 @@
 	// Leaving the bucket page stops the upload in flight and drops the rest of the queue.
 	let stopped = false;
 	const controller = new AbortController();
-	onDestroy(() => {
+	function leave() {
 		stopped = true;
 		queue.length = 0;
 		controller.abort();
 		current?.abort();
-	});
+		if (openUpload) abortUpload(openUpload);
+		openUpload = null;
+	}
+	onDestroy(leave);
 
 	async function start(files: { file: File; path: string }[]) {
 		for (const { file, path } of files) {
@@ -174,7 +188,10 @@
 			try {
 				const target = await presign(it.key, file);
 				// The visitor may have left while the address was being prepared.
-				if (stopped) break;
+				if (stopped) {
+					if (target.method === 'MULTIPART') abortUpload(target);
+					break;
+				}
 				await send(it, file, target);
 				it.state = 'done';
 				it.sent = it.size;
@@ -210,6 +227,7 @@
 	onbeforeunload={(e) => {
 		if (active) e.preventDefault();
 	}}
+	onpagehide={leave}
 />
 
 <section class="card pad up" aria-labelledby="up-h">

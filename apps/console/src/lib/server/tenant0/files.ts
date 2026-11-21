@@ -103,7 +103,13 @@ export class Tenant0Files implements FileStore {
 
 	async access(bucket: string): Promise<ConsoleAccess | null> {
 		if (!BUCKET_NAME.test(bucket)) return null;
-		const perm = (await this.#api.consoleAccess()).get(bucket);
+		let perms;
+		try {
+			perms = await this.#api.consoleAccess();
+		} catch (err) {
+			storageFailure(err);
+		}
+		const perm = perms.get(bucket);
 		return perm === 'rw' ? 'read_write' : perm === 'ro' ? 'read' : null;
 	}
 
@@ -235,9 +241,11 @@ export class Tenant0Files implements FileStore {
 	async uploadGrant(
 		bucket: string,
 		token: string | null,
-		purpose: 'put' | 'multipart'
+		purpose: 'put' | 'multipart',
+		/** Only for aborting: an upload left past its token's life can still be stopped. */
+		{ expired = false }: { expired?: boolean } = {}
 	): Promise<UploadGrant> {
-		const g = await open<UploadGrant>(await this.#key, purpose, token, this.#nowS());
+		const g = await open<UploadGrant>(await this.#key, purpose, token, expired ? 0 : this.#nowS());
 		if (
 			!g ||
 			g.b !== bucket ||
@@ -325,8 +333,14 @@ export class Tenant0Files implements FileStore {
 		if (keys.some((k) => !validKey(k))) throw new FileError(400, 'That file name is not valid.');
 	}
 
-	static #digest(bucket: string, items: DeleteItem[]) {
-		return { b: bucket, i: items.map((x) => [x.key, x.etag]) };
+	/**
+	 * A fixed-size digest of the bucket and the ordered (key, ETag) pairs, so the token stays
+	 * small however long the paths are.
+	 */
+	static async #digest(bucket: string, items: DeleteItem[]): Promise<string> {
+		const canonical = JSON.stringify([bucket, items.map((x) => [x.key, x.etag])]);
+		const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical));
+		return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
 	}
 
 	async confirmDelete(bucket: string, keys: string[]): Promise<DeleteConfirmation> {
@@ -345,26 +359,18 @@ export class Tenant0Files implements FileStore {
 				items.push({ key, size: head.size, modified: isoOrEmpty(head.modified), etag: head.etag });
 			else missing.push(key);
 		}
-		const token = await seal(
-			await this.#key,
-			'delete',
-			this.#nowS() + CONFIRM_TTL_S,
-			Tenant0Files.#digest(bucket, items)
-		);
+		const token = await seal(await this.#key, 'delete', this.#nowS() + CONFIRM_TTL_S, {
+			h: await Tenant0Files.#digest(bucket, items)
+		});
 		return { items, missing, token };
 	}
 
 	async deleteFiles(bucket: string, items: DeleteItem[], token: string): Promise<DeleteResult> {
 		this.#checkKeys(items.map((i) => i.key));
-		const signed = await open<{ b: string; i: [string, string][] }>(
-			await this.#key,
-			'delete',
-			token,
-			this.#nowS()
-		);
-		const expected = JSON.stringify(Tenant0Files.#digest(bucket, items));
+		const signed = await open<{ h: string }>(await this.#key, 'delete', token, this.#nowS());
+		const expected = await Tenant0Files.#digest(bucket, items);
 		// Only exactly the list the confirmation page showed, in its order, is deleted.
-		if (!signed || JSON.stringify({ b: signed.b, i: signed.i }) !== expected)
+		if (!signed || signed.h !== expected)
 			throw new FileError(
 				403,
 				'This confirmation is not valid or has expired.',
@@ -388,7 +394,12 @@ export class Tenant0Files implements FileStore {
 	}
 
 	async otherBuckets(): Promise<OtherBucket[]> {
-		const [{ buckets }, access] = await Promise.all([this.#api.usage(), this.#api.consoleAccess()]);
+		let buckets, access;
+		try {
+			[{ buckets }, access] = await Promise.all([this.#api.usage(), this.#api.consoleAccess()]);
+		} catch (err) {
+			storageFailure(err);
+		}
 		return buckets
 			.filter((b) => BUCKET_NAME.test(b.name) && !access.has(b.name))
 			.map((b) => ({
@@ -402,9 +413,9 @@ export class Tenant0Files implements FileStore {
 	async connect(bucket: string, access: ConsoleAccess): Promise<void> {
 		if (!BUCKET_NAME.test(bucket)) throw new FileError(404, 'There is no such bucket.');
 		const current = await this.access(bucket);
-		const known = current !== null || (await this.otherBuckets()).some((b) => b.name === bucket);
-		if (!known) throw new FileError(404, `There is no bucket "${bucket}".`);
 		if (current === 'read_write' || current === access) return;
+		// The admin API has no list of all buckets: a bucket the counters do not show yet (an
+		// empty one) is still opened, and the grant itself answers 404 for one that does not exist.
 		try {
 			await this.#storage.grant(
 				this.#api.consoleKeyId,

@@ -543,6 +543,11 @@ export function serve(port: number) {
 			res.writeHead(204).end();
 			return;
 		}
+		if (req.url === '/__test/uploads') {
+			const open = [...fake.buckets.values()].reduce((n, b) => n + b.uploads.size, 0);
+			res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ open }));
+			return;
+		}
 		if (req.url === '/__test/calls') {
 			res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(fake.calls));
 			return;

@@ -22,9 +22,13 @@
 				The console can browse and download files in this bucket. It can also be allowed to upload
 				and delete them.
 			{:else}
-				This bucket belongs to your workspace, but the console has no access to it yet.
-				{#if data.other}It holds {bytes(data.other.stored_bytes)} in
-					{count(data.other.object_count)} file{data.other.object_count === 1 ? '' : 's'}.{/if}
+				{#if data.other}
+					This bucket belongs to your workspace, but the console has no access to it yet. It holds
+					{bytes(data.other.stored_bytes)} in
+					{count(data.other.object_count)} file{data.other.object_count === 1 ? '' : 's'}.
+				{:else}
+					The console has no access to this bucket yet.
+				{/if}
 			{/if}
 		</p>
 	</div>

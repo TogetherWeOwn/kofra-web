@@ -91,12 +91,17 @@ log line or an error message; the browser only ever talks to the console.
   expiry and, for multipart, the upload id. Files under 16 MiB go in one PUT (token valid
   15 minutes); larger ones are multipart in 16 MiB parts (token valid 12 hours). The Worker
   streams each body to the service with a fixed length. Uploads never overwrite: the PUT
-  and the multipart completion send `If-None-Match: *`.
-- `confirmDelete(bucket, keys)` and `deleteFiles(bucket, confirmed)`: up to 100 files. The
+  and the multipart completion send `If-None-Match: *`. The service never clears an
+  unfinished multipart upload by itself, so the page aborts it when a part fails or the
+  page is left (keepalive request on `pagehide`), and the abort route still accepts an
+  expired token (signature, purpose, bucket and upload id are checked).
+- `confirmDelete(bucket, keys)` and `deleteFiles(bucket, confirmed)`: up to 50 files. The
   confirmation page lists every file with its size; its form carries the keys, their ETags
-  and an HMAC over both. The action re-checks the HMAC and deletes each file with
+  and a signed SHA-256 digest of the bucket and the ordered (key, ETag) pairs. The action re-checks the HMAC and deletes each file with
   `If-Match: <ETag>`, so a file that changed after the page was shown is kept and reported.
-- `otherBuckets()` and `connect(bucket, access)`: buckets the console key has no grant on,
+- `otherBuckets()` and `connect(bucket, access)`: buckets the console key has no grant on
+  (from the usage counters: the admin API has no full bucket list, so an empty bucket is not
+  listed until it holds a file, but `/buckets/<name>/connect` opens it all the same),
   and a confirmation page that grants it `read` or `read_write` (grants only widen).
 
 ## 5. Protecting existing data

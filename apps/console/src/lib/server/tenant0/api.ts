@@ -487,7 +487,7 @@ export class Tenant0Api {
 		} catch {
 			throw new HttpProblem(
 				'service_unavailable',
-				`The bucket "${name}" was created, but the console could not open it yet. Connect it from the bucket list.`
+				`The bucket "${name}" was created, but the console could not open it yet. Open it at /buckets/${name}/connect.`
 			);
 		}
 		this.forget();

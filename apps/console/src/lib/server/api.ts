@@ -1,6 +1,7 @@
 import { KofraError } from '@kofra/api';
 import { DemoLimit } from '@kofra/api/demo';
 import { error, fail } from '@sveltejs/kit';
+import { FileError } from './files.js';
 
 import type { ShownProblem } from '#lib/types.js';
 
@@ -25,6 +26,7 @@ const CONSOLE_HINTS: Record<string, string> = {
 };
 
 export function describe(err: unknown): ShownProblem {
+	if (err instanceof FileError) return { message: err.message, hint: err.hint };
 	if (err instanceof KofraError)
 		return {
 			message: err.problem.detail,
@@ -45,7 +47,11 @@ export function describe(err: unknown): ShownProblem {
 export function loadFailed(err: unknown): never {
 	const shown = describe(err);
 	const status =
-		err instanceof KofraError && err.status >= 400 && err.status <= 599 ? err.status : 500;
+		(err instanceof KofraError || err instanceof FileError) &&
+		err.status >= 400 &&
+		err.status <= 599
+			? err.status
+			: 500;
 	error(status, shown);
 }
 

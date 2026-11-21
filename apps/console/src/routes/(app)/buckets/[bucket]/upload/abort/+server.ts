@@ -9,7 +9,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const g = await files.uploadGrant(
 			params.bucket,
 			typeof body.token === 'string' ? body.token : null,
-			'multipart'
+			'multipart',
+			{ expired: true }
 		);
 		await files.abort(g);
 		return { aborted: true };
