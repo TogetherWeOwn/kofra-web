@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import Upload from '@lucide/svelte/icons/upload';
 	import { onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
@@ -26,7 +27,11 @@
 	async function presign(key: string, size: number) {
 		const res = await fetch(`/buckets/${encodeURIComponent(bucket)}/upload`, {
 			method: 'POST',
-			headers: { 'content-type': 'application/json', accept: 'application/json' },
+			headers: {
+				'content-type': 'application/json',
+				accept: 'application/json',
+				...(page.data.csrf ? { 'x-kofra-csrf': page.data.csrf } : {})
+			},
 			body: JSON.stringify({ key, size }),
 			signal: controller.signal
 		});
@@ -45,6 +50,8 @@
 			const xhr = new XMLHttpRequest();
 			current = xhr;
 			xhr.open(target.method, target.url);
+			if (page.data.csrf && new URL(target.url, location.origin).origin === location.origin)
+				xhr.setRequestHeader('x-kofra-csrf', page.data.csrf);
 			if (file.type) xhr.setRequestHeader('content-type', file.type);
 			xhr.upload.onprogress = (e) => (item.sent = e.loaded);
 			xhr.onload = () => {

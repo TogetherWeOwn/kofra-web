@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Csrf from '#lib/components/account/Csrf.svelte';
 	import { page } from '$app/state';
 	import Shell from '#lib/components/Shell.svelte';
 	import Notice from '#lib/components/Notice.svelte';
@@ -7,16 +8,25 @@
 
 	let { data, children } = $props();
 	const crumbs = $derived((page.data.crumbs as Crumb[] | undefined) ?? []);
-	const deletion = $derived(data.account.deletion);
+	const deletion = $derived(data.account?.deletion);
 </script>
 
-<Shell path={page.url.pathname} {crumbs} workspace={data.workspace}>
-	<Notice tone="info" title="Demo workspace">
-		<p>
-			Everything here is sample data. Your changes stay in this browser for 7 days, and nothing is
-			stored or charged. Sign-in comes later.
-		</p>
-	</Notice>
+<Shell
+	path={page.url.pathname}
+	{crumbs}
+	workspace={data.workspace}
+	sample={data.mode !== 'live'}
+	signedIn={data.mode !== 'demo'}
+	workspaceReady={data.workspaceReady}
+>
+	{#if data.mode === 'demo'}
+		<Notice tone="info" title="Demo workspace">
+			<p>
+				Everything here is sample data. Your changes stay in this browser for 7 days, and nothing is
+				stored or charged. Sign-in comes later.
+			</p>
+		</Notice>
+	{/if}
 	{#if deletion}
 		<Notice tone="warning" title="Workspace deletion requested">
 			<p>
@@ -25,6 +35,7 @@
 					: 'the deadline'}, or the request lapses. Until then nothing is deleted.
 			</p>
 			<form method="POST" action="/settings?/cancelDeletion" class="inline-form">
+				<Csrf />
 				<button class="btn-plain btn-sm" type="submit">Cancel deletion</button>
 			</form>
 		</Notice>

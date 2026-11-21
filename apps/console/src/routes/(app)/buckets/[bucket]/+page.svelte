@@ -40,81 +40,91 @@
 {#if data.created}
 	<Notice tone="success" title="Bucket created" live>
 		<p>
-			Upload files below, or point an S3 tool at it with an <a href={resolve('/(app)/keys/new')}>
-				access key
-			</a>.
+			{data.mode === 'live'
+				? 'Connect a tool with an'
+				: 'Upload files below, or point an S3 tool at it with an'}
+			<a href={resolve('/(app)/keys/new')}> access key </a>.
 		</p>
 	</Notice>
 {/if}
 
-<Uploader bucket={b.name} prefix={data.prefix} />
+{#if data.mode === 'live'}
+	<section class="card pad" aria-labelledby="files-h">
+		<h2 id="files-h">Files</h2>
+		<p>
+			Use an <a href={resolve('/(app)/keys/new')}>access key</a> to work with files in this bucket.
+		</p>
+	</section>
+{:else}
+	<Uploader bucket={b.name} prefix={data.prefix} />
 
-<section class="card" aria-labelledby="files-h">
-	<div class="card-bar">
-		<h2 id="files-h" class="h3">{data.prefix ? `Files in ${data.prefix}` : 'Files'}</h2>
-		<p class="muted">Sample files: the demo shows a few per bucket.</p>
-	</div>
-	<div class="table-wrap">
-		<table class="tbl">
-			<thead>
-				<tr>
-					<th scope="col">Name</th>
-					<th scope="col" class="num">Size</th>
-					<th scope="col" class="hs">Type</th>
-					<th scope="col" class="hs">Modified</th>
-					<th scope="col"><span class="sr-only">Download</span></th>
-				</tr>
-			</thead>
-			<tbody>
-				{#if data.prefix}
+	<section class="card" aria-labelledby="files-h">
+		<div class="card-bar">
+			<h2 id="files-h" class="h3">{data.prefix ? `Files in ${data.prefix}` : 'Files'}</h2>
+			<p class="muted">Sample files: the demo shows a few per bucket.</p>
+		</div>
+		<div class="table-wrap">
+			<table class="tbl">
+				<thead>
 					<tr>
-						<th scope="row" colspan="5">
-							<a class="cell-link" href={bucketHref(b.name, parent)}>
-								<Folder class="icon" aria-hidden="true" />Up one level
-							</a>
-						</th>
+						<th scope="col">Name</th>
+						<th scope="col" class="num">Size</th>
+						<th scope="col" class="hs">Type</th>
+						<th scope="col" class="hs">Modified</th>
+						<th scope="col"><span class="sr-only">Download</span></th>
 					</tr>
-				{/if}
-				{#each data.listing.folders as f (f.prefix)}
-					<tr>
-						<th scope="row">
-							<a class="cell-link" href={bucketHref(b.name, f.prefix)}>
-								<Folder class="icon" aria-hidden="true" />{f.name}/
-							</a>
-						</th>
-						<td class="num muted">–</td>
-						<td class="hs muted">Folder</td>
-						<td class="hs muted">–</td>
-						<td class="act"></td>
-					</tr>
-				{/each}
-				{#each data.listing.files as f (f.key)}
-					<tr>
-						<th scope="row" class="wrap-cell">
-							<span class="fname"><FileIcon class="icon" aria-hidden="true" />{f.name}</span>
-						</th>
-						<td class="num">{bytes(f.size)}</td>
-						<td class="hs mono">{f.type}</td>
-						<td class="hs">{dateTime(f.modified)}</td>
-						<td class="act">
-							<a
-								class="btn-plain btn-sm"
-								href={downloadHref(b.name, f.key)}
-								aria-label="Download {f.name}"
-								data-sveltekit-reload
-							>
-								<Download class="icon" aria-hidden="true" />Download
-							</a>
-						</td>
-					</tr>
-				{/each}
-				{#if empty}
-					<tr><td colspan="5" class="muted">This folder is empty.</td></tr>
-				{/if}
-			</tbody>
-		</table>
-	</div>
-</section>
+				</thead>
+				<tbody>
+					{#if data.prefix}
+						<tr>
+							<th scope="row" colspan="5">
+								<a class="cell-link" href={bucketHref(b.name, parent)}>
+									<Folder class="icon" aria-hidden="true" />Up one level
+								</a>
+							</th>
+						</tr>
+					{/if}
+					{#each data.listing.folders as f (f.prefix)}
+						<tr>
+							<th scope="row">
+								<a class="cell-link" href={bucketHref(b.name, f.prefix)}>
+									<Folder class="icon" aria-hidden="true" />{f.name}/
+								</a>
+							</th>
+							<td class="num muted">–</td>
+							<td class="hs muted">Folder</td>
+							<td class="hs muted">–</td>
+							<td class="act"></td>
+						</tr>
+					{/each}
+					{#each data.listing.files as f (f.key)}
+						<tr>
+							<th scope="row" class="wrap-cell">
+								<span class="fname"><FileIcon class="icon" aria-hidden="true" />{f.name}</span>
+							</th>
+							<td class="num">{bytes(f.size)}</td>
+							<td class="hs mono">{f.type}</td>
+							<td class="hs">{dateTime(f.modified)}</td>
+							<td class="act">
+								<a
+									class="btn-plain btn-sm"
+									href={downloadHref(b.name, f.key)}
+									aria-label="Download {f.name}"
+									data-sveltekit-reload
+								>
+									<Download class="icon" aria-hidden="true" />Download
+								</a>
+							</td>
+						</tr>
+					{/each}
+					{#if empty}
+						<tr><td colspan="5" class="muted">This folder is empty.</td></tr>
+					{/if}
+				</tbody>
+			</table>
+		</div>
+	</section>
+{/if}
 
 <style>
 	.fname {

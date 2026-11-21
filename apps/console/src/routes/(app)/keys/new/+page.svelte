@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Csrf from '#lib/components/account/Csrf.svelte';
 	import { focusFirstInvalid } from '#lib/forms.js';
 	import { resolve } from '$app/paths';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
@@ -32,7 +33,7 @@
 </div>
 
 {#if form && 'created' in form && form.created}
-	<KeyReveal created={form.created} />
+	<KeyReveal created={form.created} sample={data.mode !== 'live'} />
 {:else}
 	{#if form && 'problem' in form && form.problem}<ProblemNotice problem={form.problem} />{/if}
 	<form
@@ -47,6 +48,7 @@
 			};
 		}}
 	>
+		<Csrf />
 		<div class="field">
 			<label for="name">Name <span class="muted">(optional)</span></label>
 			<input

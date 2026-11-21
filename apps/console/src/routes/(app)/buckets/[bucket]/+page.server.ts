@@ -16,7 +16,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	}
 	// File listing is not part of the management API: in a real workspace it comes from the
 	// S3 endpoint. The demo lists its sample files.
-	const listing = locals.demo.listFiles(bucket.name, prefix) ?? { folders: [], files: [] };
+	const listing = locals.demo?.listFiles(bucket.name, prefix) ?? { folders: [], files: [] };
 	return {
 		bucket,
 		prefix,

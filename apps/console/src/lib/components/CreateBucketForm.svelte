@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Csrf from '#lib/components/account/Csrf.svelte';
 	import { focusFirstInvalid } from '#lib/forms.js';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import { enhance } from '$app/forms';
@@ -36,6 +37,7 @@
 			};
 		}}
 	>
+		<Csrf />
 		<div class="field">
 			<label for="name">Bucket name</label>
 			<input

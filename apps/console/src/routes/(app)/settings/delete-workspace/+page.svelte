@@ -1,11 +1,12 @@
 <script lang="ts">
+	import Csrf from '#lib/components/account/Csrf.svelte';
 	import { resolve } from '$app/paths';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import PlanSummary from '#lib/components/PlanSummary.svelte';
 	import ProblemNotice from '#lib/components/ProblemNotice.svelte';
 
 	let { data, form } = $props();
-	const id = $derived(data.account.id);
+	const id = $derived(data.id);
 	const mismatch = $derived(Boolean(form && 'mismatch' in form));
 </script>
 
@@ -32,6 +33,7 @@
 </section>
 
 <form class="card pad form" method="POST">
+	<Csrf />
 	<div class="field">
 		<label for="confirm">Type the workspace ID <code>{id}</code> to confirm</label>
 		<input

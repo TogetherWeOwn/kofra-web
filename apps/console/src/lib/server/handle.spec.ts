@@ -1,5 +1,6 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { mintAssertion } from './account/assertion.js';
 import { readConfig } from './config.js';
 import { makeHandle } from './handle.js';
 
@@ -50,4 +51,82 @@ describe('console request hook', () => {
 			/^__Host-kofra-demo=.+; HttpOnly; SameSite=Lax; Secure$/
 		);
 	});
+});
+
+it('refuses live-fake requests from a non-loopback hostname even for public paths', async () => {
+	const handle = makeHandle(() => readConfig({ CONSOLE_MODE: 'live-fake' }));
+	const res = await handle({
+		event: { ...event(), url: new URL('https://localhost.example/sign-in') },
+		resolve: async () => {
+			throw new Error('The request should be refused before routing.');
+		}
+	});
+	expect(res.status).toBe(503);
+	expect(await res.text()).toBe('This console is not configured.');
+	expect(res.headers.get('x-robots-tag')).toBe('noindex');
+});
+
+it('signs each live API call for the selected member workspace', async () => {
+	const now = vi.spyOn(Date, 'now').mockReturnValue(1763546410_000);
+	const key = Uint8Array.from({ length: 32 }, (_, i) => i);
+	const ws = (id: string) => ({ id, name: id, role: 'member', state: 'active' }) as const;
+	const headers: (string | null)[] = [];
+	const me = {
+		user: { id: 'usr_example' },
+		session: { id: 'ses_example' },
+		workspaces: [ws('ws_first'), ws('ws_selected')],
+		csrf: 'csrf_test',
+		needs: null
+	};
+	const handle = makeHandle(() => ({
+		...readConfig({ CONSOLE_MODE: 'demo' }),
+		mode: 'live',
+		account: {
+			async fetch(req) {
+				expect(req.headers.get('Kofra-Session')).toBe('test-session');
+				expect(req.url).toBe('https://account.internal/account/v1/session/resolve');
+				return Response.json(me);
+			}
+		},
+		api: {
+			async fetch(req) {
+				headers.push(req.headers.get('authorization'));
+				expect(req.url).toBe('https://api.kofra.app/v1/account');
+				return Response.json({});
+			}
+		},
+		assertionKey: key
+	}));
+	try {
+		const request = new Request('https://console.example/');
+		const status = await handle({
+			event: {
+				...event(),
+				url: new URL(request.url),
+				request,
+				route: { id: '/(app)' },
+				getClientAddress: () => '192.0.2.1',
+				cookies: {
+					get: (name: string) => (name === 'kofra_ws' ? 'ws_selected' : 'test-session')
+				} as RequestEvent['cookies']
+			},
+			resolve: async ({ locals }) => {
+				await locals.api.account.get();
+				now.mockReturnValue(1763546411_000);
+				await locals.api.account.get();
+				return new Response('ok');
+			}
+		});
+		expect(status.status).toBe(200);
+		expect(headers).toEqual(
+			await Promise.all(
+				[1763546410, 1763546411].map(
+					async (secs) =>
+						`Bearer ${await mintAssertion(key, 'ws_selected', me.user.id, me.session.id, secs)}`
+				)
+			)
+		);
+	} finally {
+		now.mockRestore();
+	}
 });

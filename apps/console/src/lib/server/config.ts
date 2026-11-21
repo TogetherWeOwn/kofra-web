@@ -1,3 +1,6 @@
+import { fakeAccount } from './account/fake.js';
+import type { Upstream } from './account/types.js';
+
 // Console configuration from Worker variables and secrets. Pure: the caller passes the
 // environment, so tests need no Workers runtime.
 
@@ -12,8 +15,11 @@ export interface BillingConfig {
 }
 
 export interface ConsoleConfig {
-	/** Only "demo" exists today; anything else refuses to serve. */
-	mode: 'demo' | 'unconfigured';
+	mode: 'demo' | 'live' | 'live-fake' | 'unconfigured';
+	problem: string | null;
+	account: Upstream | null;
+	api: Upstream | null;
+	assertionKey: Uint8Array | null;
 	billing: BillingConfig;
 }
 
@@ -29,8 +35,35 @@ const str = (env: Env, name: string): string | null => {
  */
 export const isTestKey = (key: string) => /^(sk|rk)_test_[A-Za-z0-9]{10,}$/.test(key);
 
+const binding = (value: unknown): value is Upstream =>
+	typeof value === 'object' &&
+	value !== null &&
+	'fetch' in value &&
+	typeof value.fetch === 'function';
+
 export function readConfig(env: Env): ConsoleConfig {
-	const mode = str(env, 'CONSOLE_MODE') === 'demo' ? 'demo' : 'unconfigured';
+	const requested = str(env, 'CONSOLE_MODE');
+	let mode: ConsoleConfig['mode'] = 'unconfigured';
+	let problem: string | null = null;
+	let account: Upstream | null = null;
+	let api: Upstream | null = null;
+	let assertionKey: Uint8Array | null = null;
+	if (requested === 'demo' || requested === 'live-fake') {
+		mode = requested;
+		if (mode === 'live-fake') account = fakeAccount;
+	} else if (requested === 'live') {
+		const key = env.ASSERTION_KEY;
+		if (!binding(env.ACCOUNT)) problem = 'ACCOUNT';
+		else if (!binding(env.API)) problem = 'API';
+		else if (typeof key !== 'string' || !/^[a-f0-9]{64}$/.test(key) || key.length !== 64)
+			problem = 'ASSERTION_KEY';
+		else {
+			mode = 'live';
+			account = env.ACCOUNT;
+			api = env.API;
+			assertionKey = Uint8Array.from(key.match(/../g)!, (pair) => Number.parseInt(pair, 16));
+		}
+	}
 	const flag = str(env, 'BILLING');
 	const secretKey = str(env, 'STRIPE_SECRET_KEY');
 	const priceId = str(env, 'STRIPE_PRICE_ID');
@@ -41,6 +74,10 @@ export function readConfig(env: Env): ConsoleConfig {
 	else if (!priceId) reason = 'Billing is switched on but has no plan price.';
 	return {
 		mode,
+		problem,
+		account,
+		api,
+		assertionKey,
 		billing: {
 			enabled: reason === null,
 			reason,

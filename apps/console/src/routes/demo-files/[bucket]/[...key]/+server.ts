@@ -15,7 +15,7 @@ function checkExpiry(url: URL) {
 
 export const GET: RequestHandler = ({ locals, params, url }) => {
 	checkExpiry(url);
-	const file = locals.demo.file(params.bucket, params.key);
+	const file = locals.demo?.file(params.bucket, params.key);
 	if (!file) error(404, { message: 'There is no such file.' });
 	const body = [
 		'This is a demo file.',
@@ -34,6 +34,7 @@ export const GET: RequestHandler = ({ locals, params, url }) => {
 };
 
 export const PUT: RequestHandler = async ({ locals, params, request, url }) => {
+	if (!locals.demo) error(404, { message: 'There is no such file.' });
 	checkExpiry(url);
 	if (!validKey(params.key)) error(400, { message: 'That file name or path is not allowed.' });
 	const declared = Number(request.headers.get('content-length') ?? '0');

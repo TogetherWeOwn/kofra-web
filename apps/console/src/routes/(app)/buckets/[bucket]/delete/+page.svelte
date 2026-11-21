@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Csrf from '#lib/components/account/Csrf.svelte';
 	import { bucketHref } from '#lib/links.js';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import Notice from '#lib/components/Notice.svelte';
@@ -35,6 +36,7 @@
 		<PlanSummary plan={data.plan} />
 	</section>
 	<form class="card pad form" method="POST">
+		<Csrf />
 		<div class="field">
 			<label for="confirm">Type <code>{name}</code> to confirm</label>
 			<input

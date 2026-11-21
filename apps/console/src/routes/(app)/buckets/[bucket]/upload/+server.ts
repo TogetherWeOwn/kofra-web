@@ -11,6 +11,7 @@ const TTL_SECONDS = 900;
  * until it adds uploads, the demo hands out an address on the console itself.
  */
 export const POST: RequestHandler = async ({ locals, params, request, url }) => {
+	if (!locals.demo) error(404, { message: 'Browser uploads are unavailable.' });
 	if (!(request.headers.get('content-type') ?? '').startsWith('application/json'))
 		error(415, { message: 'Send JSON.' });
 	const body = (await request.json().catch(() => null)) as { key?: unknown; size?: unknown } | null;

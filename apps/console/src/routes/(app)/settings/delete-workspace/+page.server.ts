@@ -6,11 +6,12 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
 	const { account } = await parent();
-	if (account.deletion) redirect(303, '/settings');
+	if (!account || account.deletion) redirect(303, '/settings');
 	try {
 		const plan = (await locals.api.account.delete({ dry_run: true })) as Plan;
 		return {
 			plan,
+			id: account.id,
 			crumbs: [
 				{ label: 'Settings', href: resolve('/(app)/settings') },
 				{ label: 'Delete workspace' }

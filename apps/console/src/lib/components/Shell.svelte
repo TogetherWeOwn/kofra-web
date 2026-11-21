@@ -13,8 +13,19 @@
 		path,
 		crumbs = [],
 		workspace,
+		sample = true,
+		signedIn = false,
+		workspaceReady = true,
 		children
-	}: { path: string; crumbs?: Crumb[]; workspace: string; children: Snippet } = $props();
+	}: {
+		path: string;
+		crumbs?: Crumb[];
+		workspace: string;
+		sample?: boolean;
+		signedIn?: boolean;
+		workspaceReady?: boolean;
+		children: Snippet;
+	} = $props();
 
 	let open = $state(false);
 	let menuButton = $state<HTMLButtonElement>();
@@ -52,19 +63,19 @@
 		<div class="side-acct">
 			<span class="side-acct-l">Workspace</span>
 			<span class="side-acct-n">{workspace}</span>
-			<span class="side-acct-p">Sample data</span>
+			{#if sample}<span class="side-acct-p">Sample data</span>{/if}
 		</div>
-		<nav aria-label="Console sections">
-			<ul>
-				{#each NAV as item (item.href)}
-					<li>
-						<a href={item.href} aria-current={current === item ? 'page' : undefined}>
-							<item.icon class="icon" aria-hidden="true" />{item.label}
-						</a>
-					</li>
-				{/each}
-			</ul>
-		</nav>
+		{#if workspaceReady}<nav aria-label="Console sections">
+				<ul>
+					{#each NAV as item (item.href)}
+						<li>
+							<a href={item.href} aria-current={current === item ? 'page' : undefined}>
+								<item.icon class="icon" aria-hidden="true" />{item.label}
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</nav>{/if}
 		<ul class="side-foot">
 			<li>
 				<a href={DOCS_URL} rel="external">
@@ -73,7 +84,16 @@
 			</li>
 			<li><a href={LICENCES_URL} rel="external">Licences</a></li>
 			<li>
-				<a href={resolve('/(auth)/sign-in')}><LogIn class="icon" aria-hidden="true" />Sign in</a>
+				{#if signedIn}
+					<a
+						href={resolve('/(app)/account')}
+						aria-current={path === '/account' ? 'page' : undefined}
+					>
+						<LogIn class="icon" aria-hidden="true" />Account
+					</a>
+				{:else}
+					<a href={resolve('/(auth)/sign-in')}><LogIn class="icon" aria-hidden="true" />Sign in</a>
+				{/if}
 			</li>
 		</ul>
 	</aside>
