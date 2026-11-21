@@ -17,11 +17,17 @@ it('matches the API assertion vector', async () => {
 });
 
 it('compares CSRF values as bytes and refuses a file or a missing value', () => {
-	expect(checkCsrf('xéz', 'xéz')).toBe(true);
-	expect(checkCsrf('xéz', 'xèz')).toBe(false);
-	expect(checkCsrf('xéz', 'xez')).toBe(false);
-	expect(checkCsrf('xéz', null)).toBe(false);
-	expect(checkCsrf('xéz', new File(['xéz'], 'csrf'))).toBe(false);
+	const t = 'csrf-xéz-0123456789';
+	expect(checkCsrf(t, t)).toBe(true);
+	expect(checkCsrf(t, t.replace('é', 'è'))).toBe(false);
+	expect(checkCsrf(t, t.replace('é', 'e'))).toBe(false);
+	expect(checkCsrf(t, null)).toBe(false);
+	expect(checkCsrf(t, new File([t], 'csrf'))).toBe(false);
+});
+
+it('refuses when the expected token is empty or short', () => {
+	expect(checkCsrf('', '')).toBe(false);
+	expect(checkCsrf('short', 'short')).toBe(false);
 });
 
 it('preserves a local redirect path, query and fragment', () => {

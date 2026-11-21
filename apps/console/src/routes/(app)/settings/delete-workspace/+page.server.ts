@@ -1,10 +1,12 @@
 import { resolve } from '$app/paths';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Plan } from '@kofra/api';
+import { requireFreshStep } from '#lib/server/account/actions.js';
 import { actionFailed, loadFailed } from '#lib/server/api.js';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
+	requireFreshStep(locals, '/settings/delete-workspace');
 	const { account } = await parent();
 	if (!account || account.deletion) redirect(303, '/settings');
 	try {
@@ -24,6 +26,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 
 export const actions: Actions = {
 	default: async ({ locals, request }) => {
+		requireFreshStep(locals, '/settings/delete-workspace');
 		const form = await request.formData();
 		let id: string;
 		try {

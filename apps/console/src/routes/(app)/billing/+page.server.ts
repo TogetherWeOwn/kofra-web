@@ -60,6 +60,9 @@ export const actions: Actions = {
 	},
 	portal: async ({ locals, url }) => {
 		const b = locals.billing;
+		// One configured test customer serves the demo only; a live workspace's billing
+		// account comes with the billing integration.
+		if (locals.mode !== 'demo') return unavailable('Billing is not connected yet.');
 		if (!b.enabled || !b.secretKey) return unavailable(b.reason ?? 'Billing is not connected yet.');
 		if (!b.portalCustomer) return unavailable('There is no billing account to manage yet.');
 		let target: string;

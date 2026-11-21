@@ -1,7 +1,8 @@
 const utf8 = new TextEncoder();
 
 export function checkCsrf(expected: string, presented: FormDataEntryValue | null): boolean {
-	if (typeof presented !== 'string') return false;
+	// An empty or short expected value would match a forged empty field.
+	if (typeof presented !== 'string' || expected.length < 16) return false;
 	const a = utf8.encode(expected);
 	const b = utf8.encode(presented);
 	if (a.length !== b.length) return false;

@@ -130,3 +130,48 @@ it('signs each live API call for the selected member workspace', async () => {
 		now.mockRestore();
 	}
 });
+
+describe('live-fake stage gating', () => {
+	const handle = makeHandle(() => readConfig({ CONSOLE_MODE: 'live-fake' }));
+	const run = (path: string, init: RequestInit = {}) =>
+		handle({
+			event: {
+				...event(),
+				url: new URL(`http://localhost${path}`),
+				request: new Request(`http://localhost${path}`, init),
+				getClientAddress: () => '127.0.0.1',
+				cookies: { get: () => undefined, set: () => {}, delete: () => {}, serialize: () => '' },
+				route: {
+					id: path.startsWith('/account')
+						? '/(app)/account'
+						: path.startsWith('/sign-in')
+							? '/(auth)/sign-in'
+							: null
+				}
+			},
+			resolve: async () => new Response('page')
+		} as never);
+
+	it('refuses a POST to an account route without a session', async () => {
+		const res = await run('/account?/profile', {
+			method: 'POST',
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			body: 'name=x'
+		});
+		expect(res.status).toBe(403);
+	});
+
+	it('refuses an oversized body on a sign-in route before parsing it', async () => {
+		const res = await run('/sign-in', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', 'content-length': String(65 * 1024) },
+			body: '{}'
+		});
+		expect(res.status).toBe(413);
+	});
+
+	it('serves the fake mail endpoint only in live-fake, and only for GET', async () => {
+		const res = await run('/__fake/last-token?email=x', { method: 'POST' });
+		expect(res.status).toBe(404);
+	});
+});

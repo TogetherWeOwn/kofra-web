@@ -1,7 +1,6 @@
 import { resolve } from '$app/paths';
 import { fail } from '@sveltejs/kit';
-import { field, requireIdentity } from '#lib/server/account/actions.js';
-import { freshStep } from '#lib/server/account/session.js';
+import { field, requireFreshStep } from '#lib/server/account/actions.js';
 import { tokensPort } from '#lib/server/tokens.js';
 import { scopeGroups } from '#lib/token-scopes.js';
 import type { Actions, PageServerLoad } from './$types';
@@ -9,9 +8,7 @@ import type { Actions, PageServerLoad } from './$types';
 const scopeNames = new Set(scopeGroups.flatMap(({ scopes }) => Object.keys(scopes)));
 const expiries = ['30', '90', '365', 'never'];
 
-function checkFresh(locals: App.Locals) {
-	if (locals.me && !freshStep(locals.me.session.step_at)) requireIdentity('/tokens/new');
-}
+const checkFresh = (locals: App.Locals) => requireFreshStep(locals, '/tokens/new');
 
 export const load: PageServerLoad = (event) => {
 	checkFresh(event.locals);

@@ -23,9 +23,27 @@ const stagePages = {
 		'/verify',
 		'/account',
 		'/account/passkey/begin',
-		'/account/passkey/finish'
+		'/account/passkey/finish',
+		'/sign-out'
 	]
 };
+
+/** Largest body accepted on account and sign-in routes. */
+export const MAX_ACCOUNT_BODY = 64 * 1024;
+const accountPrefixes = [
+	'/sign-in',
+	'/sign-out',
+	'/signup',
+	'/verify',
+	'/reset',
+	'/two-factor',
+	'/confirm-identity',
+	'/welcome',
+	'/account',
+	'/tokens'
+];
+const accountRoute = (path: string) =>
+	accountPrefixes.some((p) => path === p || path.startsWith(`${p}/`));
 
 export function makeHandle(getConfig: () => ConsoleConfig): Handle {
 	return async ({ event, resolve }) => {
@@ -103,6 +121,10 @@ export function makeHandle(getConfig: () => ConsoleConfig): Handle {
 			const redirect = (to: string) =>
 				finish(new Response(null, { status: 303, headers: { location: to } }));
 			const read = ['GET', 'HEAD'].includes(event.request.method);
+			// Account and sign-in requests are small; refuse large bodies before parsing them.
+			const length = Number(event.request.headers.get('content-length') ?? '0');
+			if (!read && accountRoute(path) && (!Number.isFinite(length) || length > MAX_ACCOUNT_BODY))
+				return finish(new Response('This request is too large.', { status: 413 }));
 			if (!read && (!publicRoute || (passkey && me))) {
 				if (!me) return finish(new Response('This request was refused.', { status: 403 }));
 				const type = event.request.headers.get('content-type') ?? '';

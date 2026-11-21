@@ -24,3 +24,4 @@
 		<div class="actions"><Button type="submit">Create workspace</Button></div>
 	</ActionForm>
 {/if}
+<p><a href={resolve('/(auth)/sign-out')}>Sign out</a></p>

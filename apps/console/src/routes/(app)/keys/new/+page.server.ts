@@ -1,4 +1,5 @@
 import { resolve } from '$app/paths';
+import { requireFreshStep } from '#lib/server/account/actions.js';
 import { fail } from '@sveltejs/kit';
 import { paginate } from '@kofra/api';
 import { grantsFromForm } from '#lib/grants.js';
@@ -37,6 +38,8 @@ export const actions: Actions = {
 			return actionFailed(err, { name });
 		}
 		const grants = grantsFromForm(form, names);
+		// A key that can write is a credential change: it needs a fresh step.
+		if (grants.some((g) => g.access !== 'read')) requireFreshStep(locals, '/keys/new');
 		const chosen = Object.fromEntries(grants.map((g) => [g.bucket, g.access]));
 		if (name.length > 64) return fail(400, { name, chosen, invalid: 'name' as const });
 		if (grants.length === 0) return fail(400, { name, chosen, invalid: 'grants' as const });

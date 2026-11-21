@@ -1,23 +1,12 @@
 import { redirect } from '@sveltejs/kit';
 import { account, field, refused } from '#lib/server/account/actions.js';
-import { AccountProblem } from '#lib/server/account/client.js';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
-	const client = account(event);
+	account(event);
 	const token = event.url.searchParams.get('token') ?? '';
-	// Only try a passwordless confirmation for a signed-in visitor. Sign-up links
-	// require the password, so everyone else starts with the password form.
-	if (token && event.locals.me?.session.stage === 'full' && event.request.method === 'GET') {
-		try {
-			const answer = await client.verifyEmail(token);
-			if (answer.what === 'email_changed')
-				return { token, email: '', changed: true, signedIn: true };
-			redirect(303, '/sign-in?verified=1');
-		} catch (err) {
-			if (!(err instanceof AccountProblem)) throw err;
-		}
-	}
+	// Confirmation happens only on the POST of the confirm form, never on a page load:
+	// link scanners and prefetch must not spend a link.
 	return {
 		token,
 		changed: false,

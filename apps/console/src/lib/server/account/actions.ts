@@ -1,6 +1,6 @@
 import { error, fail, redirect, type RequestEvent } from '@sveltejs/kit';
 import { AccountProblem } from './client.js';
-import { nextPath } from './session.js';
+import { freshStep, nextPath } from './session.js';
 
 export function account(event: RequestEvent) {
 	if (!event.locals.account) error(404, { message: 'This page is unavailable in the demo.' });
@@ -14,6 +14,18 @@ export const field = (form: FormData, name: string) => {
 
 export function requireIdentity(path: string): never {
 	redirect(303, `/confirm-identity?next=${encodeURIComponent(nextPath(path))}`);
+}
+
+/**
+ * Sensitive actions (a key that can write, an API token, deleting the workspace) need a
+ * sign-in step in the last 10 minutes, and one that used the second factor when the user
+ * has one. Demo mode has no sessions and passes.
+ */
+export function requireFreshStep(locals: App.Locals, path: string) {
+	const me = locals.me;
+	if (!me) return;
+	const hasFactor = me.user.totp || me.user.passkeys > 0;
+	if (!freshStep(me.session.step_at) || (hasFactor && me.session.level < 2)) requireIdentity(path);
 }
 
 function retryMinutes(value: string | null) {
