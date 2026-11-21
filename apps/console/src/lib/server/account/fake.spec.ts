@@ -205,8 +205,9 @@ it('registers, renames, uses and removes a passkey across session stages', async
 		password
 	});
 	expect(recovery_codes).toHaveLength(10);
-	await expect(active.passkeyRegisterFinish(registration)).rejects.toMatchObject({
-		code: 'step_required'
+	// The session now has two factors, so a replay reaches the spent challenge.
+	await expect(active.passkeyRegisterFinish({ ...registration, password })).rejects.toMatchObject({
+		code: 'passkey_invalid'
 	});
 	await expect(active.renamePasskey(passkey.id, 'Laptop')).resolves.toMatchObject({
 		name: 'Laptop'
