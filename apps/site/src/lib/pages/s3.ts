@@ -23,7 +23,7 @@ export const S3_BLOCKS: Block[] = [
 			['Endpoint', `\`${ENDPOINT}\` (HTTPS only)`],
 			[
 				'Region',
-				`\`${REGION}\` (\`us-east-1\` is also accepted). Requests signed for any other region are refused with \`AuthorizationHeaderMalformed\`.`
+				`\`${REGION}\` (\`us-east-1\` is also accepted). Requests signed for any other region are refused with \`AuthorizationHeaderMalformed\` (\`AuthorizationQueryParametersError\` for a presigned URL).`
 			],
 			[
 				'Addressing',
@@ -118,7 +118,11 @@ export const S3_BLOCKS: Block[] = [
 		caption: 'Common error codes and what to do',
 		head: ['Code', 'HTTP', 'Meaning and fix'],
 		rows: [
-			['AccessDenied', '403', 'The key may not reach this bucket or do this operation.'],
+			[
+				'AccessDenied',
+				'403',
+				'The key may not do this operation, for example a write with a read-only key.'
+			],
 			[
 				'AuthorizationHeaderMalformed, AuthorizationQueryParametersError',
 				'400',

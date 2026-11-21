@@ -2,7 +2,15 @@
 // The switches are compile-time constants; this suite checks the default (staging) build. The
 // switched-on build is checked in CI by scripts/check-launch.mjs.
 import { describe, expect, it } from 'vitest';
-import { EARLY_ACCESS, ENDPOINT, FOOTER, PLANS, PRIMARY_CTA, PROFILE } from './content';
+import {
+	EARLY_ACCESS,
+	ENDPOINT,
+	FOOTER,
+	PLANS,
+	PRIMARY_CTA,
+	PROFILE,
+	TOOL_EXAMPLES
+} from './content';
 import { llmsTxt } from './discovery';
 import { PAGES } from './registry';
 import { AWS_CLI_BLOCKS } from './pages/aws-cli';
@@ -99,5 +107,38 @@ describe('documented client profile', () => {
 		expect(t).toContain('upload_cutoff=16M');
 		expect(t).not.toMatch(/\b95\s?(MiB|M)\b/);
 		expect(t).toContain('It is in early access: not yet open for sign-ups');
+	});
+
+	it('sets the profile in every command form, including the home examples', () => {
+		const blocks = (bs: Block[]) => bs.flatMap((b) => (b.type === 'code' ? [b.code] : []));
+		const home = (id: string) => TOOL_EXAMPLES.find((t) => t.id === id)!.code;
+		const rcloneCreate = [
+			...blocks(RCLONE_BLOCKS).filter((c) => c.startsWith('rclone config create')),
+			home('rclone')
+		];
+		expect(rcloneCreate).toHaveLength(2);
+		for (const c of rcloneCreate)
+			for (const opt of [
+				'force_path_style=true',
+				'upload_cutoff=16M',
+				'chunk_size=16M',
+				'upload_concurrency=1',
+				'disable_http2=true',
+				'no_check_bucket=true'
+			])
+				expect(c).toContain(opt);
+		const awsSet = [
+			blocks(AWS_CLI_BLOCKS).find((c) => c.includes('aws configure set'))!,
+			home('aws-cli')
+		];
+		for (const c of awsSet)
+			for (const opt of [
+				's3.addressing_style path',
+				's3.multipart_threshold 16MB',
+				's3.multipart_chunksize 16MB',
+				's3.max_concurrent_requests 16',
+				's3.preferred_transfer_client classic'
+			])
+				expect(c).toContain(opt);
 	});
 });

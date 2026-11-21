@@ -76,7 +76,7 @@ export const RCLONE_BLOCKS: Block[] = [
 		type: 'code',
 		title: 'Mount a bucket as a drive',
 		lang: 'sh',
-		code: `mkdir -p ~/kofra\nrclone mount kofra:my-bucket ~/kofra --vfs-cache-mode writes`
+		code: `# macOS and Linux: mount on an empty folder\nmkdir -p ~/kofra\nrclone mount kofra:my-bucket ~/kofra --vfs-cache-mode writes\n\n# Windows: mount as a drive letter\nrclone mount kofra:my-bucket X: --vfs-cache-mode writes`
 	},
 	{
 		type: 'p',

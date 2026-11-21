@@ -125,7 +125,10 @@ export const AWS_CLI_BLOCKS: Block[] = [
 				'`InvalidRequest` about virtual-hosted-style requests',
 				'Set `addressing_style = path` in the profile.'
 			],
-			['`AccessDenied`', 'The key may not reach this bucket or do this operation.'],
+			[
+				'`AccessDenied`',
+				'The key may not do this operation, for example a write with a read-only key.'
+			],
 			[
 				'`SignatureDoesNotMatch`',
 				'The secret key is wrong. Run `aws configure --profile kofra` again.'

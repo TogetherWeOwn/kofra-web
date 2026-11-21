@@ -72,7 +72,7 @@ export function llmsTxt(): string {
 				'- Signing: AWS Signature Version 4',
 				`- One request body: up to ${PROFILE.maxRequestMiB} MiB; use multipart uploads (up to 10,000 parts) above that`,
 				`- Largest object: ${PROFILE.maxObjectGiB} GiB, with ${PROFILE.partMiB} MiB parts`,
-				`- Recommended: ${PROFILE.partMiB} MiB parts from ${PROFILE.partMiB} MiB, about ${PROFILE.concurrency} requests at once; rclone also needs upload_cutoff=${PROFILE.partMiB}M, disable_http2=true and no_check_bucket=true (${SITE.origin}/docs#recommended)`,
+				`- Recommended: ${PROFILE.partMiB} MiB parts from ${PROFILE.partMiB} MiB, about ${PROFILE.concurrency} requests at once; rclone needs upload_cutoff=${PROFILE.partMiB}M, and should also set disable_http2=true for speed and no_check_bucket=true to skip creating the bucket (${SITE.origin}/docs#recommended)`,
 				'- Buckets are created in the Kofra console, not through the S3 API',
 				'',
 				`Every page is also available as Markdown: add .md to its path (the home page is /index.md), or request it with \`Accept: text/markdown\`. The full text of all pages is at ${SITE.origin}/llms-full.txt.`

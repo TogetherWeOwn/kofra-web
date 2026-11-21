@@ -64,12 +64,25 @@ export const WEBDAV_BLOCKS: Block[] = [
 	{ type: 'h2', text: 'rclone', id: 'rclone' },
 	{
 		type: 'code',
+		title: 'Create the remote (once)',
 		lang: 'sh',
-		code: `rclone config create kofradav webdav url=${WEBDAV_URL} vendor=other \\\n  user=your-app-password-id\nprintf 'App password secret: '; IFS= read -rs KOFRA_DAV_SECRET; echo\nexport RCLONE_CONFIG_KOFRADAV_PASS="$(printf '%s' "$KOFRA_DAV_SECRET" | rclone obscure -)"\nunset KOFRA_DAV_SECRET\nmkdir -p ~/kofra\nrclone mount kofradav:my-bucket ~/kofra --vfs-cache-mode writes`
+		code: `rclone config create kofradav webdav url=${WEBDAV_URL} vendor=other \\\n  user=your-app-password-id`
+	},
+	{
+		type: 'code',
+		title: 'Enter the secret (in each new terminal)',
+		lang: 'sh',
+		code: `printf 'App password secret: '; IFS= read -rs KOFRA_DAV_SECRET; echo`
+	},
+	{
+		type: 'code',
+		title: 'Use it',
+		lang: 'sh',
+		code: `export RCLONE_CONFIG_KOFRADAV_PASS="$(printf '%s' "$KOFRA_DAV_SECRET" | rclone obscure -)"\nunset KOFRA_DAV_SECRET\nmkdir -p ~/kofra\nrclone mount kofradav:my-bucket ~/kofra --vfs-cache-mode writes`
 	},
 	{
 		type: 'p',
-		text: 'The secret is typed at a hidden prompt (bash and zsh) and kept in an environment variable for this terminal session only, never in the rclone config file or on a command line. For files above the WebDAV upload limit, use the [S3 remote](/docs/rclone) instead.'
+		text: 'Run the prompt line on its own and type the secret; it is not shown. The secret is kept in an environment variable for this terminal session only, never in the rclone config file or on a command line, so repeat the last two steps in each new terminal. On Windows, mount on a drive letter instead (`X:`) and skip `mkdir`. For files above the WebDAV upload limit, use the [S3 remote](/docs/rclone) instead.'
 	},
 
 	{ type: 'h2', text: 'Limits', id: 'limits' },
