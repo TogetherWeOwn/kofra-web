@@ -8,12 +8,15 @@
 	"workers_dev": false,
 	"preview_urls": false,
 	"vars": {
-		// "demo" is the only mode today: an in-memory API with per-visitor sample data and no
-		// sign-in. Any other value makes every page answer 503 (see src/lib/server/config.ts),
-		// so a build can never serve real data without real sign-in.
-		"CONSOLE_MODE": "demo",
+		// The data source. "demo": an in-memory API with per-visitor sample data and no sign-in.
+		// "tenant0": the operator's own storage account, behind Cloudflare Access, which also
+		// needs the settings, secrets and service binding listed in
+		// docs/console-owner-workspace.md. Any other value, or a missing setting, makes every
+		// page answer 503 (see src/lib/server/config.ts), so a build never serves real data
+		// without its sign-in.
+		"CONSOLE_DATA": "demo",
 		// "off" or "test". "test" also needs the STRIPE_SECRET_KEY secret (a test-mode key) and
-		// STRIPE_PRICE_ID; see src/lib/server/stripe.ts.
+		// STRIPE_PRICE_ID; see src/lib/server/stripe.ts. Always off in tenant0.
 		"BILLING": "off",
 		"STRIPE_PRICE_ID": "",
 		"STRIPE_PORTAL_CUSTOMER": ""

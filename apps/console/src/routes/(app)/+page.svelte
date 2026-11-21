@@ -5,10 +5,12 @@
 	import CopyField from '#lib/components/CopyField.svelte';
 	import UsageTile from '#lib/components/UsageTile.svelte';
 	import { describeEvent } from '#lib/events.js';
+	import { bucketHref } from '#lib/links.js';
 	import { ago, bytes, count, dateTime, percent } from '#lib/format.js';
 	import { REGION } from '#lib/snippets.js';
 
 	let { data } = $props();
+	const f = $derived(data.ws.features);
 	const u = $derived(data.usage);
 	const dl = $derived(u.downloads);
 </script>
@@ -21,7 +23,10 @@
 <div class="ph">
 	<div>
 		<h1>Overview</h1>
-		<p>Updated {dateTime(u.as_of)}.</p>
+		<p>
+			Updated {dateTime(u.as_of)}.{#if !data.countsComplete}
+				Stored amounts are still being recounted and may be low for a while.{/if}
+		</p>
 	</div>
 	<div class="ph-act">
 		<Button href={resolve('/(app)/buckets?create')}>
@@ -40,25 +45,27 @@
 		limit={u.storage_limit_bytes}
 		meterLabel="Storage used of the plan"
 	/>
-	<UsageTile
-		label="Uploads, last 24 hours"
-		used={u.upload_24h.used_bytes}
-		limit={u.upload_24h.limit_bytes}
-		meterLabel="Uploads used of the 24-hour limit"
-		detail="{bytes(u.upload_24h.remaining_bytes ?? 0)} left until {dateTime(
-			u.upload_24h.resets_at
-		)}"
-	/>
-	<UsageTile
-		label="Downloads this month"
-		used={dl.used_bytes}
-		limit={dl.allowance_bytes}
-		meterLabel="Downloads used of the included allowance"
-		detail={dl.allowance_bytes === null
-			? undefined
-			: `${percent(dl.used_bytes, dl.allowance_bytes)} of ${bytes(dl.allowance_bytes)} included`}
-		noLimit="No download allowance applies"
-	/>
+	{#if f.traffic}
+		<UsageTile
+			label="Uploads, last 24 hours"
+			used={u.upload_24h.used_bytes}
+			limit={u.upload_24h.limit_bytes}
+			meterLabel="Uploads used of the 24-hour limit"
+			detail="{bytes(u.upload_24h.remaining_bytes ?? 0)} left until {dateTime(
+				u.upload_24h.resets_at
+			)}"
+		/>
+		<UsageTile
+			label="Downloads this month"
+			used={dl.used_bytes}
+			limit={dl.allowance_bytes}
+			meterLabel="Downloads used of the included allowance"
+			detail={dl.allowance_bytes === null
+				? undefined
+				: `${percent(dl.used_bytes, dl.allowance_bytes)} of ${bytes(dl.allowance_bytes)} included`}
+			noLimit="No download allowance applies"
+		/>
+	{/if}
 	<li class="tile">
 		<p class="tile-l">Files</p>
 		<p class="tile-v">{count(u.object_count)}</p>
@@ -81,22 +88,41 @@
 		<CopyField id="region" label="Region" value={REGION} />
 		<p><a href={resolve('/(app)/keys/new')}>Create an access key</a></p>
 	</section>
-	<section class="card pad" aria-labelledby="recent-h">
-		<h2 id="recent-h">Recent activity</h2>
-		{#if data.recent.length}
-			<ul class="events">
-				{#each data.recent as e (e.id)}
-					<li>
-						<span>{describeEvent(e)}</span><time class="muted" datetime={e.created_at}>
-							{ago(e.created_at)}
-						</time>
-					</li>
-				{/each}
-			</ul>
-		{:else}
-			<p class="muted">Nothing has happened in this workspace yet.</p>
-		{/if}
-	</section>
+	{#if !f.events}
+		<section class="card pad" aria-labelledby="largest-h">
+			<h2 id="largest-h">Largest buckets</h2>
+			{#if data.largest.length}
+				<ul class="events">
+					{#each data.largest as b (b.name)}
+						<li>
+							<a href={bucketHref(b.name)}>{b.name}</a><span class="muted">
+								{bytes(b.stored_bytes)}
+							</span>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="muted">No buckets yet.</p>
+			{/if}
+		</section>
+	{:else}
+		<section class="card pad" aria-labelledby="recent-h">
+			<h2 id="recent-h">Recent activity</h2>
+			{#if data.recent.length}
+				<ul class="events">
+					{#each data.recent as e (e.id)}
+						<li>
+							<span>{describeEvent(e)}</span><time class="muted" datetime={e.created_at}>
+								{ago(e.created_at)}
+							</time>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="muted">Nothing has happened in this workspace yet.</p>
+			{/if}
+		</section>
+	{/if}
 </div>
 
 <style>

@@ -47,23 +47,25 @@
 			};
 		}}
 	>
-		<div class="field">
-			<label for="name">Name <span class="muted">(optional)</span></label>
-			<input
-				class="input"
-				id="name"
-				name="name"
-				maxlength="64"
-				autocomplete="off"
-				value={form && 'name' in form ? form.name : ''}
-				aria-describedby="name-help{invalid === 'name' ? ' name-err' : ''}"
-				aria-invalid={invalid === 'name' ? 'true' : undefined}
-			/>
-			<p class="help" id="name-help">A label for you, such as the tool or computer that uses it.</p>
-			{#if invalid === 'name'}<p class="err" id="name-err">
-					<CircleAlert class="icon" aria-hidden="true" />Use at most 64 characters.
-				</p>{/if}
-		</div>
+		{#if data.ws.features.keyNames}<div class="field">
+				<label for="name">Name <span class="muted">(optional)</span></label>
+				<input
+					class="input"
+					id="name"
+					name="name"
+					maxlength="64"
+					autocomplete="off"
+					value={form && 'name' in form ? form.name : ''}
+					aria-describedby="name-help{invalid === 'name' ? ' name-err' : ''}"
+					aria-invalid={invalid === 'name' ? 'true' : undefined}
+				/>
+				<p class="help" id="name-help">
+					A label for you, such as the tool or computer that uses it.
+				</p>
+				{#if invalid === 'name'}<p class="err" id="name-err">
+						<CircleAlert class="icon" aria-hidden="true" />Use at most 64 characters.
+					</p>{/if}
+			</div>{/if}
 		<fieldset
 			class="field"
 			aria-describedby="grants-help{invalid === 'grants' ? ' grants-err' : ''}"

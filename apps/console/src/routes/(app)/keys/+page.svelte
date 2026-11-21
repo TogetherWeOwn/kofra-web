@@ -10,7 +10,9 @@
 	import { REGION } from '#lib/snippets.js';
 
 	let { data } = $props();
-	const full = $derived(data.keys.length >= data.limit);
+	const f = $derived(data.ws.features);
+	const full = $derived(f.keyLimit && data.keys.length >= data.limit);
+	const own = (id: string) => id === data.ws.consoleKeyId;
 </script>
 
 <svelte:head>
@@ -57,37 +59,53 @@
 <section class="card" aria-labelledby="keys-h">
 	<div class="card-bar">
 		<h2 id="keys-h" class="h3">Active keys</h2>
-		<p class="muted">{count(data.keys.length)} of {count(data.limit)}</p>
+		<p class="muted">
+			{count(data.keys.length)}{#if f.keyLimit}&nbsp;of {count(data.limit)}{/if}
+		</p>
 	</div>
 	{#if data.keys.length}
 		<div class="table-wrap">
 			<table class="tbl">
 				<thead>
 					<tr>
-						<th scope="col">Name</th>
-						<th scope="col" class="hs">Key ID</th>
+						{#if f.keyNames}
+							<th scope="col">Name</th>
+							<th scope="col" class="hs">Key ID</th>
+						{:else}
+							<th scope="col">Key ID</th>
+						{/if}
 						<th scope="col">Access</th>
 						<th scope="col" class="hs">Created</th>
-						<th scope="col" class="hs">Last used</th>
+						{#if f.keyNames}<th scope="col" class="hs">Last used</th>{/if}
 						<th scope="col"><span class="sr-only">Actions</span></th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each data.keys as k (k.id)}
 						<tr>
-							<th scope="row">{k.name ?? 'Unnamed key'}</th>
-							<td class="hs mono">{k.id}</td>
+							{#if f.keyNames}
+								<th scope="row">{k.name ?? 'Unnamed key'}</th>
+								<td class="hs mono">{k.id}</td>
+							{:else}
+								<th scope="row" class="mono">{k.id}</th>
+							{/if}
 							<td class="wrap-cell">{grantSummary(k.grants)}</td>
 							<td class="hs">{date(k.created_at)}</td>
-							<td class="hs">{k.last_used_at ? ago(k.last_used_at) : 'Never'}</td>
+							{#if f.keyNames}
+								<td class="hs">{k.last_used_at ? ago(k.last_used_at) : 'Never'}</td>
+							{/if}
 							<td class="act">
-								<a
-									class="link-danger"
-									href={keyRevokeHref(k.id)}
-									aria-label="Revoke key {k.name ?? k.id}"
-								>
-									Revoke
-								</a>
+								{#if own(k.id)}
+									<span class="muted">Used by this console</span>
+								{:else}
+									<a
+										class="link-danger"
+										href={keyRevokeHref(k.id)}
+										aria-label="Revoke key {k.name ?? k.id}"
+									>
+										Revoke
+									</a>
+								{/if}
 							</td>
 						</tr>
 					{/each}

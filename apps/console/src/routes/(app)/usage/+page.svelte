@@ -3,10 +3,12 @@
 	import { bucketHref } from '#lib/links.js';
 	import Download from '@lucide/svelte/icons/download';
 	import DailyChart from '#lib/charts/DailyChart.svelte';
+	import Notice from '#lib/components/Notice.svelte';
 	import UsageTile from '#lib/components/UsageTile.svelte';
 	import { bytes, count, dateTime, percent, shortDay } from '#lib/format.js';
 
 	let { data } = $props();
+	const traffic = $derived(data.ws.features.traffic);
 	const u = $derived(data.usage);
 	const dl = $derived(u.downloads);
 	const periodStart = $derived(u.downloads.period_start.slice(0, 10));
@@ -46,17 +48,35 @@
 <div class="ph">
 	<div>
 		<h1>Usage</h1>
-		<p>
-			Updated {dateTime(u.as_of)}. Figures for the last two days are provisional and can still
-			change.
-		</p>
+		{#if traffic}
+			<p>
+				Updated {dateTime(u.as_of)}. Figures for the last two days are provisional and can still
+				change.
+			</p>
+		{:else}
+			<p>
+				Updated {dateTime(u.as_of)}. Stored amounts only: uploads, downloads and requests are not
+				measured for this workspace yet.
+			</p>
+		{/if}
 	</div>
-	<div class="ph-act">
-		<a class="btn-plain" href={resolve('/(app)/usage/export.csv')} download>
-			<Download class="icon" aria-hidden="true" />Download CSV
-		</a>
-	</div>
+	{#if traffic}
+		<div class="ph-act">
+			<a class="btn-plain" href={resolve('/(app)/usage/export.csv')} download>
+				<Download class="icon" aria-hidden="true" />Download CSV
+			</a>
+		</div>
+	{/if}
 </div>
+
+{#if !data.countsComplete}
+	<Notice tone="info" title="Still counting">
+		<p>
+			Stored amounts are being recounted after an update and may be lower than the real figures for
+			a while.
+		</p>
+	</Notice>
+{/if}
 
 <ul class="tiles">
 	<UsageTile
@@ -65,55 +85,67 @@
 		limit={u.storage_limit_bytes}
 		meterLabel="Storage used of the plan"
 	/>
-	<UsageTile
-		label="Uploads, last 24 hours"
-		used={u.upload_24h.used_bytes}
-		limit={u.upload_24h.limit_bytes}
-		meterLabel="Uploads used of the 24-hour limit"
-		detail="Resets {dateTime(u.upload_24h.resets_at)}"
-	/>
-	<UsageTile
-		label="Downloads this month"
-		used={dl.used_bytes}
-		limit={dl.allowance_bytes}
-		meterLabel="Downloads used of the included allowance"
-		detail={dl.allowance_bytes === null
-			? undefined
-			: `${percent(dl.used_bytes, dl.allowance_bytes)} of ${bytes(dl.allowance_bytes)} included`}
-		noLimit="No download allowance applies"
-	/>
-	<li class="tile">
-		<p class="tile-l">Requests, last {data.days.length} days</p>
-		<p class="tile-v">{count(requests)}</p>
-		<p class="tile-s">Approximate. Requests are not charged.</p>
-	</li>
+	{#if traffic}
+		<UsageTile
+			label="Uploads, last 24 hours"
+			used={u.upload_24h.used_bytes}
+			limit={u.upload_24h.limit_bytes}
+			meterLabel="Uploads used of the 24-hour limit"
+			detail="Resets {dateTime(u.upload_24h.resets_at)}"
+		/>
+		<UsageTile
+			label="Downloads this month"
+			used={dl.used_bytes}
+			limit={dl.allowance_bytes}
+			meterLabel="Downloads used of the included allowance"
+			detail={dl.allowance_bytes === null
+				? undefined
+				: `${percent(dl.used_bytes, dl.allowance_bytes)} of ${bytes(dl.allowance_bytes)} included`}
+			noLimit="No download allowance applies"
+		/>
+		<li class="tile">
+			<p class="tile-l">Requests, last {data.days.length} days</p>
+			<p class="tile-v">{count(requests)}</p>
+			<p class="tile-s">Approximate. Requests are not charged.</p>
+		</li>
+	{:else}
+		<li class="tile">
+			<p class="tile-l">Files</p>
+			<p class="tile-v">{count(u.object_count)}</p>
+			<p class="tile-s">
+				In {count(data.buckets.length)} bucket{data.buckets.length === 1 ? '' : 's'}
+			</p>
+		</li>
+	{/if}
 </ul>
 
-<section class="card pad" aria-label="Stored per day">
-	<DailyChart
-		id="stored"
-		kind="step"
-		title="Stored per day"
-		description="Highest amount stored each day, {range}. Billing uses the monthly average."
-		valueLabel="Stored"
-		days={stored}
-		reference={u.storage_limit_bytes === null
-			? null
-			: { value: u.storage_limit_bytes, label: `Plan limit ${bytes(u.storage_limit_bytes)}` }}
-	/>
-</section>
+{#if traffic}
+	<section class="card pad" aria-label="Stored per day">
+		<DailyChart
+			id="stored"
+			kind="step"
+			title="Stored per day"
+			description="Highest amount stored each day, {range}. Billing uses the monthly average."
+			valueLabel="Stored"
+			days={stored}
+			reference={u.storage_limit_bytes === null
+				? null
+				: { value: u.storage_limit_bytes, label: `Plan limit ${bytes(u.storage_limit_bytes)}` }}
+		/>
+	</section>
 
-<section class="card pad" aria-label="Downloads per day">
-	<DailyChart
-		id="downloads"
-		kind="columns"
-		title="Downloads per day"
-		description="Bytes downloaded each day, {range}."
-		valueLabel="Downloaded"
-		days={downloads}
-		legend={{ current: 'This month', context: 'Earlier' }}
-	/>
-</section>
+	<section class="card pad" aria-label="Downloads per day">
+		<DailyChart
+			id="downloads"
+			kind="columns"
+			title="Downloads per day"
+			description="Bytes downloaded each day, {range}."
+			valueLabel="Downloaded"
+			days={downloads}
+			legend={{ current: 'This month', context: 'Earlier' }}
+		/>
+	</section>
+{/if}
 
 <section class="card" aria-labelledby="pb-h">
 	<div class="card-bar">

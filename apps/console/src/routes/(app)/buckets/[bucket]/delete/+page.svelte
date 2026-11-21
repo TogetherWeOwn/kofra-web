@@ -23,7 +23,7 @@
 </div>
 
 {#if data.blocked}
-	<Notice tone="warning" title="This bucket still holds files">
+	<Notice tone="warning" title={data.blockedTitle ?? 'This bucket cannot be deleted'}>
 		<p>{data.blocked.message}</p>
 		{#if data.blocked.hint}<p>{data.blocked.hint}</p>{/if}
 	</Notice>

@@ -5,7 +5,11 @@
 	import { bytes } from '#lib/format.js';
 	import { uploadKey, validKey } from '#lib/paths.js';
 
-	let { bucket, prefix }: { bucket: string; prefix: string } = $props();
+	let {
+		bucket,
+		prefix,
+		sample = false
+	}: { bucket: string; prefix: string; sample?: boolean } = $props();
 
 	interface Item {
 		id: number;
@@ -15,6 +19,18 @@
 		state: 'waiting' | 'uploading' | 'done' | 'failed';
 		message?: string;
 	}
+	/** One PUT of the whole file, or a plan to send it in parts (see FileStore.startUpload). */
+	type Target =
+		| { method: 'PUT'; url: string }
+		| {
+				method: 'MULTIPART';
+				part_url: string;
+				complete_url: string;
+				abort_url: string;
+				token: string;
+				part_size: number;
+				part_count: number;
+		  };
 	let items = $state<Item[]>([]);
 	let dragging = $state(false);
 	let announce = $state('');
@@ -23,48 +39,97 @@
 
 	const active = $derived(items.some((i) => i.state === 'waiting' || i.state === 'uploading'));
 
-	async function presign(key: string, size: number) {
-		const res = await fetch(`/buckets/${encodeURIComponent(bucket)}/upload`, {
-			method: 'POST',
-			headers: { 'content-type': 'application/json', accept: 'application/json' },
-			body: JSON.stringify({ key, size }),
-			signal: controller.signal
-		});
-		const body = (await res.json().catch(() => ({}))) as {
-			url?: string;
-			method?: string;
-			message?: string;
-		};
-		if (!res.ok || !body.url)
-			throw new Error(body.message ?? `The upload could not start (${res.status}).`);
-		return body as { url: string; method: string };
+	async function answer(res: Response, fallback: string) {
+		const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+		if (!res.ok) throw new Error(typeof body.message === 'string' ? body.message : fallback);
+		return body;
 	}
 
-	function put(item: Item, file: File, target: { url: string; method: string }) {
-		return new Promise<void>((resolve, reject) => {
+	async function post(url: string, body: unknown) {
+		const res = await fetch(url, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', accept: 'application/json' },
+			body: JSON.stringify(body),
+			signal: controller.signal
+		});
+		return answer(res, `The request failed (${res.status}).`);
+	}
+
+	async function presign(key: string, file: File): Promise<Target> {
+		const body = await post(`/buckets/${encodeURIComponent(bucket)}/upload`, {
+			key,
+			size: file.size,
+			type: file.type
+		});
+		if (body.method !== 'PUT' && body.method !== 'MULTIPART')
+			throw new Error('The upload could not start.');
+		return body as unknown as Target;
+	}
+
+	/** Sends one body; resolves with the answer's JSON. */
+	function put(url: string, body: Blob, type: string, progress: (loaded: number) => void) {
+		return new Promise<Record<string, unknown>>((resolve, reject) => {
 			const xhr = new XMLHttpRequest();
 			current = xhr;
-			xhr.open(target.method, target.url);
-			if (file.type) xhr.setRequestHeader('content-type', file.type);
-			xhr.upload.onprogress = (e) => (item.sent = e.loaded);
+			xhr.open('PUT', url);
+			if (type) xhr.setRequestHeader('content-type', type);
+			xhr.upload.onprogress = (e) => progress(e.loaded);
 			xhr.onload = () => {
-				if (xhr.status >= 200 && xhr.status < 300) return resolve();
-				let msg = `The upload failed (${xhr.status}).`;
+				let parsed: Record<string, unknown> = {};
 				try {
-					msg = (JSON.parse(xhr.responseText) as { message?: string }).message ?? msg;
+					parsed = JSON.parse(xhr.responseText) as Record<string, unknown>;
 				} catch {
 					/* keep the status message */
 				}
-				reject(new Error(msg));
+				if (xhr.status >= 200 && xhr.status < 300) return resolve(parsed);
+				reject(
+					new Error(
+						typeof parsed.message === 'string'
+							? parsed.message
+							: `The upload failed (${xhr.status}).`
+					)
+				);
 			};
 			xhr.onerror = () => reject(new Error('The connection dropped.'));
 			xhr.onabort = () => reject(new Error('The upload was stopped.'));
-			xhr.send(file);
+			xhr.send(body);
 		});
 	}
 
-	// One upload at a time, in the order picked: each upload's answer saves the demo state, so
-	// overlapping uploads could overwrite each other's record. New picks join the queue.
+	async function send(item: Item, file: File, target: Target) {
+		if (target.method === 'PUT') {
+			await put(target.url, file, file.type, (n) => (item.sent = n));
+			return;
+		}
+		// Parts one after another; a failure stops the upload and drops the parts sent.
+		const parts: { part: number; etag: string }[] = [];
+		try {
+			for (let n = 1; n <= target.part_count; n++) {
+				const start = (n - 1) * target.part_size;
+				const blob = file.slice(start, Math.min(start + target.part_size, file.size));
+				const r = await put(
+					`${target.part_url}&n=${n}`,
+					blob,
+					'application/octet-stream',
+					(loaded) => (item.sent = start + loaded)
+				);
+				parts.push({ part: n, etag: String(r.etag ?? '') });
+				if (stopped) throw new Error('The upload was stopped.');
+			}
+			await post(target.complete_url, { token: target.token, parts });
+		} catch (err) {
+			// Best effort: the console's storage also clears unfinished uploads later.
+			fetch(target.abort_url, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ token: target.token }),
+				keepalive: true
+			}).catch(() => {});
+			throw err;
+		}
+	}
+
+	// One upload at a time, in the order picked. New picks join the queue.
 	const queue: { id: number; file: File }[] = [];
 	let running = false;
 	let current: XMLHttpRequest | null = null;
@@ -107,10 +172,10 @@
 			}
 			it.state = 'uploading';
 			try {
-				const target = await presign(it.key, file.size);
+				const target = await presign(it.key, file);
 				// The visitor may have left while the address was being prepared.
 				if (stopped) break;
-				await put(it, file, target);
+				await send(it, file, target);
 				it.state = 'done';
 				it.sent = it.size;
 				ok++;
@@ -168,8 +233,12 @@
 			<input bind:this={input} class="sr-only" type="file" multiple onchange={picked} />
 		</label>
 		<p class="muted">
-			They go into {prefix ? prefix : 'the top level of the bucket'}. The demo accepts files up to
-			25 MB and keeps only their names and sizes.
+			They go into {prefix ? prefix : 'the top level of the bucket'}.
+			{#if sample}
+				The demo accepts files up to 25 MB and keeps only their names and sizes.
+			{:else}
+				A file with the same name is never replaced: delete it first.
+			{/if}
 		</p>
 	</div>
 	<p class="sr-only" role="status">{announce}</p>

@@ -21,10 +21,24 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	// cannot be deleted, and the page says so instead of showing the form.
 	try {
 		const plan = (await locals.api.buckets.delete({ bucket: bucket.name, dry_run: true })) as Plan;
-		return { bucket, plan, blocked: null, crumbs };
+		return { bucket, plan, blocked: null, blockedTitle: null, crumbs };
 	} catch (err) {
 		if (err instanceof KofraError && err.code === 'bucket_not_empty')
-			return { bucket, plan: null, blocked: describe(err), crumbs };
+			return {
+				bucket,
+				plan: null,
+				blocked: describe(err),
+				blockedTitle: 'This bucket still holds files',
+				crumbs
+			};
+		if (err instanceof KofraError && err.code === 'role_forbidden')
+			return {
+				bucket,
+				plan: null,
+				blocked: describe(err),
+				blockedTitle: 'This bucket is protected',
+				crumbs
+			};
 		loadFailed(err);
 	}
 };
@@ -37,6 +51,10 @@ export const actions: Actions = {
 		try {
 			await locals.api.buckets.delete({ bucket: params.bucket });
 		} catch (err) {
+			// Empty at the dry run but refused now: the bucket held files once and is kept. The
+			// usual hint (delete every file first) would not help, so only the reason is shown.
+			if (err instanceof KofraError && err.code === 'bucket_not_empty')
+				return fail(409, { problem: { message: err.problem.detail, requestId: err.requestId } });
 			return actionFailed(err);
 		}
 		redirect(303, `/buckets?deleted=${encodeURIComponent(params.bucket)}`);

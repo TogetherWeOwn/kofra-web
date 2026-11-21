@@ -1,10 +1,14 @@
 import { resolve } from '$app/paths';
-import { fail, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import type { Plan } from '@kofra/api';
 import { actionFailed, loadFailed } from '#lib/server/api.js';
 import type { Actions, PageServerLoad } from './$types';
 
+const unavailable = () =>
+	error(404, { message: 'This workspace cannot be deleted from the console.' });
+
 export const load: PageServerLoad = async ({ locals, parent }) => {
+	if (!locals.workspace.features.workspaceDeletion) unavailable();
 	const { account } = await parent();
 	if (account.deletion) redirect(303, '/settings');
 	try {
@@ -23,6 +27,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 
 export const actions: Actions = {
 	default: async ({ locals, request }) => {
+		if (!locals.workspace.features.workspaceDeletion) unavailable();
 		const form = await request.formData();
 		let id: string;
 		try {

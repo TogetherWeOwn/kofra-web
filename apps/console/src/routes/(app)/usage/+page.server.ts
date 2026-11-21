@@ -4,12 +4,13 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	try {
-		const [usage, days, buckets] = await Promise.all([
+		const [usage, days, buckets, countsComplete] = await Promise.all([
 			locals.api.usage.get(),
 			recentDays(locals.api, 30),
-			locals.api.usage.buckets({ limit: 200 })
+			locals.api.usage.buckets({ limit: 200 }),
+			locals.countsComplete()
 		]);
-		return { usage, days, buckets: buckets.data, crumbs: [{ label: 'Usage' }] };
+		return { usage, days, buckets: buckets.data, countsComplete, crumbs: [{ label: 'Usage' }] };
 	} catch (err) {
 		loadFailed(err);
 	}

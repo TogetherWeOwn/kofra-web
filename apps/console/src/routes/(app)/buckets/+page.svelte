@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { bucketDeleteHref, bucketHref, bucketsPageHref } from '#lib/links.js';
+	import { bucketConnectHref, bucketDeleteHref, bucketHref, bucketsPageHref } from '#lib/links.js';
 	import Database from '@lucide/svelte/icons/database';
 	import Plus from '@lucide/svelte/icons/plus';
 	import { Button } from '@kofra/ui';
@@ -73,13 +73,17 @@
 							<td class="num hs">{count(b.object_count)}</td>
 							<td class="hs">{date(b.created_at)}</td>
 							<td class="act">
-								<a
-									class="link-danger"
-									href={bucketDeleteHref(b.name)}
-									aria-label="Delete bucket {b.name}"
-								>
-									Delete
-								</a>
+								{#if data.protectedBuckets.includes(b.name)}
+									<span class="muted">Protected</span>
+								{:else}
+									<a
+										class="link-danger"
+										href={bucketDeleteHref(b.name)}
+										aria-label="Delete bucket {b.name}"
+									>
+										Delete
+									</a>
+								{/if}
 							</td>
 						</tr>
 					{/each}
@@ -102,7 +106,55 @@
 	{/if}
 </section>
 
+{#if data.others.length}
+	<section class="card" aria-labelledby="other-h">
+		<div class="card-bar">
+			<h2 id="other-h" class="h3">Not open in the console</h2>
+			<p class="muted">
+				These buckets are in your workspace, but the console has no access to them yet. Apps and
+				tools that use them are not affected.
+			</p>
+		</div>
+		<div class="table-wrap">
+			<table class="tbl">
+				<thead>
+					<tr>
+						<th scope="col">Name</th>
+						<th scope="col" class="num">Size</th>
+						<th scope="col" class="num hs">Files</th>
+						<th scope="col"><span class="sr-only">Actions</span></th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each data.others as b (b.name)}
+						<tr>
+							<th scope="row">
+								<span class="cell-plain"><Database class="icon" aria-hidden="true" />{b.name}</span>
+							</th>
+							<td class="num">{bytes(b.stored_bytes)}</td>
+							<td class="num hs">{count(b.object_count)}</td>
+							<td class="act">
+								<a href={bucketConnectHref(b.name)} aria-label="Open {b.name} in the console">
+									Open
+								</a>
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	</section>
+{/if}
+
 <style>
+	.cell-plain {
+		display: inline-flex;
+		gap: var(--space-2);
+		align-items: center;
+	}
+	.cell-plain :global(.icon) {
+		color: var(--color-muted);
+	}
 	.empty {
 		padding: var(--space-8) var(--space-4);
 		display: grid;
