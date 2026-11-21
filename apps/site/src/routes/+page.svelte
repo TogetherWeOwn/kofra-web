@@ -4,11 +4,11 @@
 	import ConsoleShot from '#lib/components/ConsoleShot.svelte';
 	import ToolExamples from '#lib/components/ToolExamples.svelte';
 	import {
-		EARLY_ACCESS,
 		EXAMPLE_NOTE,
 		FAQ_HOME,
 		FEATURES,
 		PLAN_SUMMARY,
+		PRIMARY_CTA,
 		SECURITY,
 		TOOLS
 	} from '#lib/content.js';
@@ -22,7 +22,7 @@
 			<h1>{HOME.hero.heading}</h1>
 			<p class="lead">{HOME.hero.lead}</p>
 			<div class="cta-row">
-				<Button href={EARLY_ACCESS} size="lg">Get early access</Button>
+				<Button href={PRIMARY_CTA.href} size="lg">{PRIMARY_CTA.label}</Button>
 				<Button href="/pricing" variant="secondary" size="lg">View pricing</Button>
 			</div>
 			<ul class="proof">
@@ -30,7 +30,7 @@
 					<li><Check size={18} strokeWidth={1.75} />{line}</li>
 				{/each}
 			</ul>
-			<p class="fine">{HOME.hero.fine}</p>
+			{#if HOME.hero.fine}<p class="fine">{HOME.hero.fine}</p>{/if}
 		</div>
 		<div class="hero-shot"><ConsoleShot /></div>
 	</div>
@@ -120,7 +120,7 @@
 			<p>{HOME.cta.lead}</p>
 		</div>
 		<div class="cta-row">
-			<Button href={EARLY_ACCESS} size="lg">Get early access</Button>
+			<Button href={PRIMARY_CTA.href} size="lg">{PRIMARY_CTA.label}</Button>
 			<Button href="/docs" variant="secondary" size="lg">Read the docs</Button>
 		</div>
 	</div>

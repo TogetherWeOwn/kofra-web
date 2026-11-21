@@ -1,7 +1,7 @@
 // robots.txt, sitemap.xml, llms.txt and llms-full.txt, generated from the page registry.
-import { ENDPOINT, REGION } from '#lib/content.js';
+import { ENDPOINT, PROFILE, REGION } from '#lib/content.js';
 import { PAGES, canonical, twinDocument, twinPath, type LlmsSection } from '#lib/registry.js';
-import { SITE } from '#lib/site.js';
+import { LLMS_STATUS, SITE } from '#lib/site.js';
 
 /** Crawlers for AI products that honour robots.txt. All are allowed on the production site. */
 export const AI_CRAWLERS = [
@@ -62,7 +62,7 @@ export function llmsTxt(): string {
 	return (
 		[
 			`# ${SITE.name}`,
-			`> ${SITE.name} is S3-compatible cloud object storage for backups, media and archives, billed per TB stored with downloads and API requests included. It is in early access: not yet open for sign-ups, and the prices shown are examples.`,
+			`> ${SITE.name} is S3-compatible cloud object storage for backups, media and archives, billed per TB stored with downloads and API requests included.${LLMS_STATUS ? ` ${LLMS_STATUS}` : ''}`,
 			[
 				'Connection facts for any S3 tool or SDK:',
 				'',
@@ -70,8 +70,9 @@ export function llmsTxt(): string {
 				`- Region: ${REGION}`,
 				'- Addressing: path-style only (virtual-hosted style is refused)',
 				'- Signing: AWS Signature Version 4',
-				'- One request body: up to 95 MiB; use multipart uploads (up to 10,000 parts) above that',
-				'- rclone needs upload_cutoff=95M; aws-cli and restic work with their defaults',
+				`- One request body: up to ${PROFILE.maxRequestMiB} MiB; use multipart uploads (up to 10,000 parts) above that`,
+				`- Largest object: ${PROFILE.maxObjectGiB} GiB, with ${PROFILE.partMiB} MiB parts`,
+				`- Recommended: ${PROFILE.partMiB} MiB parts from ${PROFILE.partMiB} MiB, about ${PROFILE.concurrency} requests at once; rclone needs upload_cutoff=${PROFILE.partMiB}M, and should also set disable_http2=true for speed and no_check_bucket=true to skip creating the bucket (${SITE.origin}/docs#recommended)`,
 				'- Buckets are created in the Kofra console, not through the S3 API',
 				'',
 				`Every page is also available as Markdown: add .md to its path (the home page is /index.md), or request it with \`Accept: text/markdown\`. The full text of all pages is at ${SITE.origin}/llms-full.txt.`

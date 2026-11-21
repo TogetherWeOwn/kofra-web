@@ -82,6 +82,17 @@ production launch flips one value: build with `KOFRA_INDEXABLE=true`. That drops
 everywhere and serves a robots.txt that allows search engines and the AI crawlers that honour it,
 with the sitemap line.
 
+**Launch switches**, also off for every build unless set to `true` (see `src/lib/site.ts`):
+
+| Variable            | On                                                                                                                                                                                 |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KOFRA_SIGNUP_OPEN` | The main call to action, the plan buttons and the footer link the console sign-up (`https://console.kofra.app/sign-up`) instead of `/early-access`; the early-access wording goes. |
+| `KOFRA_STATUS_LIVE` | The footer links the status page (`https://status.kofra.app`).                                                                                                                     |
+
+"Sign in" (`https://console.kofra.app/sign-in`) is linked in every build. CI builds the site once
+with both switches on and checks the result (`scripts/check-launch.mjs`). Turn `KOFRA_SIGNUP_OPEN` on only once the console
+serves `/sign-up`, and `KOFRA_STATUS_LIVE` only once the status page answers.
+
 ## Development
 
 Requires Node 24 (see `.node-version`) and pnpm 10 (`corepack enable` or install pnpm directly).
