@@ -65,11 +65,11 @@ export const WEBDAV_BLOCKS: Block[] = [
 	{
 		type: 'code',
 		lang: 'sh',
-		code: `printf 'App password secret: '; read -rs KOFRA_DAV_SECRET; echo\nrclone config create kofra-dav webdav url=${WEBDAV_URL} vendor=other \\\n  user=your-app-password-id pass="$(rclone obscure "$KOFRA_DAV_SECRET")"\nunset KOFRA_DAV_SECRET\nmkdir -p ~/kofra\nrclone mount kofra-dav:my-bucket ~/kofra --vfs-cache-mode writes`
+		code: `rclone config create kofradav webdav url=${WEBDAV_URL} vendor=other \\\n  user=your-app-password-id\nprintf 'App password secret: '; IFS= read -rs KOFRA_DAV_SECRET; echo\nexport RCLONE_CONFIG_KOFRADAV_PASS="$(printf '%s' "$KOFRA_DAV_SECRET" | rclone obscure -)"\nunset KOFRA_DAV_SECRET\nmkdir -p ~/kofra\nrclone mount kofradav:my-bucket ~/kofra --vfs-cache-mode writes`
 	},
 	{
 		type: 'p',
-		text: 'For files above the WebDAV upload limit, use the [S3 remote](/docs/rclone) instead.'
+		text: 'The secret is typed at a hidden prompt (bash and zsh) and kept in an environment variable for this terminal session only, never in the rclone config file or on a command line. For files above the WebDAV upload limit, use the [S3 remote](/docs/rclone) instead.'
 	},
 
 	{ type: 'h2', text: 'Limits', id: 'limits' },
