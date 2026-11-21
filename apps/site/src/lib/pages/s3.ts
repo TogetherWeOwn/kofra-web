@@ -1,7 +1,8 @@
 // S3 compatibility reference: what the API supports today, its limits and its errors.
 // Keep this page true to the service as deployed; it is what tools and AI assistants rely on.
 import type { Block } from '#lib/blocks.js';
-import { ENDPOINT, ENDPOINT_HOST, REGION } from '#lib/content.js';
+import { ENDPOINT, ENDPOINT_HOST, PROFILE, REGION } from '#lib/content.js';
+import { EARLY_NOTE } from '#lib/pages/docs.js';
 
 export const S3 = {
 	heading: 'S3 compatibility',
@@ -10,10 +11,9 @@ export const S3 = {
 };
 
 export const S3_BLOCKS: Block[] = [
+	...EARLY_NOTE,
 	{
-		type: 'note',
-		tone: 'info',
-		title: 'Early access.',
+		type: 'p',
 		text: 'This page describes the API as it works today. It is updated as operations are added.'
 	},
 	{ type: 'h2', text: 'Endpoint and signing', id: 'endpoint' },
@@ -43,7 +43,11 @@ export const S3_BLOCKS: Block[] = [
 			['HeadBucket, GetBucketLocation', 'Yes', `The location is \`${REGION}\`.`],
 			['CreateBucket, DeleteBucket', 'No', 'Create and delete buckets in the Kofra console.'],
 			['ListObjectsV2, ListObjects', 'Yes', 'Prefix, delimiter and pagination.'],
-			['PutObject', 'Yes', 'Up to 95 MiB per request; use a multipart upload above that.'],
+			[
+				'PutObject',
+				'Yes',
+				`Up to ${PROFILE.maxRequestMiB} MiB per request; use a multipart upload above that.`
+			],
 			[
 				'GetObject',
 				'Yes',
@@ -81,18 +85,27 @@ export const S3_BLOCKS: Block[] = [
 		rows: [
 			[
 				'One request body (PutObject or UploadPart)',
-				'95 MiB',
-				'Bodies over 100 MB are refused with HTTP 413 before they reach the API.'
+				`${PROFILE.maxRequestMiB} MiB`,
+				'Larger bodies are refused with `EntityTooLarge`, or with HTTP 413 above 100 MiB.'
 			],
 			['Parts in one multipart upload', '10,000', ''],
-			['Part size', '5 MiB to 95 MiB', 'The last part may be smaller than 5 MiB.'],
+			[
+				'Part size',
+				`5 MiB to ${PROFILE.maxRequestMiB} MiB`,
+				`The last part may be smaller than 5 MiB. ${PROFILE.partMiB} MiB is recommended.`
+			],
+			[
+				'Largest object',
+				`${PROFILE.maxObjectGiB} GiB`,
+				`With ${PROFILE.partMiB} MiB parts. With parts above ${PROFILE.partMiB} MiB: ${PROFILE.maxObjectLargePartsGiB} GiB. With 5 MiB parts: ${PROFILE.maxObjectSmallPartsGiB} GiB.`
+			],
 			['Presigned URL lifetime', '7 days', '`X-Amz-Expires` up to 604800.'],
 			['Byte ranges per GET', '1', 'A request for several ranges returns `InvalidRequest`.']
 		]
 	},
 	{
 		type: 'p',
-		text: 'Tool defaults: aws-cli (8 MB parts) and restic work as they are. rclone needs `upload_cutoff=95M`, because its default single-upload cutoff is 200 MiB; see the [rclone guide](/docs#rclone).'
+		text: `Tool defaults: aws-cli and restic work as they are. rclone needs a lower \`upload_cutoff\`, because its default single-upload cutoff is 200 MiB. For speed and the largest objects, use ${PROFILE.partMiB} MiB parts and about ${PROFILE.concurrency} requests at once: see the [recommended settings](/docs#recommended).`
 	},
 
 	{ type: 'h2', text: 'Error codes', id: 'errors' },
@@ -132,7 +145,7 @@ export const S3_BLOCKS: Block[] = [
 			[
 				'EntityTooLarge',
 				'400',
-				'The body is over 95 MiB, or the object would exceed its limits. Use a multipart upload or smaller parts.'
+				`The body is over ${PROFILE.maxRequestMiB} MiB, or the object would exceed its limits. Use a multipart upload, with ${PROFILE.partMiB} MiB parts.`
 			],
 			['EntityTooSmall', '400', 'A part other than the last is smaller than 5 MiB.'],
 			[

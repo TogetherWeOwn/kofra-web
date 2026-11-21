@@ -3,7 +3,6 @@
 import { absolutise, cell as escapeCell, toMarkdown, type Block, type Tone } from '#lib/blocks.js';
 import {
 	COMPARE,
-	EARLY_ACCESS,
 	EXAMPLE_BILL,
 	EXAMPLE_NOTE,
 	FAQ_DATA,
@@ -13,6 +12,7 @@ import {
 	FEATURES,
 	PLANS,
 	PLAN_SUMMARY,
+	PRIMARY_CTA,
 	SECURITY,
 	TOOL_EXAMPLES,
 	TOOLS,
@@ -24,6 +24,8 @@ import { PRICING } from '#lib/pages/pricing.js';
 import { SITE } from '#lib/site.js';
 
 const O = SITE.origin;
+/** Absolute URL: site paths get the canonical origin, other hosts pass through. */
+const link = (href: string) => (href.startsWith('/') ? `${O}${href}` : href);
 const cell = (v: string | boolean) =>
 	escapeCell(v === true ? 'Included' : v === false ? 'Not included' : v);
 const table = (head: string[], rows: string[][]) =>
@@ -53,7 +55,7 @@ export function homeMarkdown(): string {
 		h.hero.lead,
 		[
 			h.hero.proof.map((p) => `- ${p}`).join('\n'),
-			`_${h.hero.fine}_ [Get early access](${O}${EARLY_ACCESS}) · [Pricing](${O}/pricing)`,
+			`${h.hero.fine ? `_${h.hero.fine}_ ` : ''}[${PRIMARY_CTA.label}](${link(PRIMARY_CTA.href)}) · [Pricing](${O}/pricing)`,
 			`## Works with\n\n${TOOLS.map((t) => `- ${t.name}${t.note ? ` (${t.note})` : ''}`).join('\n')}`,
 			`## ${h.features.heading}\n\n${h.features.lead}\n\n${FEATURES.map((f) => `- **${f.title}:** ${f.body}`).join('\n')}`,
 			`## ${h.s3.heading}\n\n${h.s3.lead}\n\n${h.s3.facts.map(([k, v]) => `- **${k}:** ${v}`).join('\n')}\n\n` +
@@ -83,7 +85,7 @@ export function pricingMarkdown(): string {
 			'## Plans',
 			PLANS.map(
 				(p) =>
-					`### ${p.name}: ${p.price} ${p.unit}\n\n${p.blurb}\n\n[${p.cta.label}](${O}${p.cta.href})\n\n${p.features.map((f) => `- ${f}`).join('\n')}`
+					`### ${p.name}: ${p.price} ${p.unit}\n\n${p.blurb}\n\n[${p.cta.label}](${link(p.cta.href)})\n\n${p.features.map((f) => `- ${f}`).join('\n')}`
 			).join('\n\n'),
 			'## Compare plans',
 			table(

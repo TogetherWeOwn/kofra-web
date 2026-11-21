@@ -3,6 +3,7 @@ import type { Block } from '#lib/blocks.js';
 import plexSans from '#lib/licences/ibm-plex-sans.txt?raw';
 import plexMono from '#lib/licences/ibm-plex-mono.txt?raw';
 import lucide from '#lib/licences/lucide.txt?raw';
+import { PRICES_FINAL, SIGN_IN_URL, SIGN_UP_URL, SIGNUP_OPEN } from '#lib/site.js';
 
 export const FAQ_PAGE = {
 	heading: 'Questions and answers',
@@ -27,23 +28,34 @@ export const SECURITY_BLOCKS: Block[] = [
 	}
 ];
 
-export const EARLY = {
-	heading: 'Early access',
-	description: 'Kofra is in early access and not yet open for sign-ups.',
-	lead: 'Kofra is not open for sign-ups yet.'
-};
+export const EARLY = SIGNUP_OPEN
+	? {
+			heading: 'Early access',
+			description: 'Kofra is open for sign-ups. Create an account in the Kofra console.',
+			lead: 'Kofra is open for sign-ups.'
+		}
+	: {
+			heading: 'Early access',
+			description: 'Kofra is in early access and not yet open for sign-ups.',
+			lead: 'Kofra is not open for sign-ups yet.'
+		};
 
 export const EARLY_BLOCKS: Block[] = [
-	{
-		type: 'p',
-		text: 'We are finishing the service and the customer console. When accounts open, this page will say so and explain how to sign up.'
-	},
-	{ type: 'h2', text: 'What you can do now' },
+	SIGNUP_OPEN
+		? {
+				type: 'p',
+				text: `[Create an account](${SIGN_UP_URL}) in the Kofra console. The Free plan needs no card. If you already have an account, [sign in](${SIGN_IN_URL}).`
+			}
+		: {
+				type: 'p',
+				text: `We are finishing the service and the customer console. When accounts open, this page will say so and explain how to sign up. If you already have an account, [sign in](${SIGN_IN_URL}).`
+			},
+	{ type: 'h2', text: SIGNUP_OPEN ? 'Get started' : 'What you can do now' },
 	{
 		type: 'ul',
 		items: [
 			'Read the [quick-start guides](/docs) for aws-cli, rclone, restic and Cyberduck.',
-			'See the [example pricing](/pricing) and how billing works.',
+			`See the [${PRICES_FINAL ? 'pricing' : 'example pricing'}](/pricing) and how billing works.`,
 			'Read [how Kofra protects your data](/security).'
 		]
 	}

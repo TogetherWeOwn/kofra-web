@@ -7,10 +7,10 @@
 	import plexLatin from '@fontsource-variable/ibm-plex-sans/files/ibm-plex-sans-latin-wght-normal.woff2?url';
 	import { page } from '$app/state';
 	import { Button, Footer, Nav, ThemeToggle } from '@kofra/ui';
-	import { EARLY_ACCESS, FOOTER, NAV } from '#lib/content.js';
+	import { FOOTER, NAV, PRIMARY_CTA } from '#lib/content.js';
 	import Seo from '#lib/components/Seo.svelte';
 	import { pageFor } from '#lib/registry.js';
-	import { SITE } from '#lib/site.js';
+	import { SIGN_IN_URL, SITE, STATUS_NOTE } from '#lib/site.js';
 
 	let { children } = $props();
 	const entry = $derived(pageFor(page.url.pathname));
@@ -27,7 +27,8 @@
 <a class="skip-link" href="#main">Skip to content</a>
 <Nav items={NAV} current={page.url.pathname}>
 	{#snippet actions()}
-		<Button href={EARLY_ACCESS}>Get early access</Button>
+		<Button href={SIGN_IN_URL} variant="secondary">Sign in</Button>
+		<Button href={PRIMARY_CTA.href}>{PRIMARY_CTA.label}</Button>
 	{/snippet}
 	{#snippet utility()}
 		<ThemeToggle />
@@ -39,6 +40,6 @@
 <Footer columns={FOOTER} tagline={SITE.tagline}>
 	{#snippet bottom()}
 		<p>© 2026 Kofra</p>
-		<p>Kofra is in early access. Prices shown are examples.</p>
+		{#if STATUS_NOTE}<p>{STATUS_NOTE}</p>{/if}
 	{/snippet}
 </Footer>

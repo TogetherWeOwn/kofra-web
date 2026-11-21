@@ -17,13 +17,42 @@ import ScrollText from '@lucide/svelte/icons/scroll-text';
 import ShieldCheck from '@lucide/svelte/icons/shield-check';
 import Smartphone from '@lucide/svelte/icons/smartphone';
 import Terminal from '@lucide/svelte/icons/terminal';
+import { SIGN_IN_URL, SIGN_UP_URL, SIGNUP_OPEN, STATUS_LIVE, STATUS_URL } from '#lib/site.js';
 
 /** The S3 endpoint every example uses. */
-export const ENDPOINT = 'https://s3.kofra.app';
-export const ENDPOINT_HOST = 's3.kofra.app';
+export const ENDPOINT = 'https://s3.kofra.io';
+export const ENDPOINT_HOST = 's3.kofra.io';
 export const REGION = 'auto';
 
+/** The WebDAV address. */
+export const WEBDAV_URL = 'https://dav.kofra.io';
+export const WEBDAV_HOST = 'dav.kofra.io';
+
+/**
+ * Measured client settings: parts of 16 MiB from 16 MiB, about 16 requests at once, and one
+ * connection per request for rclone. The guides, the home page and the limits all use these.
+ */
+export const PROFILE = {
+	partMiB: 16,
+	concurrency: 16,
+	/** Largest single upload request (PutObject or UploadPart). */
+	maxRequestMiB: 99,
+	/** Largest object, with parts of 16 MiB. */
+	maxObjectGiB: 156,
+	/** Largest object when parts are larger than 16 MiB. */
+	maxObjectLargePartsGiB: 78,
+	/** Largest object with 5 MiB parts. */
+	maxObjectSmallPartsGiB: 48,
+	/** Largest file a WebDAV client can upload (one request per file). */
+	webdavMaxUploadMiB: 99
+} as const;
+
 export const EARLY_ACCESS = '/early-access';
+
+/** The main call to action: create an account once sign-ups open, early access until then. */
+export const PRIMARY_CTA: NavItem = SIGNUP_OPEN
+	? { label: 'Create account', href: SIGN_UP_URL }
+	: { label: 'Get early access', href: EARLY_ACCESS };
 
 /** Shown next to every price until the owner sets real prices. */
 export const EXAMPLE_NOTE =
@@ -49,17 +78,21 @@ export const FOOTER: FooterColumn[] = [
 		heading: 'Developers',
 		links: [
 			{ label: 'Documentation', href: '/docs' },
-			{ label: 'aws-cli guide', href: '/docs#aws-cli' },
-			{ label: 'rclone guide', href: '/docs#rclone' },
-			{ label: 'restic guide', href: '/docs#restic' },
-			{ label: 'Cyberduck guide', href: '/docs#cyberduck' }
+			{ label: 'aws-cli guide', href: '/docs/aws-cli' },
+			{ label: 'rclone guide', href: '/docs/rclone' },
+			{ label: 'WebDAV guide', href: '/docs/webdav' },
+			{ label: 'S3 compatibility', href: '/docs/s3-compatibility' }
 		]
 	},
 	{
-		heading: 'Help',
+		heading: 'Account',
 		links: [
+			{ label: 'Sign in', href: SIGN_IN_URL },
+			SIGNUP_OPEN
+				? { label: 'Create account', href: SIGN_UP_URL }
+				: { label: 'Early access', href: EARLY_ACCESS },
 			{ label: 'Questions and answers', href: '/faq' },
-			{ label: 'Early access', href: EARLY_ACCESS }
+			...(STATUS_LIVE ? [{ label: 'Service status', href: STATUS_URL }] : [])
 		]
 	},
 	{
@@ -76,7 +109,7 @@ export const FOOTER: FooterColumn[] = [
 
 export const PRICE = { perTB: 6, teamPerTB: 9, extraPerGB: 0.01, downloadMultiple: 3 };
 
-const cta = { label: 'Get early access', href: EARLY_ACCESS };
+const cta = PRIMARY_CTA;
 
 export const PLANS: Plan[] = [
 	{
@@ -292,15 +325,14 @@ export const TOOL_EXAMPLES: {
 		name: 'aws-cli',
 		kind: 'Command line',
 		blurb: 'The AWS command line, pointed at the Kofra endpoint.',
-		code: `aws configure --profile kofra   # region: ${REGION}\naws configure set s3.addressing_style path --profile kofra\naws s3 sync ./photos s3://my-bucket/photos/ \\\n  --profile kofra --endpoint-url ${ENDPOINT}`
+		code: `aws configure --profile kofra   # region: ${REGION}\naws configure set s3.addressing_style path --profile kofra\naws configure set s3.multipart_chunksize 16MB --profile kofra\naws s3 sync ./photos s3://my-bucket/photos/ \\\n  --profile kofra --endpoint-url ${ENDPOINT}`
 	},
 	{
 		id: 'rclone',
 		name: 'rclone',
 		kind: 'Sync and mount',
-		blurb:
-			'Copy, sync and mount. Also moves files from other clouds. Files over 95 MiB go in parts.',
-		code: `rclone config create kofra s3 provider=Other env_auth=true \\\n  endpoint=${ENDPOINT} region=${REGION} \\\n  force_path_style=true upload_cutoff=95M\nrclone copy ./projects kofra:my-bucket/projects`
+		blurb: 'Copy, sync and mount. Also moves files from other clouds.',
+		code: `rclone config create kofra s3 provider=Other env_auth=true \\\n  endpoint=${ENDPOINT} region=${REGION} force_path_style=true \\\n  upload_cutoff=16M chunk_size=16M \\\n  upload_concurrency=1 disable_http2=true\nrclone copy ./projects kofra:my-bucket/projects --transfers 16`
 	},
 	{
 		id: 'restic',
@@ -325,17 +357,26 @@ export const FAQ_GENERAL: FaqItem[] = [
 		q: 'What is Kofra?',
 		a: 'Kofra is cloud object storage with an S3-compatible API. You keep files in buckets and reach them with tools such as aws-cli, rclone and restic, or with any S3 SDK.'
 	},
-	{
-		q: 'Can I sign up now?',
-		a: 'Not yet. Kofra is in early access and is not open for sign-ups. The early access page will say when accounts open.'
-	},
+	SIGNUP_OPEN
+		? {
+				q: 'How do I sign up?',
+				a: 'Create an account in the Kofra console. The Free plan needs no card. Then create a bucket and an access key, and follow the guide for your tool.'
+			}
+		: {
+				q: 'Can I sign up now?',
+				a: 'Not yet. Kofra is in early access and is not open for sign-ups. The early access page will say when accounts open.'
+			},
 	{
 		q: 'Which tools and SDKs work with Kofra?',
 		a: `Any client that supports S3 with a custom endpoint, including aws-cli, the AWS SDKs, rclone, restic, Cyberduck and most backup software. Set the endpoint to ${ENDPOINT_HOST}, the region to ${REGION}, use path-style requests and a Kofra access key.`
 	},
 	{
 		q: 'Can I mount Kofra as a drive?',
-		a: 'WebDAV access, for mounting Kofra in Finder, File Explorer or a Linux file manager, is coming soon. Until then, rclone can mount a bucket as a drive.'
+		a: `WebDAV access, for mounting Kofra in Finder, File Explorer or a Linux file manager, is coming soon. WebDAV uploads files of up to ${PROFILE.webdavMaxUploadMiB} MiB. For larger files, and until WebDAV opens, rclone can mount a bucket as a drive.`
+	},
+	{
+		q: 'How large can one file be?',
+		a: `Up to ${PROFILE.maxObjectGiB} GiB, uploaded in parts of ${PROFILE.partMiB} MiB. A single upload request can carry up to ${PROFILE.maxRequestMiB} MiB, so larger files go in parts; aws-cli and rclone do this for you with the settings in the guides.`
 	}
 ];
 

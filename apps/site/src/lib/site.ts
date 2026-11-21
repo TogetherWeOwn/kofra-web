@@ -31,3 +31,34 @@ export const pageTitle = (name: string) => `${name} | ${SITE.name}`;
  * published as structured data (no schema.org Product or Offer), only as labelled page text.
  */
 export const PRICES_FINAL = false;
+
+/* ---------------- Launch switches and other Kofra hosts ---------------- */
+
+/**
+ * Whether accounts are open. Off unless the build runs with KOFRA_SIGNUP_OPEN=true (an owner
+ * decision at launch). It switches, together: the main call to action (early access or create
+ * an account), the plan buttons, the early access page and the related answers.
+ */
+export const SIGNUP_OPEN: boolean = __KOFRA_SIGNUP_OPEN__;
+
+/**
+ * Whether the public status page is live. Off unless the build runs with KOFRA_STATUS_LIVE=true.
+ * While off, no page links to it, so the site never points at a page that does not answer.
+ */
+export const STATUS_LIVE: boolean = __KOFRA_STATUS_LIVE__;
+
+/** The customer console. Sign-in is always linked: existing customers need it before launch too. */
+export const CONSOLE_ORIGIN = 'https://console.kofra.app';
+export const SIGN_IN_URL = `${CONSOLE_ORIGIN}/sign-in`;
+export const SIGN_UP_URL = `${CONSOLE_ORIGIN}/sign-up`;
+
+/** The public status page (served by a separate service). */
+export const STATUS_URL = 'https://status.kofra.app';
+
+/** The footer's one-line status: early access and example prices, until each is switched off. */
+export const STATUS_NOTE = [
+	!SIGNUP_OPEN && 'Kofra is in early access.',
+	!PRICES_FINAL && 'Prices shown are examples.'
+]
+	.filter(Boolean)
+	.join(' ');

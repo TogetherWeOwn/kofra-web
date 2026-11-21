@@ -8,6 +8,7 @@ import {
 	prose,
 	securityMarkdown
 } from '#lib/markdown.js';
+import { AWS_CLI, AWS_CLI_BLOCKS } from '#lib/pages/aws-cli.js';
 import { DOCS, DOCS_BLOCKS } from '#lib/pages/docs.js';
 import { HOME } from '#lib/pages/home.js';
 import { PRIVACY, PRIVACY_BLOCKS, TERMS, TERMS_BLOCKS } from '#lib/pages/legal.js';
@@ -20,7 +21,9 @@ import {
 	SECURITY_PAGE
 } from '#lib/pages/misc.js';
 import { PRICING } from '#lib/pages/pricing.js';
+import { RCLONE, RCLONE_BLOCKS } from '#lib/pages/rclone.js';
 import { S3, S3_BLOCKS } from '#lib/pages/s3.js';
+import { WEBDAV, WEBDAV_BLOCKS } from '#lib/pages/webdav.js';
 import { SITE, pageTitle } from '#lib/site.js';
 
 export type PageKind = 'home' | 'page' | 'docs' | 'legal';
@@ -50,7 +53,7 @@ export const PAGES: PageEntry[] = [
 		name: 'Home',
 		title: HOME.title,
 		description: HOME.description,
-		updated: '2026-11-19',
+		updated: '2026-11-21',
 		kind: 'home',
 		llms: { section: 'Product', note: 'what Kofra is, features, S3 settings and a plan summary' },
 		markdown: homeMarkdown
@@ -73,20 +76,59 @@ export const PAGES: PageEntry[] = [
 		name: 'Documentation',
 		title: pageTitle(DOCS.heading),
 		description: DOCS.description,
-		updated: '2026-11-19',
+		updated: '2026-11-21',
 		kind: 'docs',
 		llms: {
 			section: 'Docs',
-			note: 'connection settings and quick-starts for aws-cli, rclone, restic, Cyberduck and SDKs'
+			note: 'connection settings, recommended upload settings, and quick-starts for restic, Cyberduck and SDKs'
 		},
 		markdown: () => prose(DOCS.heading, DOCS.lead, DOCS_BLOCKS)
+	},
+	{
+		path: '/docs/aws-cli',
+		name: 'aws-cli',
+		title: pageTitle(AWS_CLI.heading),
+		description: AWS_CLI.description,
+		updated: '2026-11-21',
+		kind: 'docs',
+		parent: '/docs',
+		llms: {
+			section: 'Docs',
+			note: 'aws-cli profile with the recommended upload settings, commands, large files, errors'
+		},
+		markdown: () => prose(AWS_CLI.heading, AWS_CLI.lead, AWS_CLI_BLOCKS)
+	},
+	{
+		path: '/docs/rclone',
+		name: 'rclone',
+		title: pageTitle(RCLONE.heading),
+		description: RCLONE.description,
+		updated: '2026-11-21',
+		kind: 'docs',
+		parent: '/docs',
+		llms: {
+			section: 'Docs',
+			note: 'rclone remote with the recommended upload settings, copy, sync, mount, migration'
+		},
+		markdown: () => prose(RCLONE.heading, RCLONE.lead, RCLONE_BLOCKS)
+	},
+	{
+		path: '/docs/webdav',
+		name: 'WebDAV',
+		title: pageTitle(WEBDAV.heading),
+		description: WEBDAV.description,
+		updated: '2026-11-21',
+		kind: 'docs',
+		parent: '/docs',
+		llms: { section: 'Docs', note: 'WebDAV settings, clients and limits (coming soon)' },
+		markdown: () => prose(WEBDAV.heading, WEBDAV.lead, WEBDAV_BLOCKS)
 	},
 	{
 		path: '/docs/s3-compatibility',
 		name: 'S3 compatibility',
 		title: pageTitle(S3.heading),
 		description: S3.description,
-		updated: '2026-11-19',
+		updated: '2026-11-21',
 		kind: 'docs',
 		parent: '/docs',
 		llms: { section: 'Docs', note: 'supported S3 operations, limits and error codes' },
@@ -97,7 +139,7 @@ export const PAGES: PageEntry[] = [
 		name: 'Questions and answers',
 		title: pageTitle(FAQ_PAGE.heading),
 		description: FAQ_PAGE.description,
-		updated: '2026-11-19',
+		updated: '2026-11-21',
 		kind: 'page',
 		llms: { section: 'Product', note: 'short answers about tools, billing and data' },
 		markdown: faqMarkdown
@@ -117,7 +159,7 @@ export const PAGES: PageEntry[] = [
 		name: 'Early access',
 		title: pageTitle(EARLY.heading),
 		description: EARLY.description,
-		updated: '2026-11-19',
+		updated: '2026-11-21',
 		kind: 'page',
 		llms: { section: 'Optional', note: 'sign-up status' },
 		markdown: () => prose(EARLY.heading, EARLY.lead, EARLY_BLOCKS)
