@@ -170,6 +170,27 @@ describe('live-fake stage gating', () => {
 		expect(res.status).toBe(413);
 	});
 
+	it('refuses a body without a declared length on an account route', async () => {
+		const stream = new ReadableStream({
+			start(c) {
+				c.enqueue(new TextEncoder().encode('{}'));
+				c.close();
+			}
+		});
+		const res = await run('/sign-in', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: stream,
+			duplex: 'half'
+		} as RequestInit);
+		expect(res.status).toBe(411);
+	});
+
+	it('lets a bodyless POST through to the CSRF and session checks', async () => {
+		const res = await run('/account?/profile', { method: 'POST' });
+		expect(res.status).toBe(403);
+	});
+
 	it('serves the fake mail endpoint only in live-fake, and only for GET', async () => {
 		const res = await run('/__fake/last-token?email=x', { method: 'POST' });
 		expect(res.status).toBe(404);

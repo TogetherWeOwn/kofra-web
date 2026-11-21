@@ -40,7 +40,11 @@
 	defaultName={data.defaultPasskeyName}
 	removeId={data.removePasskey}
 	needsPassword={!user.totp && user.passkeys === 0}
-	codesReplaced={!!form && ['recovery', 'totpConfirm', 'totpDisable'].includes(form.section)}
+	codesReplaced={!!form &&
+		!form.problem &&
+		(form.section === 'recovery' ||
+			(form.section === 'totpConfirm' && !!form.codes) ||
+			form.section === 'totpDisable')}
 	csrf={data.csrf}
 	result={form?.section === 'renamePasskey' || form?.section === 'removePasskey' ? form : null}
 />
