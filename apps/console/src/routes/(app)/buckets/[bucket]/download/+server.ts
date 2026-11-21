@@ -1,4 +1,4 @@
-import { error, redirect } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import { KofraError } from '@kofra/api';
 import { validKey } from '#lib/paths.js';
 import { describe } from '#lib/server/api.js';
@@ -18,5 +18,10 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 		if (err instanceof KofraError) error(err.status, describe(err));
 		throw err;
 	}
-	redirect(303, target);
+	// The address is on the S3 endpoint, another host: SvelteKit's redirect() refuses those, so
+	// the answer is built by hand. It goes only to the URL the API signed just now.
+	return new Response(null, {
+		status: 303,
+		headers: { location: target, 'cache-control': 'no-store' }
+	});
 };

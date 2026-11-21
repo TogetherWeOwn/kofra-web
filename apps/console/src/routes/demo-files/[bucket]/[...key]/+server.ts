@@ -13,9 +13,16 @@ function checkExpiry(url: URL) {
 		error(403, { message: 'This link has expired.', hint: 'Go back to the bucket and try again.' });
 }
 
+/** Only the demo has these addresses. */
+function demoOf(locals: App.Locals) {
+	if (!locals.demo) error(404, { message: 'Not found.' });
+	return locals.demo;
+}
+
 export const GET: RequestHandler = ({ locals, params, url }) => {
+	const demo = demoOf(locals);
 	checkExpiry(url);
-	const file = locals.demo?.file(params.bucket, params.key);
+	const file = demo.file(params.bucket, params.key);
 	if (!file) error(404, { message: 'There is no such file.' });
 	const body = [
 		'This is a demo file.',
@@ -34,7 +41,7 @@ export const GET: RequestHandler = ({ locals, params, url }) => {
 };
 
 export const PUT: RequestHandler = async ({ locals, params, request, url }) => {
-	if (!locals.demo) error(404, { message: 'There is no such file.' });
+	const demo = demoOf(locals);
 	checkExpiry(url);
 	if (!validKey(params.key)) error(400, { message: 'That file name or path is not allowed.' });
 	const declared = Number(request.headers.get('content-length') ?? '0');
@@ -53,7 +60,7 @@ export const PUT: RequestHandler = async ({ locals, params, request, url }) => {
 		}
 	}
 	const type = (request.headers.get('content-type') ?? '').split(';')[0]!.trim();
-	const refused = locals.demo.recordUpload(params.bucket, params.key, size, type);
+	const refused = demo.recordUpload(params.bucket, params.key, size, type);
 	if (refused === 'bucket_not_found')
 		error(404, { message: `There is no bucket "${params.bucket}".` });
 	if (refused === 'invalid_key') error(400, { message: 'That file name or path is not allowed.' });

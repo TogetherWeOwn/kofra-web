@@ -15,11 +15,11 @@
 	path={page.url.pathname}
 	{crumbs}
 	workspace={data.workspace}
-	sample={data.mode !== 'live'}
-	signedIn={data.mode !== 'demo'}
+	ws={data.ws}
+	signedIn={data.mode === 'live' || data.mode === 'live-fake'}
 	workspaceReady={data.workspaceReady}
 >
-	{#if data.mode === 'demo'}
+	{#if data.ws.features.sample && data.mode === 'demo'}
 		<Notice tone="info" title="Demo workspace">
 			<p>
 				Everything here is sample data. Your changes stay in this browser for 7 days, and nothing is

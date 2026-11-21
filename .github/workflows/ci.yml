@@ -209,6 +209,17 @@ jobs:
           set -euo pipefail
           pnpm run build
           node scripts/check-indexable.mjs
+      # The launch flip (KOFRA_SIGNUP_OPEN, KOFRA_STATUS_LIVE) must link the console sign-up and
+      # the status page from every page and drop the early-access wording.
+      - name: Launch build check (site)
+        working-directory: apps/site
+        env:
+          KOFRA_SIGNUP_OPEN: 'true'
+          KOFRA_STATUS_LIVE: 'true'
+        run: |
+          set -euo pipefail
+          pnpm run build
+          node scripts/check-launch.mjs
 
   e2e:
     name: e2e smoke (playwright)

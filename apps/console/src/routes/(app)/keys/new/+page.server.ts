@@ -10,7 +10,10 @@ async function bucketNames(locals: App.Locals) {
 	const names: string[] = [];
 	const list = (a: { limit?: number; cursor?: string }) => locals.api.buckets.list(a);
 	for await (const b of paginate(list, { limit: 200 })) names.push(b.name);
-	return names;
+	// A key can also reach buckets the console itself has not opened (tenant0).
+	if (locals.files.otherBuckets)
+		for (const b of await locals.files.otherBuckets()) names.push(b.name);
+	return [...new Set(names)].sort();
 }
 
 export const load: PageServerLoad = async ({ locals }) => {

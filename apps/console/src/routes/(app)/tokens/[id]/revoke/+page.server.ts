@@ -1,6 +1,6 @@
 import { resolve } from '$app/paths';
 import { error, redirect } from '@sveltejs/kit';
-import { tokensPort } from '#lib/server/tokens.js';
+import { tokensPort } from '#lib/server/api-tokens.js';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {

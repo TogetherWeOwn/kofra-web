@@ -102,7 +102,7 @@ describe('discovery files', () => {
 		expect(txt.startsWith('# Kofra\n\n> ')).toBe(true);
 		const links = [...txt.matchAll(/\]\((https:\/\/kofra\.app[^)]+)\)/g)].map((m) => m[1]);
 		expect(links.sort()).toEqual(PAGES.map((p) => `${SITE.origin}${twinPath(p.path)}`).sort());
-		expect(txt).toContain('Endpoint: https://s3.kofra.app');
+		expect(txt).toContain('Endpoint: https://s3.kofra.io');
 	});
 
 	it('llms-full.txt holds every page', () => {
@@ -115,7 +115,7 @@ describe('discovery files', () => {
 		const xml = sitemapXml();
 		expect(xml.match(/<url>/g)?.length).toBe(PAGES.length);
 		expect(xml).toContain(
-			'<loc>https://kofra.app/docs/s3-compatibility</loc><lastmod>2026-11-19</lastmod>'
+			'<loc>https://kofra.app/docs/s3-compatibility</loc><lastmod>2026-11-21</lastmod>'
 		);
 	});
 

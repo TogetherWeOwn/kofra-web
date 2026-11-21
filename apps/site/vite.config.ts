@@ -15,7 +15,10 @@ export default defineConfig({
 	],
 	define: {
 		// See src/lib/site.ts: indexing is off unless the build sets KOFRA_INDEXABLE=true.
-		__KOFRA_INDEXABLE__: JSON.stringify(process.env.KOFRA_INDEXABLE === 'true')
+		__KOFRA_INDEXABLE__: JSON.stringify(process.env.KOFRA_INDEXABLE === 'true'),
+		// See src/lib/site.ts: the launch switches. Both off unless the build sets them to true.
+		__KOFRA_SIGNUP_OPEN__: JSON.stringify(process.env.KOFRA_SIGNUP_OPEN === 'true'),
+		__KOFRA_STATUS_LIVE__: JSON.stringify(process.env.KOFRA_STATUS_LIVE === 'true')
 	},
 	build: {
 		// Never inline scripts as data: URLs: the CSP allows scripts from this origin only.

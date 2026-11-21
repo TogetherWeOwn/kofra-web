@@ -4,8 +4,8 @@
 		"accessibility": 100,
 		"best-practices": 100,
 		"seo": 100,
-		"lcpMs": 982,
-		"tbtMs": 0,
+		"lcpMs": 1030,
+		"tbtMs": 4,
 		"cls": 0,
 		"runs": 3
 	},
@@ -14,8 +14,28 @@
 		"accessibility": 100,
 		"best-practices": 100,
 		"seo": 100,
-		"lcpMs": 999,
+		"lcpMs": 1066,
 		"tbtMs": 0,
+		"cls": 0,
+		"runs": 3
+	},
+	"/docs/aws-cli": {
+		"performance": 100,
+		"accessibility": 100,
+		"best-practices": 100,
+		"seo": 100,
+		"lcpMs": 1112,
+		"tbtMs": 0,
+		"cls": 0,
+		"runs": 3
+	},
+	"/docs/rclone": {
+		"performance": 100,
+		"accessibility": 100,
+		"best-practices": 100,
+		"seo": 100,
+		"lcpMs": 1087,
+		"tbtMs": 11,
 		"cls": 0,
 		"runs": 3
 	},
@@ -24,7 +44,17 @@
 		"accessibility": 100,
 		"best-practices": 100,
 		"seo": 100,
-		"lcpMs": 994,
+		"lcpMs": 966,
+		"tbtMs": 0,
+		"cls": 0,
+		"runs": 3
+	},
+	"/docs/webdav": {
+		"performance": 100,
+		"accessibility": 100,
+		"best-practices": 100,
+		"seo": 100,
+		"lcpMs": 937,
 		"tbtMs": 0,
 		"cls": 0,
 		"runs": 3
@@ -34,7 +64,7 @@
 		"accessibility": 100,
 		"best-practices": 100,
 		"seo": 100,
-		"lcpMs": 1007,
+		"lcpMs": 930,
 		"tbtMs": 0,
 		"cls": 0,
 		"runs": 3
@@ -44,7 +74,7 @@
 		"accessibility": 100,
 		"best-practices": 100,
 		"seo": 100,
-		"lcpMs": 1012,
+		"lcpMs": 925,
 		"tbtMs": 0,
 		"cls": 0,
 		"runs": 3
@@ -54,7 +84,7 @@
 		"accessibility": 100,
 		"best-practices": 100,
 		"seo": 100,
-		"lcpMs": 959,
+		"lcpMs": 1037,
 		"tbtMs": 0,
 		"cls": 0,
 		"runs": 3
@@ -64,7 +94,7 @@
 		"accessibility": 100,
 		"best-practices": 100,
 		"seo": 100,
-		"lcpMs": 1000,
+		"lcpMs": 1007,
 		"tbtMs": 0,
 		"cls": 0,
 		"runs": 3
@@ -74,7 +104,7 @@
 		"accessibility": 100,
 		"best-practices": 100,
 		"seo": 100,
-		"lcpMs": 987,
+		"lcpMs": 1044,
 		"tbtMs": 0,
 		"cls": 0,
 		"runs": 3
@@ -84,7 +114,7 @@
 		"accessibility": 100,
 		"best-practices": 100,
 		"seo": 100,
-		"lcpMs": 1002,
+		"lcpMs": 1047,
 		"tbtMs": 0,
 		"cls": 0,
 		"runs": 3
@@ -94,7 +124,7 @@
 		"accessibility": 100,
 		"best-practices": 100,
 		"seo": 100,
-		"lcpMs": 987,
+		"lcpMs": 1181,
 		"tbtMs": 0,
 		"cls": 0,
 		"runs": 3

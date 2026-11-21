@@ -1,7 +1,7 @@
 import { resolve } from '$app/paths';
 import { fail } from '@sveltejs/kit';
 import { field, requireFreshStep } from '#lib/server/account/actions.js';
-import { tokensPort } from '#lib/server/tokens.js';
+import { tokensPort } from '#lib/server/api-tokens.js';
 import { scopeGroups } from '#lib/token-scopes.js';
 import type { Actions, PageServerLoad } from './$types';
 

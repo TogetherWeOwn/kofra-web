@@ -11,6 +11,11 @@
 		"./demo": {
 			"types": "./src/demo/index.ts",
 			"default": "./src/demo/index.ts"
+		},
+		"./errors.json": "./vendor/errors.json",
+		"./testing": {
+			"types": "./src/testing/contract.ts",
+			"default": "./src/testing/contract.ts"
 		}
 	},
 	"scripts": {

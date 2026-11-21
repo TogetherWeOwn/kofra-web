@@ -70,7 +70,7 @@
 	</div>
 </section>
 
-{#if data.mode === 'demo'}
+{#if data.ws.features.sample && data.mode === 'demo'}
 	<section class="card pad" aria-labelledby="demo-h">
 		<h2 id="demo-h">Demo data</h2>
 		<p class="muted">
@@ -80,7 +80,7 @@
 	</section>
 {/if}
 
-{#if a}
+{#if a && data.ws.features.workspaceDeletion}
 	<section class="card pad danger" aria-labelledby="del-h">
 		<h2 id="del-h">Delete workspace</h2>
 		{#if a.deletion}

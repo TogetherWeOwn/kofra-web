@@ -4,16 +4,18 @@
 	import { afterNavigate } from '$app/navigation';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import LogIn from '@lucide/svelte/icons/log-in';
+	import LogOut from '@lucide/svelte/icons/log-out';
 	import Menu from '@lucide/svelte/icons/menu';
 	import X from '@lucide/svelte/icons/x';
 	import { Logo, ThemeToggle } from '@kofra/ui';
 	import { currentEntry, DOCS_URL, LICENCES_URL, NAV, type Crumb } from '#lib/nav.js';
+	import type { WorkspaceInfo } from '#lib/server/workspace.js';
 
 	let {
 		path,
 		crumbs = [],
 		workspace,
-		sample = true,
+		ws,
 		signedIn = false,
 		workspaceReady = true,
 		children
@@ -21,15 +23,22 @@
 		path: string;
 		crumbs?: Crumb[];
 		workspace: string;
-		sample?: boolean;
+		ws: WorkspaceInfo;
+		/** A customer signed in through the account service (live modes). */
 		signedIn?: boolean;
+		/** False while the workspace is still being set up: no section links yet. */
 		workspaceReady?: boolean;
 		children: Snippet;
 	} = $props();
-
-	// API tokens need the API's token endpoints, which live workspaces do not have
-	// yet; the entry shows only with sample data until they ship.
-	const nav = $derived(sample ? NAV : NAV.filter((item) => item.label !== 'API tokens'));
+	// API tokens need the API's token endpoints, which only the sample workspaces stand in
+	// for until they ship.
+	const nav = $derived(
+		NAV.filter(
+			(e) =>
+				(ws.features.billing || e.label !== 'Billing') &&
+				(ws.features.sample || e.label !== 'API tokens')
+		)
+	);
 
 	let open = $state(false);
 	let menuButton = $state<HTMLButtonElement>();
@@ -67,7 +76,7 @@
 		<div class="side-acct">
 			<span class="side-acct-l">Workspace</span>
 			<span class="side-acct-n">{workspace}</span>
-			{#if sample}<span class="side-acct-p">Sample data</span>{/if}
+			<span class="side-acct-p">{ws.features.sample ? 'Sample data' : 'Live data'}</span>
 		</div>
 		{#if workspaceReady}<nav aria-label="Console sections">
 				<ul>
@@ -95,8 +104,13 @@
 					>
 						<LogIn class="icon" aria-hidden="true" />Account
 					</a>
-				{:else}
+				{:else if ws.features.sample}
 					<a href={resolve('/(auth)/sign-in')}><LogIn class="icon" aria-hidden="true" />Sign in</a>
+				{:else}
+					<!-- Cloudflare Access ends the session at this address on the console's own host. -->
+					<a href="/cdn-cgi/access/logout" rel="external">
+						<LogOut class="icon" aria-hidden="true" />Sign out
+					</a>
 				{/if}
 			</li>
 		</ul>

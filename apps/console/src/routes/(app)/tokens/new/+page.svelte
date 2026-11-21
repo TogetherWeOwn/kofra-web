@@ -3,7 +3,7 @@
 	import { Button } from '@kofra/ui';
 	import ActionForm from '#lib/components/account/ActionForm.svelte';
 	import Field from '#lib/components/account/Field.svelte';
-	import KeyReveal from '#lib/components/KeyReveal.svelte';
+	import TokenReveal from '#lib/components/TokenReveal.svelte';
 	import { scopeGroups } from '#lib/token-scopes.js';
 
 	let { data, form } = $props();
@@ -17,7 +17,7 @@
 <h1>Create token</h1>
 
 {#if form?.created}
-	<KeyReveal token={form.created} sample={data.mode !== 'live'} />
+	<TokenReveal token={form.created} sample={data.mode !== 'live'} />
 {:else}
 	<div class="card pad">
 		<ActionForm csrf={data.csrf} result={form}>

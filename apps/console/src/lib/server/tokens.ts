@@ -1,125 +1,83 @@
-import { error, type RequestEvent } from '@sveltejs/kit';
+// Short signed tokens the console hands to its own pages: an upload address, or the exact
+// list of files a delete confirmation showed. HMAC-SHA256 under a key derived from a server
+// secret, so a page cannot change what the server agreed to. They are not credentials: every
+// request that carries one still passes the Access check first.
 
-export interface ApiToken {
-	id: string;
-	name: string;
-	scopes: string[];
-	buckets: string[] | null;
-	allowed_ips: string[] | null;
-	agent: boolean;
-	created_by: string;
-	created_at: string;
-	expires_at: string | null;
-	last_used_at: string | null;
-}
+const enc = new TextEncoder();
+const LABEL = 'kofra-console/tokens/v1';
 
-export interface ApiTokenCreate {
-	name: string;
-	scopes: string[];
-	buckets?: string[];
-	allowed_ips?: string[];
-	expires_in_days?: number;
-	agent?: boolean;
-}
+const b64url = (bytes: Uint8Array) =>
+	btoa(String.fromCharCode(...bytes))
+		.replace(/\+/g, '-')
+		.replace(/\//g, '_')
+		.replace(/=+$/, '');
 
-export type ApiTokenCreated = ApiToken & { token: string | null };
-
-export interface TokensPort {
-	list(): Promise<ApiToken[]>;
-	create(input: ApiTokenCreate): Promise<ApiTokenCreated>;
-	revoke(id: string): Promise<void>;
-}
-
-const lists = new Map<string, Map<string, ApiToken>>();
-const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-
-function randomBase62(length: number) {
-	let result = '';
-	while (result.length < length) {
-		for (const byte of crypto.getRandomValues(new Uint8Array(length - result.length))) {
-			// Rejection sampling avoids bias because 256 is not a multiple of 62.
-			if (byte < 248) result += alphabet[byte % 62];
-		}
+function fromB64url(s: string): Uint8Array<ArrayBuffer> | null {
+	if (!/^[A-Za-z0-9_-]*$/.test(s)) return null;
+	try {
+		const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4));
+		return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+	} catch {
+		return null;
 	}
-	return result;
 }
 
-const COOKIE = 'kofra_token_visitor';
-/** Most visitors kept in memory; the oldest are dropped first (sample data only). */
-const MAX_VISITORS = 1000;
+export type TokenKey = CryptoKey;
 
-function visitorOf(cookies: RequestEvent['cookies']) {
-	const v = cookies.get(COOKIE);
-	return v && /^[a-zA-Z0-9]{32}$/.test(v) ? v : null;
+/** The token key, derived from a server secret with a fixed label. */
+export async function tokenKey(secret: string): Promise<TokenKey> {
+	const root = await crypto.subtle.importKey(
+		'raw',
+		enc.encode(secret),
+		{ name: 'HMAC', hash: 'SHA-256' },
+		false,
+		['sign']
+	);
+	const derived = await crypto.subtle.sign('HMAC', root, enc.encode(LABEL));
+	return crypto.subtle.importKey('raw', derived, { name: 'HMAC', hash: 'SHA-256' }, false, [
+		'sign',
+		'verify'
+	]);
 }
 
-/** Forgets the visitor's sample tokens (used by "Reset demo data"). */
-export function resetSampleTokens({ cookies, url }: RequestEvent) {
-	const visitor = visitorOf(cookies);
-	if (visitor) lists.delete(visitor);
-	cookies.delete(COOKIE, {
-		path: '/',
-		secure: url.protocol === 'https:',
-		httpOnly: true,
-		sameSite: 'lax'
-	});
+/** `payload.signature`. The payload names its purpose and expiry (seconds). */
+export async function seal(
+	key: TokenKey,
+	purpose: string,
+	expiresAt: number,
+	data: Record<string, unknown>
+): Promise<string> {
+	const body = b64url(enc.encode(JSON.stringify({ p: purpose, e: expiresAt, d: data })));
+	const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(body)));
+	return `${body}.${b64url(sig)}`;
 }
 
-export function tokensPort({ locals, cookies, url }: RequestEvent): TokensPort {
-	// Connect the live port to the SDK here once its token endpoints are released.
-	if (locals.mode === 'live') error(503, { message: 'API tokens are not available yet.' });
-
-	const creator = locals.me?.user.id ?? 'demo';
-	const prefix = `${creator}/${locals.workspace?.id ?? ''}/`;
-	// Reading allocates nothing: a visitor gets a list only when they create a token.
-	const existing = () => {
-		const visitor = visitorOf(cookies);
-		return visitor ? lists.get(visitor) : undefined;
-	};
-	const writable = () => {
-		let visitor = visitorOf(cookies);
-		if (!visitor || !lists.has(visitor)) {
-			visitor = randomBase62(32);
-			cookies.set(COOKIE, visitor, {
-				path: '/',
-				httpOnly: true,
-				secure: url.protocol === 'https:',
-				sameSite: 'lax'
-			});
-			if (lists.size >= MAX_VISITORS) lists.delete(lists.keys().next().value!);
-			lists.set(visitor, new Map());
-		}
-		return lists.get(visitor)!;
-	};
-	return {
-		async list() {
-			return Array.from(existing() ?? [])
-				.filter(([key]) => key.startsWith(prefix))
-				.map(([, token]) => token);
-		},
-		async create(input) {
-			const list = writable();
-			const id = randomBase62(26);
-			const created: ApiToken = {
-				id,
-				name: input.name,
-				scopes: input.scopes,
-				buckets: input.buckets ?? null,
-				allowed_ips: input.allowed_ips ?? null,
-				agent: input.agent ?? false,
-				created_by: creator,
-				created_at: new Date().toISOString(),
-				expires_at: input.expires_in_days
-					? new Date(Date.now() + input.expires_in_days * 86_400_000).toISOString()
-					: null,
-				last_used_at: null
-			};
-			list.set(prefix + id, created);
-			return { ...created, token: `kofra_tok_${id}_${randomBase62(46)}` };
-		},
-		async revoke(id) {
-			if (!existing()?.delete(prefix + id))
-				error(404, { message: 'That token is no longer available.' });
-		}
-	};
+/** The token's data, or null when it is malformed, forged, expired or for another purpose. */
+export async function open<T extends Record<string, unknown>>(
+	key: TokenKey,
+	purpose: string,
+	token: string | null | undefined,
+	nowSeconds: number
+): Promise<T | null> {
+	if (typeof token !== 'string' || token.length > 8192) return null;
+	const [body, sig, extra] = token.split('.');
+	if (!body || !sig || extra !== undefined) return null;
+	const sigBytes = fromB64url(sig);
+	if (!sigBytes) return null;
+	// Constant-time comparison inside the platform's verify.
+	if (!(await crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(body)))) return null;
+	const raw = fromB64url(body);
+	if (!raw) return null;
+	try {
+		const v = JSON.parse(new TextDecoder().decode(raw)) as {
+			p?: unknown;
+			e?: unknown;
+			d?: unknown;
+		};
+		if (v.p !== purpose || typeof v.e !== 'number' || v.e < nowSeconds) return null;
+		if (typeof v.d !== 'object' || v.d === null || Array.isArray(v.d)) return null;
+		return v.d as T;
+	} catch {
+		return null;
+	}
 }
