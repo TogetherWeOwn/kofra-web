@@ -1,9 +1,17 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { bucketDeleteHref, bucketHref, downloadHref } from '#lib/links.js';
+	import {
+		bucketConnectHref,
+		bucketDeleteHref,
+		bucketHref,
+		bucketPageHref,
+		deleteFilesAction,
+		downloadHref
+	} from '#lib/links.js';
 	import Download from '@lucide/svelte/icons/download';
 	import FileIcon from '@lucide/svelte/icons/file';
 	import Folder from '@lucide/svelte/icons/folder';
+	import Trash from '@lucide/svelte/icons/trash-2';
 	import Notice from '#lib/components/Notice.svelte';
 	import Uploader from '#lib/components/Uploader.svelte';
 	import { bytes, count, date, dateTime } from '#lib/format.js';
@@ -14,6 +22,9 @@
 	const parent = $derived(
 		data.folders.length > 1 ? data.folders[data.folders.length - 2]!.prefix : ''
 	);
+	const cols = $derived(data.canDelete ? 6 : 5);
+	const r = $derived(data.removed);
+	const plural = (n: number, word: string) => `${count(n)} ${word}${n === 1 ? '' : 's'}`;
 </script>
 
 <svelte:head>
@@ -28,13 +39,16 @@
 	<div>
 		<h1>{b.name}</h1>
 		<p>
-			{bytes(b.stored_bytes)} in {count(b.object_count)} file{b.object_count === 1 ? '' : 's'}.
-			Created {date(b.created_at)}.
+			{bytes(b.stored_bytes)} in {plural(b.object_count, 'file')}{data.countsComplete
+				? ''
+				: ' so far (still being counted)'}. Created {date(b.created_at)}.
 		</p>
 	</div>
-	<div class="ph-act">
-		<a class="btn-plain link-danger" href={bucketDeleteHref(b.name)}>Delete bucket</a>
-	</div>
+	{#if (data.canWrite || data.sample) && !data.isProtected}
+		<div class="ph-act">
+			<a class="btn-plain link-danger" href={bucketDeleteHref(b.name)}>Delete bucket</a>
+		</div>
+	{/if}
 </div>
 
 {#if data.created}
@@ -47,17 +61,44 @@
 	</Notice>
 {/if}
 
-<Uploader bucket={b.name} prefix={data.prefix} />
+{#if r.deleted || r.skipped || r.failed}
+	<Notice tone={r.failed ? 'warning' : 'success'} title="Files deleted" live>
+		<p>{plural(r.deleted, 'file')} deleted.</p>
+		{#if r.skipped}
+			<p>
+				{plural(r.skipped, 'file')} kept: changed after you confirmed, or already gone.
+			</p>
+		{/if}
+		{#if r.failed}<p>{plural(r.failed, 'file')} could not be deleted. Try again.</p>{/if}
+	</Notice>
+{/if}
+
+{#if data.access === 'read'}
+	<Notice tone="info" title="Browse and download only">
+		<p>
+			The console cannot change anything in this bucket.
+			{#if data.connect}<a href={bucketConnectHref(b.name)}>Allow uploads and deletes</a>{/if}
+		</p>
+	</Notice>
+{/if}
+
+{#if data.canWrite}<Uploader bucket={b.name} prefix={data.prefix} sample={data.sample} />{/if}
 
 <section class="card" aria-labelledby="files-h">
 	<div class="card-bar">
 		<h2 id="files-h" class="h3">{data.prefix ? `Files in ${data.prefix}` : 'Files'}</h2>
-		<p class="muted">Sample files: the demo shows a few per bucket.</p>
+		{#if data.sample}<p class="muted">Sample files: the demo shows a few per bucket.</p>{/if}
 	</div>
+	<form method="GET" action={deleteFilesAction(b.name)} id="selection">
+		<input type="hidden" name="prefix" value={data.prefix} />
+	</form>
 	<div class="table-wrap">
 		<table class="tbl">
 			<thead>
 				<tr>
+					{#if data.canDelete}<th scope="col" class="sel">
+							<span class="sr-only">Select</span>
+						</th>{/if}
 					<th scope="col">Name</th>
 					<th scope="col" class="num">Size</th>
 					<th scope="col" class="hs">Type</th>
@@ -68,7 +109,7 @@
 			<tbody>
 				{#if data.prefix}
 					<tr>
-						<th scope="row" colspan="5">
+						<th scope="row" colspan={cols}>
 							<a class="cell-link" href={bucketHref(b.name, parent)}>
 								<Folder class="icon" aria-hidden="true" />Up one level
 							</a>
@@ -77,6 +118,7 @@
 				{/if}
 				{#each data.listing.folders as f (f.prefix)}
 					<tr>
+						{#if data.canDelete}<td class="sel"></td>{/if}
 						<th scope="row">
 							<a class="cell-link" href={bucketHref(b.name, f.prefix)}>
 								<Folder class="icon" aria-hidden="true" />{f.name}/
@@ -90,12 +132,23 @@
 				{/each}
 				{#each data.listing.files as f (f.key)}
 					<tr>
+						{#if data.canDelete}
+							<td class="sel">
+								<input
+									type="checkbox"
+									name="key"
+									value={f.key}
+									form="selection"
+									aria-label="Select {f.name}"
+								/>
+							</td>
+						{/if}
 						<th scope="row" class="wrap-cell">
 							<span class="fname"><FileIcon class="icon" aria-hidden="true" />{f.name}</span>
 						</th>
 						<td class="num">{bytes(f.size)}</td>
-						<td class="hs mono">{f.type}</td>
-						<td class="hs">{dateTime(f.modified)}</td>
+						<td class="hs mono">{f.type || '–'}</td>
+						<td class="hs">{f.modified ? dateTime(f.modified) : '–'}</td>
 						<td class="act">
 							<a
 								class="btn-plain btn-sm"
@@ -109,11 +162,27 @@
 					</tr>
 				{/each}
 				{#if empty}
-					<tr><td colspan="5" class="muted">This folder is empty.</td></tr>
+					<tr><td colspan={cols} class="muted">This folder is empty.</td></tr>
 				{/if}
 			</tbody>
 		</table>
 	</div>
+	{#if data.canDelete || data.listing.next || data.cursor}
+		<div class="card-foot">
+			{#if data.canDelete && data.listing.files.length}
+				<button class="btn-plain btn-sm link-danger" type="submit" form="selection">
+					<Trash class="icon" aria-hidden="true" />Delete selected
+				</button>
+				<span class="muted small">Up to {data.maxDelete} files at a time.</span>
+			{/if}
+			<span class="pager">
+				{#if data.cursor}<a href={bucketHref(b.name, data.prefix)}>First page</a>{/if}
+				{#if data.listing.next}
+					<a href={bucketPageHref(b.name, data.prefix, data.listing.next)}>Next page</a>
+				{/if}
+			</span>
+		</div>
+	{/if}
 </section>
 
 <style>
@@ -124,5 +193,31 @@
 	}
 	.fname :global(.icon) {
 		color: var(--color-muted);
+	}
+	.sel {
+		width: 44px;
+	}
+	.sel input {
+		width: 18px;
+		height: 18px;
+		accent-color: var(--color-accent);
+	}
+	.card-foot {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		border-top: 1px solid var(--color-line);
+	}
+	.small {
+		font-size: var(--font-size-sm);
+		margin-right: auto;
+	}
+	.pager {
+		display: inline-flex;
+		gap: var(--space-4);
+		margin-left: auto;
 	}
 </style>

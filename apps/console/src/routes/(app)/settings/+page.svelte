@@ -67,42 +67,46 @@
 	</div>
 </section>
 
-<section class="card pad" aria-labelledby="demo-h">
-	<h2 id="demo-h">Demo data</h2>
-	<p class="muted">
-		Go back to the sample workspace, dropping every bucket, key and file you added.
-	</p>
-	<p><a class="btn-plain" href={resolve('/(app)/settings/reset-demo')}>Reset demo data</a></p>
-</section>
-
-<section class="card pad danger" aria-labelledby="del-h">
-	<h2 id="del-h">Delete workspace</h2>
-	{#if a.deletion}
-		<p>
-			Deletion was requested on {dateTime(a.deletion.requested_at)}.
-			{#if a.deletion.status === 'pending_confirmation'}
-				It lapses unless an Owner confirms it by {a.deletion.confirm_by
-					? dateTime(a.deletion.confirm_by)
-					: 'the deadline'}.
-			{:else if a.deletion.erase_at}
-				The data is erased on {dateTime(a.deletion.erase_at)}.
-			{/if}
-		</p>
-		<form method="POST" action="?/cancelDeletion">
-			<button class="btn-plain" type="submit">Cancel deletion</button>
-		</form>
-	{:else}
+{#if data.ws.features.sample}
+	<section class="card pad" aria-labelledby="demo-h">
+		<h2 id="demo-h">Demo data</h2>
 		<p class="muted">
-			Deletes every bucket, file and key in this workspace after a waiting period, during which you
-			can cancel.
+			Go back to the sample workspace, dropping every bucket, key and file you added.
 		</p>
-		<p>
-			<a class="btn-plain link-danger" href={resolve('/(app)/settings/delete-workspace')}>
-				Delete workspace
-			</a>
-		</p>
-	{/if}
-</section>
+		<p><a class="btn-plain" href={resolve('/(app)/settings/reset-demo')}>Reset demo data</a></p>
+	</section>
+{/if}
+
+{#if data.ws.features.workspaceDeletion}
+	<section class="card pad danger" aria-labelledby="del-h">
+		<h2 id="del-h">Delete workspace</h2>
+		{#if a.deletion}
+			<p>
+				Deletion was requested on {dateTime(a.deletion.requested_at)}.
+				{#if a.deletion.status === 'pending_confirmation'}
+					It lapses unless an Owner confirms it by {a.deletion.confirm_by
+						? dateTime(a.deletion.confirm_by)
+						: 'the deadline'}.
+				{:else if a.deletion.erase_at}
+					The data is erased on {dateTime(a.deletion.erase_at)}.
+				{/if}
+			</p>
+			<form method="POST" action="?/cancelDeletion">
+				<button class="btn-plain" type="submit">Cancel deletion</button>
+			</form>
+		{:else}
+			<p class="muted">
+				Deletes every bucket, file and key in this workspace after a waiting period, during which
+				you can cancel.
+			</p>
+			<p>
+				<a class="btn-plain link-danger" href={resolve('/(app)/settings/delete-workspace')}>
+					Delete workspace
+				</a>
+			</p>
+		{/if}
+	</section>
+{/if}
 
 <style>
 	.row {

@@ -2,14 +2,22 @@
 import type { Kofra } from '@kofra/api';
 import type { DemoApi } from '@kofra/api/demo';
 import type { BillingConfig } from '#lib/server/config.js';
+import type { FileStore } from '#lib/server/files.js';
+import type { WorkspaceInfo } from '#lib/server/workspace.js';
 
 declare global {
 	namespace App {
 		interface Locals {
-			/** The API client: the SDK, here over the demo transport. */
+			/** The API client: the SDK, over the demo or the tenant0 transport. */
 			api: Kofra;
-			/** Demo-only file listing and uploads (not in the API contract yet). */
-			demo: DemoApi;
+			/** Files in buckets: listing, uploads, deletes (not in the API contract yet). */
+			files: FileStore;
+			/** What this workspace's data source can show. */
+			workspace: WorkspaceInfo;
+			/** False while storage counters are still being rebuilt (tenant0). */
+			countsComplete: () => Promise<boolean>;
+			/** Demo mode only. */
+			demo?: DemoApi;
 			billing: BillingConfig;
 			/** Set when a request cleared the demo cookie; the hook then does not save state. */
 			demoReset?: boolean;

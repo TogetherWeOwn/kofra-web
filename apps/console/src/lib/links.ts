@@ -16,3 +16,13 @@ export const downloadHref = (bucket: string, key: string) =>
 	resolve(`/(app)/buckets/[bucket]/download?key=${q(key)}`, { bucket });
 export const bucketsPageHref = (cursor: string) => resolve(`/(app)/buckets?cursor=${q(cursor)}`);
 export const keyRevokeHref = (id: string) => resolve('/(app)/keys/[id]/revoke', { id });
+export const bucketConnectHref = (bucket: string) =>
+	resolve('/(app)/buckets/[bucket]/connect', { bucket });
+export const deleteFilesAction = (bucket: string) =>
+	resolve('/(app)/buckets/[bucket]/delete-files', { bucket });
+export const bucketPageHref = (bucket: string, prefix: string, cursor: string) =>
+	resolve(`/(app)/buckets/[bucket]?${prefix ? `prefix=${q(prefix)}&` : ''}cursor=${q(cursor)}`, {
+		bucket
+	});
+export const stopUploadsAction = (bucket: string) =>
+	resolve('/(app)/buckets/[bucket]/stop-uploads', { bucket });

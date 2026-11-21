@@ -1,9 +1,15 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { loadFailed } from '#lib/server/api.js';
 import { createCheckoutSession, createPortalSession, StripeError } from '#lib/server/stripe.js';
 import type { Actions, PageServerLoad } from './$types';
 
+const noBilling = (locals: App.Locals) => {
+	if (!locals.workspace.features.billing)
+		error(404, { message: 'There is no billing for this workspace.' });
+};
+
 export const load: PageServerLoad = async ({ locals, url }) => {
+	noBilling(locals);
 	const b = locals.billing;
 	try {
 		const account = await locals.api.account.get();
@@ -37,6 +43,7 @@ function stripeFailed(err: unknown) {
 
 export const actions: Actions = {
 	checkout: async ({ locals, url }) => {
+		noBilling(locals);
 		const b = locals.billing;
 		if (!b.enabled || !b.secretKey || !b.priceId)
 			return unavailable(b.reason ?? 'Billing is not connected yet.');
@@ -59,6 +66,7 @@ export const actions: Actions = {
 		redirect(303, target);
 	},
 	portal: async ({ locals, url }) => {
+		noBilling(locals);
 		const b = locals.billing;
 		if (!b.enabled || !b.secretKey) return unavailable(b.reason ?? 'Billing is not connected yet.');
 		if (!b.portalCustomer) return unavailable('There is no billing account to manage yet.');

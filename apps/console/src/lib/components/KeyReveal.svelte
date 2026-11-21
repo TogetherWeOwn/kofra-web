@@ -8,8 +8,10 @@
 	import { awsCliCommands, envLines, rcloneConfig } from '#lib/snippets.js';
 
 	let {
-		created
+		created,
+		sample = false
 	}: {
+		sample?: boolean;
 		created: {
 			id: string;
 			name: string | null;
@@ -44,7 +46,7 @@
 	<p>
 		This is the only time the secret is shown. If you lose it, revoke the key and create a new one.
 	</p>
-	<p>In this demo the key works nowhere: it is sample data.</p>
+	{#if sample}<p>In this demo the key works nowhere: it is sample data.</p>{/if}
 </Notice>
 
 <section class="card pad reveal" aria-labelledby="rev-h">

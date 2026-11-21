@@ -9,8 +9,14 @@ const goneName = (name: string | null, present: string[]) =>
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const cursor = url.searchParams.get('cursor') ?? undefined;
 	try {
-		const page = await locals.api.buckets.list({ limit: 100, cursor });
+		const [page, others] = await Promise.all([
+			locals.api.buckets.list({ limit: 100, cursor }),
+			// Buckets of this workspace the console cannot open yet (tenant0 only).
+			cursor === undefined && locals.files.otherBuckets ? locals.files.otherBuckets() : []
+		]);
 		return {
+			others,
+			protectedBuckets: locals.workspace.protectedBuckets,
 			buckets: page.data,
 			next: page.next_cursor,
 			paged: cursor !== undefined,

@@ -10,13 +10,15 @@
 	const deletion = $derived(data.account.deletion);
 </script>
 
-<Shell path={page.url.pathname} {crumbs} workspace={data.workspace}>
-	<Notice tone="info" title="Demo workspace">
-		<p>
-			Everything here is sample data. Your changes stay in this browser for 7 days, and nothing is
-			stored or charged. Sign-in comes later.
-		</p>
-	</Notice>
+<Shell path={page.url.pathname} {crumbs} workspace={data.workspace} ws={data.ws}>
+	{#if data.ws.features.sample}
+		<Notice tone="info" title="Demo workspace">
+			<p>
+				Everything here is sample data. Your changes stay in this browser for 7 days, and nothing is
+				stored or charged. Sign-in comes later.
+			</p>
+		</Notice>
+	{/if}
 	{#if deletion}
 		<Notice tone="warning" title="Workspace deletion requested">
 			<p>

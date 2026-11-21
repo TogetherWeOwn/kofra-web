@@ -4,17 +4,27 @@
 	import { afterNavigate } from '$app/navigation';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import LogIn from '@lucide/svelte/icons/log-in';
+	import LogOut from '@lucide/svelte/icons/log-out';
 	import Menu from '@lucide/svelte/icons/menu';
 	import X from '@lucide/svelte/icons/x';
 	import { Logo, ThemeToggle } from '@kofra/ui';
 	import { currentEntry, DOCS_URL, LICENCES_URL, NAV, type Crumb } from '#lib/nav.js';
+	import type { WorkspaceInfo } from '#lib/server/workspace.js';
 
 	let {
 		path,
 		crumbs = [],
 		workspace,
+		ws,
 		children
-	}: { path: string; crumbs?: Crumb[]; workspace: string; children: Snippet } = $props();
+	}: {
+		path: string;
+		crumbs?: Crumb[];
+		workspace: string;
+		ws: WorkspaceInfo;
+		children: Snippet;
+	} = $props();
+	const nav = $derived(NAV.filter((e) => ws.features.billing || e.label !== 'Billing'));
 
 	let open = $state(false);
 	let menuButton = $state<HTMLButtonElement>();
@@ -52,11 +62,11 @@
 		<div class="side-acct">
 			<span class="side-acct-l">Workspace</span>
 			<span class="side-acct-n">{workspace}</span>
-			<span class="side-acct-p">Sample data</span>
+			<span class="side-acct-p">{ws.features.sample ? 'Sample data' : 'Live data'}</span>
 		</div>
 		<nav aria-label="Console sections">
 			<ul>
-				{#each NAV as item (item.href)}
+				{#each nav as item (item.href)}
 					<li>
 						<a href={item.href} aria-current={current === item ? 'page' : undefined}>
 							<item.icon class="icon" aria-hidden="true" />{item.label}
@@ -73,7 +83,14 @@
 			</li>
 			<li><a href={LICENCES_URL} rel="external">Licences</a></li>
 			<li>
-				<a href={resolve('/(auth)/sign-in')}><LogIn class="icon" aria-hidden="true" />Sign in</a>
+				{#if ws.features.sample}
+					<a href={resolve('/(auth)/sign-in')}><LogIn class="icon" aria-hidden="true" />Sign in</a>
+				{:else}
+					<!-- Cloudflare Access ends the session at this address on the console's own host. -->
+					<a href="/cdn-cgi/access/logout" rel="external">
+						<LogOut class="icon" aria-hidden="true" />Sign out
+					</a>
+				{/if}
 			</li>
 		</ul>
 	</aside>
