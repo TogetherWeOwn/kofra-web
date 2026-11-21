@@ -25,7 +25,8 @@
 			label="Password"
 			type="password"
 			autocomplete="current-password"
-			hint="Enter the password you chose for this account."
+			hint="Enter the password you chose for this account. Not needed for a change of address."
+			required={false}
 			result={form}
 		/>
 		<div class="actions"><Button type="submit">Confirm email address</Button></div>
@@ -50,4 +51,7 @@
 		{/if}
 		<div class="actions"><Button type="submit">Send it again</Button></div>
 	</ActionForm>
+	{#if data.signedIn}
+		<p><a href={resolve('/(auth)/sign-out')}>Sign out</a> to use another address.</p>
+	{/if}
 {/if}

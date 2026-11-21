@@ -1,6 +1,7 @@
 import { resolve } from '$app/paths';
 import { fail, redirect } from '@sveltejs/kit';
 import { demoCookieName } from '#lib/server/demo.js';
+import { resetSampleTokens } from '#lib/server/tokens.js';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () => ({
@@ -8,7 +9,8 @@ export const load: PageServerLoad = () => ({
 });
 
 export const actions: Actions = {
-	default: async ({ cookies, locals, request, url }) => {
+	default: async (event) => {
+		const { cookies, locals, request, url } = event;
 		const form = await request.formData();
 		if (form.get('confirm') !== 'yes') return fail(400, { unconfirmed: true });
 		locals.demoReset = true;
@@ -18,6 +20,7 @@ export const actions: Actions = {
 			httpOnly: true,
 			sameSite: 'lax'
 		});
+		resetSampleTokens(event);
 		redirect(303, '/settings?done=demo-reset');
 	}
 };

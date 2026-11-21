@@ -27,6 +27,10 @@
 		children: Snippet;
 	} = $props();
 
+	// API tokens need the API's token endpoints, which live workspaces do not have
+	// yet; the entry shows only with sample data until they ship.
+	const nav = $derived(sample ? NAV : NAV.filter((item) => item.label !== 'API tokens'));
+
 	let open = $state(false);
 	let menuButton = $state<HTMLButtonElement>();
 	let side = $state<HTMLElement>();
@@ -67,7 +71,7 @@
 		</div>
 		{#if workspaceReady}<nav aria-label="Console sections">
 				<ul>
-					{#each NAV as item (item.href)}
+					{#each nav as item (item.href)}
 						<li>
 							<a href={item.href} aria-current={current === item ? 'page' : undefined}>
 								<item.icon class="icon" aria-hidden="true" />{item.label}

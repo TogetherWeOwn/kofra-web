@@ -18,9 +18,12 @@
 		defaultName,
 		removeId,
 		needsPassword,
+		codesReplaced = false,
 		csrf,
 		result
 	}: {
+		/** Another card issued or voided the recovery codes: hide any set shown here. */
+		codesReplaced?: boolean;
 		passkeys: Passkey[];
 		/** No second factor yet: the first one needs the current password. */
 		needsPassword: boolean;
@@ -41,6 +44,9 @@
 	let busy = $state(false);
 	let problem = $state('');
 	let codes = $state<string[] | null>(null);
+	$effect(() => {
+		if (codesReplaced) codes = null;
+	});
 
 	onMount(() => {
 		supported = supportsPasskeys();

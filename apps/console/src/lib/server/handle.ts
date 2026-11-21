@@ -17,7 +17,7 @@ const stagePages = {
 		'/two-factor/passkey/finish',
 		'/sign-out'
 	],
-	verify_email: ['/verify'],
+	verify_email: ['/verify', '/sign-out'],
 	workspace: [
 		'/welcome',
 		'/verify',

@@ -30,6 +30,10 @@
 		{/if}
 		<div class="actions"><Button type="submit">Set password</Button></div>
 	</ActionForm>
+	{#if form?.problem?.code === 'code_invalid'}
+		<!-- A wrong code spends the link, so the person needs a new one. -->
+		<p><a href={resolve('/(auth)/reset')}>Request a new link</a></p>
+	{/if}
 {:else if data.problem}
 	<ProblemNotice problem={data.problem} />
 	<p><a href={resolve('/(auth)/reset')}>Request a new link</a></p>

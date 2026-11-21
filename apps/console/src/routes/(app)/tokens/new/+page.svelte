@@ -17,7 +17,7 @@
 <h1>Create token</h1>
 
 {#if form?.created}
-	<KeyReveal token={form.created} />
+	<KeyReveal token={form.created} sample={data.mode !== 'live'} />
 {:else}
 	<div class="card pad">
 		<ActionForm csrf={data.csrf} result={form}>

@@ -161,6 +161,7 @@ export function createFakeAccount(): Upstream {
 	add('owner@example.com', 'Owner', seedPassword, true);
 	add('mfa@example.com', 'MFA', seedPassword, true, true);
 	add('passkeys@example.com', 'Passkeys', seedPassword, true);
+	add('recovery@example.com', 'Recovery', seedPassword, true);
 
 	async function route(req: Request) {
 		const url = new URL(req.url);

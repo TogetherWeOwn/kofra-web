@@ -1,7 +1,11 @@
 import { redirect } from '@sveltejs/kit';
 import { account, field, refused } from '#lib/server/account/actions.js';
 import { nextPath, setSession } from '#lib/server/account/session.js';
-import type { Actions, PageServerLoad } from './$types';
+import type { Actions, PageServerLoad, RequestEvent } from './$types';
+
+/** One rule for the page and its action: no authenticator app means recovery codes. */
+const recoveryMode = (event: RequestEvent) =>
+	!event.locals.me?.user.totp || event.url.searchParams.get('recovery') === '1';
 
 export const load: PageServerLoad = (event) => {
 	account(event);
@@ -9,7 +13,7 @@ export const load: PageServerLoad = (event) => {
 	return {
 		passkeys: event.locals.me.user.passkeys,
 		totp: event.locals.me.user.totp,
-		recovery: !event.locals.me.user.totp || event.url.searchParams.get('recovery') === '1',
+		recovery: recoveryMode(event),
 		next: nextPath(event.url.searchParams.get('next'))
 	};
 };
@@ -18,7 +22,7 @@ export const actions: Actions = {
 	default: async (event) => {
 		const client = account(event);
 		const form = await event.request.formData();
-		const recovery = event.url.searchParams.get('recovery') === '1';
+		const recovery = recoveryMode(event);
 		const code = field(form, 'code').trim();
 		try {
 			const answer = await (recovery ? client.loginRecovery(code) : client.loginTotp(code));

@@ -170,3 +170,37 @@ test('registers a passkey and uses it to sign in', async ({ page, browserName })
 	await page.getByRole('button', { name: 'Sign in with a passkey' }).click();
 	await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
 });
+
+test('a passkey-only account completes the second step with a recovery code', async ({
+	page,
+	browserName
+}) => {
+	test.skip(browserName !== 'chromium', 'The virtual authenticator uses Chromium CDP.');
+	const cdp = await page.context().newCDPSession(page);
+	await cdp.send('WebAuthn.enable');
+	await cdp.send('WebAuthn.addVirtualAuthenticator', {
+		options: {
+			protocol: 'ctap2',
+			transport: 'internal',
+			hasResidentKey: true,
+			hasUserVerification: true,
+			isUserVerified: true
+		}
+	});
+	await login(page, 'recovery@example.com');
+	await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+	await page.goto('/account');
+	await page.getByRole('button', { name: 'Add a passkey' }).click();
+	await page.getByLabel('Passkey name').fill('Recovery test');
+	await page.locator('#new-passkey-password').fill(existingPassword);
+	await page.getByRole('button', { name: 'Create passkey' }).click();
+	const codes = (await page.locator('pre.code-block').first().textContent())!.trim().split('\n');
+	expect(codes).toHaveLength(10);
+	await page.goto('/sign-out');
+	await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+	await login(page, 'recovery@example.com');
+	await expect(page.getByRole('heading', { name: 'Two-step verification' })).toBeVisible();
+	await page.getByLabel('Recovery code').fill(codes[0]!);
+	await page.getByRole('button', { name: 'Continue' }).click();
+	await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+});

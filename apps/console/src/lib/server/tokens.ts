@@ -44,32 +44,61 @@ function randomBase62(length: number) {
 	return result;
 }
 
+const COOKIE = 'kofra_token_visitor';
+/** Most visitors kept in memory; the oldest are dropped first (sample data only). */
+const MAX_VISITORS = 1000;
+
+function visitorOf(cookies: RequestEvent['cookies']) {
+	const v = cookies.get(COOKIE);
+	return v && /^[a-zA-Z0-9]{32}$/.test(v) ? v : null;
+}
+
+/** Forgets the visitor's sample tokens (used by "Reset demo data"). */
+export function resetSampleTokens({ cookies, url }: RequestEvent) {
+	const visitor = visitorOf(cookies);
+	if (visitor) lists.delete(visitor);
+	cookies.delete(COOKIE, {
+		path: '/',
+		secure: url.protocol === 'https:',
+		httpOnly: true,
+		sameSite: 'lax'
+	});
+}
+
 export function tokensPort({ locals, cookies, url }: RequestEvent): TokensPort {
 	// Connect the live port to the SDK here once its token endpoints are released.
 	if (locals.mode === 'live') error(503, { message: 'API tokens are not available yet.' });
 
-	const cookieName = 'kofra_token_visitor';
-	let visitor = cookies.get(cookieName);
-	if (!visitor || !/^[a-zA-Z0-9]{32}$/.test(visitor) || !lists.has(visitor)) {
-		visitor = randomBase62(32);
-		cookies.set(cookieName, visitor, {
-			path: '/',
-			httpOnly: true,
-			secure: url.protocol === 'https:',
-			sameSite: 'lax'
-		});
-		lists.set(visitor, new Map());
-	}
-	const list = lists.get(visitor)!;
 	const creator = locals.me?.user.id ?? 'demo';
 	const prefix = `${creator}/${locals.workspace?.id ?? ''}/`;
+	// Reading allocates nothing: a visitor gets a list only when they create a token.
+	const existing = () => {
+		const visitor = visitorOf(cookies);
+		return visitor ? lists.get(visitor) : undefined;
+	};
+	const writable = () => {
+		let visitor = visitorOf(cookies);
+		if (!visitor || !lists.has(visitor)) {
+			visitor = randomBase62(32);
+			cookies.set(COOKIE, visitor, {
+				path: '/',
+				httpOnly: true,
+				secure: url.protocol === 'https:',
+				sameSite: 'lax'
+			});
+			if (lists.size >= MAX_VISITORS) lists.delete(lists.keys().next().value!);
+			lists.set(visitor, new Map());
+		}
+		return lists.get(visitor)!;
+	};
 	return {
 		async list() {
-			return Array.from(list)
+			return Array.from(existing() ?? [])
 				.filter(([key]) => key.startsWith(prefix))
 				.map(([, token]) => token);
 		},
 		async create(input) {
+			const list = writable();
 			const id = randomBase62(26);
 			const created: ApiToken = {
 				id,
@@ -89,7 +118,8 @@ export function tokensPort({ locals, cookies, url }: RequestEvent): TokensPort {
 			return { ...created, token: `kofra_tok_${id}_${randomBase62(46)}` };
 		},
 		async revoke(id) {
-			if (!list.delete(prefix + id)) error(404, { message: 'That token is no longer available.' });
+			if (!existing()?.delete(prefix + id))
+				error(404, { message: 'That token is no longer available.' });
 		}
 	};
 }

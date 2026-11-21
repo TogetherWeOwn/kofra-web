@@ -11,7 +11,8 @@ export const load: PageServerLoad = async (event) => {
 	if (token && event.locals.me?.session.stage === 'full' && event.request.method === 'GET') {
 		try {
 			const answer = await client.verifyEmail(token);
-			if (answer.what === 'email_changed') return { token, email: '', changed: true };
+			if (answer.what === 'email_changed')
+				return { token, email: '', changed: true, signedIn: true };
 			redirect(303, '/sign-in?verified=1');
 		} catch (err) {
 			if (!(err instanceof AccountProblem)) throw err;
@@ -20,6 +21,7 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		token,
 		changed: false,
+		signedIn: !!event.locals.me,
 		email: event.url.searchParams.get('email') ?? event.locals.me?.user.email ?? ''
 	};
 };
