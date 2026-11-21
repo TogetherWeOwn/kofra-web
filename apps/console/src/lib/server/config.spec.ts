@@ -72,7 +72,7 @@ describe('console wording of API problems', async () => {
 describe('live configuration', () => {
 	const upstream = { fetch: async () => new Response(null, { status: 204 }) };
 	const key = '0a'.repeat(32);
-	const env = { CONSOLE_MODE: 'live', ACCOUNT: upstream, API: upstream, ASSERTION_KEY: key };
+	const env = { CONSOLE_DATA: 'live', ACCOUNT: upstream, API: upstream, ASSERTION_KEY: key };
 
 	it('requires both service bindings and decodes exactly 32 bytes', () => {
 		expect(readConfig(env)).toMatchObject({
@@ -104,13 +104,24 @@ describe('live configuration', () => {
 		});
 	});
 
+	it('refuses a CONSOLE_MODE that disagrees, and never takes live from it', () => {
+		expect(readConfig({ ...env, CONSOLE_DATA: 'demo', CONSOLE_MODE: 'live' })).toMatchObject({
+			mode: 'unconfigured',
+			problem: 'CONSOLE_MODE'
+		});
+		expect(readConfig({ ...env, CONSOLE_DATA: undefined, CONSOLE_MODE: 'live' }).mode).toBe(
+			'unconfigured'
+		);
+		expect(readConfig({ ...env, CONSOLE_MODE: 'live' }).mode).toBe('live');
+	});
+
 	it('provides the fake without bindings and ignores them in demo', () => {
-		expect(readConfig({ CONSOLE_MODE: 'live-fake' })).toMatchObject({
+		expect(readConfig({ CONSOLE_DATA: 'live-fake' })).toMatchObject({
 			mode: 'live-fake',
 			account: { fetch: expect.any(Function) },
 			assertionKey: null
 		});
-		expect(readConfig({ ...env, CONSOLE_MODE: 'demo' })).toMatchObject({
+		expect(readConfig({ ...env, CONSOLE_DATA: 'demo' })).toMatchObject({
 			mode: 'demo',
 			account: null,
 			api: null,

@@ -44,7 +44,7 @@
 				: ' so far (still being counted)'}. Created {date(b.created_at)}.
 		</p>
 	</div>
-	{#if (data.canWrite || data.sample) && !data.isProtected}
+	{#if (data.canWrite || data.sample || data.filesUnavailable) && !data.isProtected}
 		<div class="ph-act">
 			<a class="btn-plain link-danger" href={bucketDeleteHref(b.name)}>Delete bucket</a>
 		</div>

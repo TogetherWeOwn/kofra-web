@@ -54,7 +54,7 @@ describe('console request hook', () => {
 });
 
 it('refuses live-fake requests from a non-loopback hostname even for public paths', async () => {
-	const handle = makeHandle(() => readConfig({ CONSOLE_MODE: 'live-fake' }));
+	const handle = makeHandle(() => readConfig({ CONSOLE_DATA: 'live-fake' }));
 	const res = await handle({
 		event: { ...event(), url: new URL('https://localhost.example/sign-in') },
 		resolve: async () => {
@@ -132,7 +132,7 @@ it('signs each live API call for the selected member workspace', async () => {
 });
 
 describe('live-fake stage gating', () => {
-	const handle = makeHandle(() => readConfig({ CONSOLE_MODE: 'live-fake' }));
+	const handle = makeHandle(() => readConfig({ CONSOLE_DATA: 'live-fake' }));
 	const run = (path: string, init: RequestInit = {}) =>
 		handle({
 			event: {

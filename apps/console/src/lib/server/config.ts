@@ -157,11 +157,20 @@ export function readTenant0(env: Env): Tenant0Config | string {
 const none = { account: null, api: null, assertionKey: null } as const;
 
 export function readConfig(env: Env): ConsoleConfig {
-	// CONSOLE_DATA picks the data source. Without it, the older CONSOLE_MODE still works.
+	// CONSOLE_DATA picks the data source. Without it, the older CONSOLE_MODE=demo still works.
+	// A CONSOLE_MODE that disagrees with CONSOLE_DATA refuses every request instead of
+	// silently serving one of the two.
 	const legacy = str(env, 'CONSOLE_MODE');
-	const data =
-		str(env, 'CONSOLE_DATA') ??
-		(legacy === 'demo' || legacy === 'live' || legacy === 'live-fake' ? legacy : null);
+	const chosen = str(env, 'CONSOLE_DATA');
+	if (legacy !== null && chosen !== null && legacy !== chosen)
+		return {
+			mode: 'unconfigured',
+			problem: 'CONSOLE_MODE',
+			billing: readBilling(env, true),
+			tenant0: null,
+			...none
+		};
+	const data = chosen ?? (legacy === 'demo' ? 'demo' : null);
 	if (data === 'demo')
 		return { mode: 'demo', problem: null, billing: readBilling(env, true), tenant0: null, ...none };
 	if (data === 'live-fake')
