@@ -28,6 +28,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			blockedTitle: null,
 			uploads: 0,
 			recentUploads: 0,
+			unreachableUploads: 0,
 			uploadsToken: null,
 			crumbs
 		};
@@ -39,7 +40,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			const open = locals.files.openUploads
 				? await locals.files.openUploads(bucket.name).catch(() => null)
 				: null;
-			const onlyUploads = open !== null && open.empty;
+			const onlyUploads =
+				open !== null && open.empty && open.stale + open.unreachable + open.recent > 0;
 			const canStop =
 				onlyUploads &&
 				open.stale > 0 &&
@@ -54,6 +56,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 					: 'This bucket still holds files',
 				uploads: canStop ? open.stale : 0,
 				recentUploads: onlyUploads ? open.recent : 0,
+				unreachableUploads: onlyUploads ? open.unreachable : 0,
 				uploadsToken: canStop ? open.token : null,
 				crumbs
 			};
@@ -66,6 +69,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 				blockedTitle: 'This bucket is protected',
 				uploads: 0,
 				recentUploads: 0,
+				unreachableUploads: 0,
 				uploadsToken: null,
 				crumbs
 			};

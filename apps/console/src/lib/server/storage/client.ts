@@ -352,11 +352,12 @@ export function createStorageClient(cfg: Tenant0Config['storage'], now: () => nu
 		/** True when the bucket has at least one unfinished multipart upload. */
 		/** Unfinished multipart uploads in the bucket, up to MAX_PAGES pages of 1,000. */
 		async openUploads(
-			bucket: string
+			bucket: string,
+			maxPages = MAX_PAGES
 		): Promise<{ key: string; uploadId: string; initiated: number }[]> {
 			const out: { key: string; uploadId: string; initiated: number }[] = [];
 			let marker: [string, string] | null = null;
-			for (let i = 0; i < MAX_PAGES; i++) {
+			for (let i = 0; i < maxPages; i++) {
 				const query: Query = [
 					['max-uploads', '1000'],
 					['uploads', '']

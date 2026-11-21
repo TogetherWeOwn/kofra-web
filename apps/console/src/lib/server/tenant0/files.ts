@@ -409,10 +409,16 @@ export class Tenant0Files implements FileStore {
 
 	async #open(bucket: string) {
 		try {
-			return await this.#storage.openUploads(bucket);
+			// Five pages at most, so a stop stays inside the 32-call limit (1 + 5 + STOP_BATCH).
+			return await this.#storage.openUploads(bucket, 5);
 		} catch (err) {
 			storageFailure(err);
 		}
+	}
+
+	/** Names with "." or ".." segments cannot be addressed from here (see client checkedUrl). */
+	static #addressable(key: string): boolean {
+		return !key.split('/').some((s) => s === '.' || s === '..');
 	}
 
 	/** Uploads the console itself could no longer finish: older than its longest token. */
@@ -431,13 +437,15 @@ export class Tenant0Files implements FileStore {
 			storageFailure(err);
 		}
 		const uploads = await this.#open(bucket);
-		const stale = this.#stale(uploads);
+		const old = this.#stale(uploads);
+		const stale = old.filter((u) => Tenant0Files.#addressable(u.key));
 		const token = await seal(await this.#key, 'stop-uploads', this.#nowS() + CONFIRM_TTL_S, {
 			h: await Tenant0Files.#uploadsDigest(bucket, stale)
 		});
 		return {
 			stale: stale.length,
-			recent: uploads.length - stale.length,
+			unreachable: old.length - stale.length,
+			recent: uploads.length - old.length,
 			empty: first.files.length === 0 && first.folders.length === 0,
 			token
 		};
@@ -454,7 +462,9 @@ export class Tenant0Files implements FileStore {
 	): Promise<{ stopped: number; failed: number; unreachable: number; left: number }> {
 		await this.#need(bucket, true);
 		const signed = await open<{ h: string }>(await this.#key, 'stop-uploads', token, this.#nowS());
-		const stale = this.#stale(await this.#open(bucket));
+		const stale = this.#stale(await this.#open(bucket)).filter((u) =>
+			Tenant0Files.#addressable(u.key)
+		);
 		if (!signed || signed.h !== (await Tenant0Files.#uploadsDigest(bucket, stale)))
 			throw new FileError(
 				409,

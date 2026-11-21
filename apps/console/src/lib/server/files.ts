@@ -119,6 +119,8 @@ export interface FileStore {
 
 export interface OpenUploads {
 	stale: number;
+	/** Stale ones whose names the console cannot address (an S3 tool can stop them). */
+	unreachable: number;
 	recent: number;
 	empty: boolean;
 	token: string;

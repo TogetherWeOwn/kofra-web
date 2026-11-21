@@ -160,6 +160,22 @@ describe('tenant0 transport: the contract over the storage service', () => {
 				{ bucket: 'scratch', access: 'read_write' }
 			])
 		);
+		// More read-write buckets than read ones: created read-write, then the read grant added.
+		await api.buckets.create({ body: { name: 'extra' } });
+		const wide = await api.keys.create({
+			body: {
+				grants: [
+					{ bucket: 'files', access: 'read' },
+					{ bucket: 'scratch', access: 'read_write' },
+					{ bucket: 'extra', access: 'read_write' }
+				]
+			}
+		});
+		expect(Object.fromEntries(fake.keys.get(wide.id)!.grants)).toEqual({
+			files: 'ro',
+			scratch: 'rw',
+			extra: 'rw'
+		});
 		// The second grant fails: the key made in the first step is revoked again.
 		fake.buckets.set('fail-grant', {
 			name: 'fail-grant',

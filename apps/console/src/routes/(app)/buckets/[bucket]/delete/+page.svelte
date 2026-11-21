@@ -29,9 +29,17 @@
 		{#if data.recentUploads}
 			<p>
 				{data.recentUploads} upload{data.recentUploads === 1 ? ' was' : 's were'} started in the last
-				12 hours and may still be sending. Try again once {data.recentUploads === 1
-					? 'it has'
-					: 'they have'} finished or stopped.
+				12 hours and may still be sending. One left behind by a closed page can be stopped here once it
+				is 12 hours old.
+			</p>
+		{/if}
+		{#if data.unreachableUploads}
+			<p>
+				{data.unreachableUploads} unfinished upload{data.unreachableUploads === 1
+					? ' has a name'
+					: 's have names'} the console cannot address. Stop {data.unreachableUploads === 1
+					? 'it'
+					: 'them'} with an S3 tool (for example: aws s3api abort-multipart-upload).
 			</p>
 		{/if}
 	</Notice>
