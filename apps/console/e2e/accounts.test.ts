@@ -163,6 +163,15 @@ test('registers a passkey and uses it to sign in', async ({ page, browserName })
 			.first()
 	).toBeVisible();
 	await expect(page.getByText('Save these recovery codes')).toBeVisible();
+	const first = await page.locator('pre.code-block').first().textContent();
+	// Starting the authenticator set-up issues no codes: the reveal stays.
+	await page.getByRole('button', { name: 'Set up', exact: true }).click();
+	await expect(page.getByText('Scan the QR code')).toBeVisible();
+	await expect(page.locator('pre.code-block').first()).toHaveText(first!);
+	// A new set replaces the old one: only the new set is shown.
+	await page.getByRole('button', { name: 'Create new codes' }).click();
+	await expect(page.locator('pre.code-block')).toHaveCount(1);
+	await expect(page.locator('pre.code-block').first()).not.toHaveText(first!);
 
 	await page.goto('/sign-out');
 	await page.getByRole('button', { name: 'Sign out', exact: true }).click();

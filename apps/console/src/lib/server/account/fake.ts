@@ -421,6 +421,8 @@ export function createFakeAccount(): Upstream {
 					return refuse('passkey_invalid');
 				person.passkeys.push({ ...passkey, credentialId: input.id });
 				person.user.passkeys = person.passkeys.length;
+				// As the service: the user-verified ceremony makes this a two-factor session.
+				if (session) session.info.level = 2;
 				return json({ passkey, recovery_codes: first ? recovery(person) : null }, 201);
 			}
 
