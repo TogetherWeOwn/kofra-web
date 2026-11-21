@@ -52,7 +52,7 @@ export const WEBDAV_BLOCKS: Block[] = [
 	},
 	{
 		type: 'p',
-		text: 'File Explorer refuses files larger than about 47 MiB (50,000,000 bytes) in either direction until you raise its limit. In the registry, under `HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\WebClient\\Parameters`, set `FileSizeLimitInBytes` to `4294967295` and restart the **WebClient** service. For large files, rclone is the better choice on Windows.'
+		text: 'File Explorer refuses files larger than about 48 MiB (50,000,000 bytes) in either direction until you raise its limit. In the registry, under `HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\WebClient\\Parameters`, set `FileSizeLimitInBytes` to `4294967295` and restart the **WebClient** service. For large files, rclone is the better choice on Windows.'
 	},
 
 	{ type: 'h2', text: 'Linux', id: 'linux' },
@@ -65,7 +65,7 @@ export const WEBDAV_BLOCKS: Block[] = [
 	{
 		type: 'code',
 		lang: 'sh',
-		code: `read -rsp 'App password secret: ' KOFRA_DAV_SECRET; echo\nrclone config create kofra-dav webdav url=${WEBDAV_URL} vendor=other \\\n  user=your-app-password-id pass="$(rclone obscure "$KOFRA_DAV_SECRET")"\nunset KOFRA_DAV_SECRET\nrclone mount kofra-dav:my-bucket ~/kofra --vfs-cache-mode writes`
+		code: `printf 'App password secret: '; read -rs KOFRA_DAV_SECRET; echo\nrclone config create kofra-dav webdav url=${WEBDAV_URL} vendor=other \\\n  user=your-app-password-id pass="$(rclone obscure "$KOFRA_DAV_SECRET")"\nunset KOFRA_DAV_SECRET\nmkdir -p ~/kofra\nrclone mount kofra-dav:my-bucket ~/kofra --vfs-cache-mode writes`
 	},
 	{
 		type: 'p',

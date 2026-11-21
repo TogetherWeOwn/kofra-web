@@ -72,7 +72,7 @@ export const DOCS_BLOCKS: Block[] = [
 		type: 'ul',
 		items: [
 			`**Parts of ${PROFILE.partMiB} MiB, from ${PROFILE.partMiB} MiB.** Files of ${PROFILE.partMiB} MiB and more go up as a multipart upload in ${PROFILE.partMiB} MiB parts. This also allows the largest objects: ${PROFILE.maxObjectGiB} GiB.`,
-			`**About ${PROFILE.concurrency} requests at once.** Uploads through Kofra gain a lot from parallel requests: in our tests, 16 at once was 1.3 to 3.5 times as fast as the usual default of 4, most for many small files.`,
+			`**About ${PROFILE.concurrency} requests at once.** Uploads through Kofra gain a lot from parallel requests: in our tests, 16 at once was 1.3 to 3.6 times as fast as 4 at once, most for many small files.`,
 			'**One connection per request (rclone).** By default rclone sends every request over one HTTP/2 connection, which limits its speed. Turn HTTP/2 off for the Kofra remote.'
 		]
 	},

@@ -3,6 +3,7 @@
 // switched-on build is checked in CI by scripts/check-launch.mjs.
 import { describe, expect, it } from 'vitest';
 import { EARLY_ACCESS, ENDPOINT, FOOTER, PLANS, PRIMARY_CTA, PROFILE } from './content';
+import { llmsTxt } from './discovery';
 import { PAGES } from './registry';
 import { AWS_CLI_BLOCKS } from './pages/aws-cli';
 import { RCLONE_BLOCKS } from './pages/rclone';
@@ -85,8 +86,18 @@ describe('documented client profile', () => {
 			'chunk_size = 16M',
 			'upload_concurrency = 1',
 			'disable_http2 = true',
+			'no_check_bucket = true',
 			'--transfers 16'
 		])
 			expect(c).toContain(line);
+	});
+
+	it('gives AI assistants the same limits and status as the pages', () => {
+		const t = llmsTxt();
+		expect(t).toContain('up to 99 MiB');
+		expect(t).toContain('Largest object: 156 GiB, with 16 MiB parts');
+		expect(t).toContain('upload_cutoff=16M');
+		expect(t).not.toMatch(/\b95\s?(MiB|M)\b/);
+		expect(t).toContain('It is in early access: not yet open for sign-ups');
 	});
 });

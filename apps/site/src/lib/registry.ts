@@ -24,7 +24,7 @@ import { PRICING } from '#lib/pages/pricing.js';
 import { RCLONE, RCLONE_BLOCKS } from '#lib/pages/rclone.js';
 import { S3, S3_BLOCKS } from '#lib/pages/s3.js';
 import { WEBDAV, WEBDAV_BLOCKS } from '#lib/pages/webdav.js';
-import { SITE, pageTitle } from '#lib/site.js';
+import { SIGNUP_OPEN, SITE, pageTitle } from '#lib/site.js';
 
 export type PageKind = 'home' | 'page' | 'docs' | 'legal';
 export type LlmsSection = 'Docs' | 'Product' | 'Optional';
@@ -156,12 +156,15 @@ export const PAGES: PageEntry[] = [
 	},
 	{
 		path: '/early-access',
-		name: 'Early access',
+		name: EARLY.heading,
 		title: pageTitle(EARLY.heading),
 		description: EARLY.description,
 		updated: '2026-11-21',
 		kind: 'page',
-		llms: { section: 'Optional', note: 'sign-up status' },
+		llms: {
+			section: 'Optional',
+			note: SIGNUP_OPEN ? 'how to create an account' : 'sign-up status'
+		},
 		markdown: () => prose(EARLY.heading, EARLY.lead, EARLY_BLOCKS)
 	},
 	{

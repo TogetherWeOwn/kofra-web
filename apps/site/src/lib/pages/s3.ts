@@ -23,7 +23,7 @@ export const S3_BLOCKS: Block[] = [
 			['Endpoint', `\`${ENDPOINT}\` (HTTPS only)`],
 			[
 				'Region',
-				`\`${REGION}\`. Requests signed for any other region are refused with \`AccessDenied\`.`
+				`\`${REGION}\` (\`us-east-1\` is also accepted). Requests signed for any other region are refused with \`AuthorizationHeaderMalformed\`.`
 			],
 			[
 				'Addressing',
@@ -118,10 +118,11 @@ export const S3_BLOCKS: Block[] = [
 		caption: 'Common error codes and what to do',
 		head: ['Code', 'HTTP', 'Meaning and fix'],
 		rows: [
+			['AccessDenied', '403', 'The key may not reach this bucket or do this operation.'],
 			[
-				'AccessDenied',
-				'403',
-				`The key may not do this, or the request is not path-style, not HTTPS, or not signed for region \`${REGION}\`.`
+				'AuthorizationHeaderMalformed, AuthorizationQueryParametersError',
+				'400',
+				`The request is signed for the wrong region. Use \`${REGION}\`.`
 			],
 			['InvalidAccessKeyId', '403', 'The access key ID does not exist or was revoked.'],
 			[
@@ -156,7 +157,7 @@ export const S3_BLOCKS: Block[] = [
 			[
 				'InvalidArgument, InvalidRequest, MalformedXML',
 				'400',
-				'The request is malformed or uses an unsupported combination of options.'
+				'The request is malformed or uses an unsupported combination of options. A virtual-hosted-style request (bucket in the host name) is refused this way: use path-style.'
 			],
 			[
 				'NotImplemented',

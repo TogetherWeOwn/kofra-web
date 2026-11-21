@@ -55,6 +55,15 @@ export const SIGN_UP_URL = `${CONSOLE_ORIGIN}/sign-up`;
 /** The public status page (served by a separate service). */
 export const STATUS_URL = 'https://status.kofra.app';
 
+/** The launch status for llms.txt, or '' once accounts are open and prices final. */
+export const LLMS_STATUS = SIGNUP_OPEN
+	? PRICES_FINAL
+		? ''
+		: 'The prices shown are examples.'
+	: PRICES_FINAL
+		? 'It is in early access: not yet open for sign-ups.'
+		: 'It is in early access: not yet open for sign-ups, and the prices shown are examples.';
+
 /** The footer's one-line status: early access and example prices, until each is switched off. */
 export const STATUS_NOTE = [
 	!SIGNUP_OPEN && 'Kofra is in early access.',

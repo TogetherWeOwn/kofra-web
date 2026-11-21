@@ -23,7 +23,7 @@ export const RCLONE_BLOCKS: Block[] = [
 		type: 'code',
 		title: 'Create the remote',
 		lang: 'sh',
-		code: `rclone config create kofra s3 provider=Other env_auth=true \\\n  endpoint=${ENDPOINT} region=${REGION} force_path_style=true \\\n  upload_cutoff=${M} chunk_size=${M} \\\n  upload_concurrency=1 disable_http2=true`
+		code: `rclone config create kofra s3 provider=Other env_auth=true \\\n  endpoint=${ENDPOINT} region=${REGION} force_path_style=true \\\n  upload_cutoff=${M} chunk_size=${M} upload_concurrency=1 \\\n  disable_http2=true no_check_bucket=true`
 	},
 	{
 		type: 'code',
@@ -39,13 +39,14 @@ export const RCLONE_BLOCKS: Block[] = [
 		type: 'code',
 		title: 'rclone.conf',
 		lang: 'ini',
-		code: `[kofra]\ntype = s3\nprovider = Other\nenv_auth = true\nendpoint = ${ENDPOINT}\nregion = ${REGION}\nforce_path_style = true\nupload_cutoff = ${M}\nchunk_size = ${M}\nupload_concurrency = 1\ndisable_http2 = true`
+		code: `[kofra]\ntype = s3\nprovider = Other\nenv_auth = true\nendpoint = ${ENDPOINT}\nregion = ${REGION}\nforce_path_style = true\nupload_cutoff = ${M}\nchunk_size = ${M}\nupload_concurrency = 1\ndisable_http2 = true\nno_check_bucket = true`
 	},
 	{
 		type: 'ul',
 		items: [
 			`\`upload_cutoff\` and \`chunk_size\`: files of ${PROFILE.partMiB} MiB and more go up in ${PROFILE.partMiB} MiB parts. rclone’s own cutoff (200 MiB) is above the largest single request Kofra takes (${PROFILE.maxRequestMiB} MiB), so it must be lowered.`,
 			'`disable_http2`: gives each request its own connection. With HTTP/2, rclone sends every request over one connection, and that connection limits the speed whatever the number of transfers.',
+			'`no_check_bucket`: buckets are created in the Kofra console, so rclone does not try to create them.',
 			`\`upload_concurrency = 1\` with \`--transfers ${PROFILE.concurrency}\` (below): up to ${PROFILE.concurrency} requests at once, one per file.`
 		]
 	},
@@ -75,7 +76,7 @@ export const RCLONE_BLOCKS: Block[] = [
 		type: 'code',
 		title: 'Mount a bucket as a drive',
 		lang: 'sh',
-		code: `rclone mount kofra:my-bucket ~/kofra --vfs-cache-mode writes`
+		code: `mkdir -p ~/kofra\nrclone mount kofra:my-bucket ~/kofra --vfs-cache-mode writes`
 	},
 	{
 		type: 'p',
@@ -113,8 +114,12 @@ export const RCLONE_BLOCKS: Block[] = [
 				'Set `disable_http2 = true` on the remote, or pass `--s3-disable-http2`.'
 			],
 			[
-				'`AccessDenied` on every request',
-				`Check \`force_path_style = true\` and \`region = ${REGION}\`.`
+				'`AuthorizationHeaderMalformed`',
+				`The region is wrong. Set \`region = ${REGION}\` on the remote.`
+			],
+			[
+				'`InvalidRequest` about virtual-hosted-style requests',
+				'Set `force_path_style = true` on the remote.'
 			],
 			[
 				'A running `rclone rcd` or mount ignores new settings',

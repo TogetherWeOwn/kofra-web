@@ -90,7 +90,8 @@ with the sitemap line.
 | `KOFRA_STATUS_LIVE` | The footer links the status page (`https://status.kofra.app`).                                                                                                                     |
 
 "Sign in" (`https://console.kofra.app/sign-in`) is linked in every build. CI builds the site once
-with both switches on and checks the result (`scripts/check-launch.mjs`).
+with both switches on and checks the result (`scripts/check-launch.mjs`). Turn `KOFRA_SIGNUP_OPEN` on only once the console
+serves `/sign-up`, and `KOFRA_STATUS_LIVE` only once the status page answers.
 
 ## Development
 

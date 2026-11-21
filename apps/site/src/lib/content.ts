@@ -55,8 +55,9 @@ export const PRIMARY_CTA: NavItem = SIGNUP_OPEN
 	: { label: 'Get early access', href: EARLY_ACCESS };
 
 /** Shown next to every price until the owner sets real prices. */
-export const EXAMPLE_NOTE =
-	'Example prices and plans. They are not an offer and may change before Kofra opens for sign-ups.';
+export const EXAMPLE_NOTE = SIGNUP_OPEN
+	? 'Example prices and plans. They are not an offer and may change.'
+	: 'Example prices and plans. They are not an offer and may change before Kofra opens for sign-ups.';
 
 export const NAV: NavItem[] = [
 	{ label: 'Product', href: '/' },
@@ -325,14 +326,14 @@ export const TOOL_EXAMPLES: {
 		name: 'aws-cli',
 		kind: 'Command line',
 		blurb: 'The AWS command line, pointed at the Kofra endpoint.',
-		code: `aws configure --profile kofra   # region: ${REGION}\naws configure set s3.addressing_style path --profile kofra\naws configure set s3.multipart_chunksize 16MB --profile kofra\naws s3 sync ./photos s3://my-bucket/photos/ \\\n  --profile kofra --endpoint-url ${ENDPOINT}`
+		code: `aws configure --profile kofra   # region: ${REGION}\naws configure set s3.addressing_style path --profile kofra\naws configure set s3.multipart_threshold 16MB --profile kofra\naws configure set s3.multipart_chunksize 16MB --profile kofra\naws configure set s3.max_concurrent_requests 16 --profile kofra\naws configure set s3.preferred_transfer_client classic --profile kofra\naws s3 sync ./photos s3://my-bucket/photos/ \\\n  --profile kofra --endpoint-url ${ENDPOINT}`
 	},
 	{
 		id: 'rclone',
 		name: 'rclone',
 		kind: 'Sync and mount',
 		blurb: 'Copy, sync and mount. Also moves files from other clouds.',
-		code: `rclone config create kofra s3 provider=Other env_auth=true \\\n  endpoint=${ENDPOINT} region=${REGION} force_path_style=true \\\n  upload_cutoff=16M chunk_size=16M \\\n  upload_concurrency=1 disable_http2=true\nrclone copy ./projects kofra:my-bucket/projects --transfers 16`
+		code: `rclone config create kofra s3 provider=Other env_auth=true \\\n  endpoint=${ENDPOINT} region=${REGION} force_path_style=true \\\n  upload_cutoff=16M chunk_size=16M upload_concurrency=1 \\\n  disable_http2=true no_check_bucket=true\nrclone copy ./projects kofra:my-bucket/projects --transfers 16`
 	},
 	{
 		id: 'restic',

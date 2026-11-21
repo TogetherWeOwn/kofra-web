@@ -51,7 +51,7 @@ export const AWS_CLI_BLOCKS: Block[] = [
 	{
 		type: 'ul',
 		items: [
-			`\`multipart_threshold\` and \`multipart_chunksize\`: files of ${PROFILE.partMiB} MiB and more go up in ${PROFILE.partMiB} MiB parts (aws-cli’s \`MB\` means MiB). The default, 8 MiB, works but allows smaller files at most (see [Large files](/docs/aws-cli#large-files)).`,
+			`\`multipart_threshold\` and \`multipart_chunksize\`: files of ${PROFILE.partMiB} MiB and more go up in ${PROFILE.partMiB} MiB parts (aws-cli’s \`MB\` means MiB). The default, 8 MiB, works, but stores each file in more, smaller pieces, which makes uploads slower.`,
 			`\`max_concurrent_requests\`: ${PROFILE.concurrency} requests at once instead of 10. Uploads through Kofra gain a lot from parallel requests.`,
 			'`preferred_transfer_client = classic`: keeps the three settings above in force. On some computers aws-cli picks a different transfer client that ignores them.',
 			'`endpoint_url` in a profile needs aws-cli 2.13 or later. On an older version, add `--endpoint-url ' +
@@ -89,7 +89,6 @@ export const AWS_CLI_BLOCKS: Block[] = [
 		head: ['Part size', 'Largest object'],
 		rows: [
 			[`${PROFILE.partMiB} MiB (recommended)`, `${PROFILE.maxObjectGiB} GiB`],
-			[`8 MiB (aws-cli default)`, `${PROFILE.maxObjectGiB / 2} GiB`],
 			[
 				`Above ${PROFILE.partMiB} MiB, up to ${PROFILE.maxRequestMiB} MiB`,
 				`${PROFILE.maxObjectLargePartsGiB} GiB`
@@ -119,9 +118,14 @@ export const AWS_CLI_BLOCKS: Block[] = [
 		head: ['Error', 'Fix'],
 		rows: [
 			[
-				'`AccessDenied` on every request',
-				`Check that the profile uses region \`${REGION}\` and \`addressing_style = path\`.`
+				'`AuthorizationHeaderMalformed`',
+				`The region is wrong. Use \`${REGION}\` (\`us-east-1\` also works).`
 			],
+			[
+				'`InvalidRequest` about virtual-hosted-style requests',
+				'Set `addressing_style = path` in the profile.'
+			],
+			['`AccessDenied`', 'The key may not reach this bucket or do this operation.'],
 			[
 				'`SignatureDoesNotMatch`',
 				'The secret key is wrong. Run `aws configure --profile kofra` again.'

@@ -24,13 +24,13 @@ export const SECURITY_BLOCKS: Block[] = [
 	{ type: 'h2', text: 'Reporting a security issue', id: 'report' },
 	{
 		type: 'p',
-		text: 'A security contact and a vulnerability disclosure policy will be published on this page before Kofra opens for sign-ups.'
+		text: 'A security contact and a vulnerability disclosure policy will be published on this page.'
 	}
 ];
 
 export const EARLY = SIGNUP_OPEN
 	? {
-			heading: 'Early access',
+			heading: 'Create an account',
 			description: 'Kofra is open for sign-ups. Create an account in the Kofra console.',
 			lead: 'Kofra is open for sign-ups.'
 		}
