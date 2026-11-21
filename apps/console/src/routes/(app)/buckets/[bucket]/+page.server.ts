@@ -2,7 +2,7 @@ import { resolve } from '$app/paths';
 import { bucketHref } from '#lib/links.js';
 import { error } from '@sveltejs/kit';
 import { loadFailed } from '#lib/server/api.js';
-import { FileError } from '#lib/server/files.js';
+import { FileError, MAX_DELETE } from '#lib/server/files.js';
 import { folderCrumbs, validPrefix } from '#lib/paths.js';
 import type { PageServerLoad } from './$types';
 
@@ -39,6 +39,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		access,
 		canWrite: access === 'read_write',
 		canDelete: features.deleteFiles && access === 'read_write',
+		maxDelete: MAX_DELETE,
 		isProtected: locals.workspace.protectedBuckets.includes(bucket.name),
 		sample: features.sample,
 		connect: features.connect,

@@ -173,6 +173,7 @@
 				<button class="btn-plain btn-sm link-danger" type="submit" form="selection">
 					<Trash class="icon" aria-hidden="true" />Delete selected
 				</button>
+				<span class="muted small">Up to {data.maxDelete} files at a time.</span>
 			{/if}
 			<span class="pager">
 				{#if data.cursor}<a href={bucketHref(b.name, data.prefix)}>First page</a>{/if}
@@ -209,6 +210,10 @@
 		gap: var(--space-3);
 		padding: var(--space-3) var(--space-4);
 		border-top: 1px solid var(--color-line);
+	}
+	.small {
+		font-size: var(--font-size-sm);
+		margin-right: auto;
 	}
 	.pager {
 		display: inline-flex;

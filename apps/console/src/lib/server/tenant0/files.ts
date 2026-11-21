@@ -423,7 +423,8 @@ export class Tenant0Files implements FileStore {
 
 	/** Uploads the console itself could no longer finish: older than its longest token. */
 	#stale<T extends { initiated: number }>(uploads: T[]): T[] {
-		const cutoff = this.#now() - MULTIPART_TTL_S * 1000;
+		// An hour beyond the token's life: the token is issued just after storage starts the upload.
+		const cutoff = this.#now() - (MULTIPART_TTL_S + 3600) * 1000;
 		return uploads.filter((u) => u.initiated < cutoff);
 	}
 

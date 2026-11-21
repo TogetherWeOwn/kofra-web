@@ -171,6 +171,8 @@ describe('tenant0 transport: the contract over the storage service', () => {
 				]
 			}
 		});
+		// One create with the two read-write buckets, then one grant call for the read one.
+		expect(fake.calls.filter((c) => c === `POST /_admin/keys/${wide.id}/grants`)).toHaveLength(1);
 		expect(Object.fromEntries(fake.keys.get(wide.id)!.grants)).toEqual({
 			files: 'ro',
 			scratch: 'rw',
@@ -428,7 +430,7 @@ describe('tenant0 files', () => {
 			tenant,
 			storage,
 			tokenKey(cfg.storage.secret),
-			() => Date.now() + 13 * 3600_000
+			() => Date.now() + 14 * 3600_000
 		);
 		const shown = await later.openUploads('left');
 		expect(shown).toMatchObject({ stale: 1, recent: 0, empty: true });

@@ -216,10 +216,14 @@ test('a bucket with files and an unfinished upload offers no stop form', async (
 		.locator('input[type="file"]')
 		.setInputFiles({ name: 'kept.txt', mimeType: 'text/plain', buffer: Buffer.from('k') });
 	await expect(page.getByText('Uploaded, 1 B')).toBeVisible();
-	await request.post('/buckets/scratch/upload', {
+	const started = await request.post('/buckets/scratch/upload', {
 		data: { key: 'orphan.bin', size: 40 * 1024 * 1024 },
 		headers: origin
 	});
+	expect(((await started.json()) as { method: string }).method).toBe('MULTIPART');
+	expect(
+		((await (await request.get(`${FAKE}/__test/uploads`)).json()) as { open: number }).open
+	).toBe(1);
 	await page.goto('/buckets/scratch/delete');
 	await expect(page.getByText('This bucket still holds files')).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Stop unfinished uploads' })).toHaveCount(0);

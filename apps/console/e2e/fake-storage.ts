@@ -548,9 +548,9 @@ export function serve(port: number) {
 			return;
 		}
 		if (req.url === '/__test/age-uploads' && req.method === 'POST') {
-			// Makes every open upload look 13 hours old.
+			// Makes every open upload look 14 hours old.
 			for (const b of fake.buckets.values())
-				for (const u of b.uploads.values()) u.initiated = Date.now() - 13 * 3600_000;
+				for (const u of b.uploads.values()) u.initiated = Date.now() - 14 * 3600_000;
 			res.writeHead(204).end();
 			return;
 		}
