@@ -350,23 +350,27 @@ export function createStorageClient(cfg: Tenant0Config['storage'], now: () => nu
 		},
 
 		/** True when the bucket has at least one unfinished multipart upload. */
-		/** The first page (up to 1,000) of unfinished multipart uploads in the bucket. */
+		/** Unfinished multipart uploads in the bucket, up to MAX_PAGES pages of 1,000. */
 		async openUploads(bucket: string): Promise<{ key: string; uploadId: string }[]> {
-			const xml = await (
-				await ok(
-					await s3({
-						method: 'GET',
-						bucket,
-						query: [
-							['max-uploads', '1000'],
-							['uploads', '']
-						]
-					})
-				)
-			).text();
-			return blocks(xml, 'Upload')
-				.map((b) => ({ key: text(b, 'Key') ?? '', uploadId: text(b, 'UploadId') ?? '' }))
-				.filter((u) => u.key && u.uploadId);
+			const out: { key: string; uploadId: string }[] = [];
+			let marker: [string, string] | null = null;
+			for (let i = 0; i < MAX_PAGES; i++) {
+				const query: Query = [
+					['max-uploads', '1000'],
+					['uploads', '']
+				];
+				if (marker) query.push(['key-marker', marker[0]], ['upload-id-marker', marker[1]]);
+				const xml = await (await ok(await s3({ method: 'GET', bucket, query }))).text();
+				for (const b of blocks(xml, 'Upload')) {
+					const u = { key: text(b, 'Key') ?? '', uploadId: text(b, 'UploadId') ?? '' };
+					if (u.key && u.uploadId) out.push(u);
+				}
+				const top = strip(xml, 'Upload');
+				const nextKey = text(top, 'NextKeyMarker');
+				if (text(top, 'IsTruncated') !== 'true' || !nextKey) break;
+				marker = [nextKey, text(top, 'NextUploadIdMarker') ?? ''];
+			}
+			return out;
 		},
 
 		async hasOpenUploads(bucket: string): Promise<boolean> {

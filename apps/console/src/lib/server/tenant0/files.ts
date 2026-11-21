@@ -393,21 +393,51 @@ export class Tenant0Files implements FileStore {
 		return result;
 	}
 
-	async openUploads(bucket: string): Promise<number> {
-		await this.#need(bucket, false);
+	static async #uploadsDigest(bucket: string, uploads: { key: string; uploadId: string }[]) {
+		const ids = uploads
+			.map((u) => [u.key, u.uploadId])
+			.sort((a, b) => (a.join('\n') < b.join('\n') ? -1 : 1));
+		const d = await crypto.subtle.digest(
+			'SHA-256',
+			new TextEncoder().encode(JSON.stringify([bucket, ids]))
+		);
+		return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
+	}
+
+	async #open(bucket: string) {
 		try {
-			return (await this.#storage.openUploads(bucket)).length;
+			return await this.#storage.openUploads(bucket);
 		} catch (err) {
 			storageFailure(err);
 		}
 	}
 
-	/** Stops every unfinished upload in the bucket (a page left mid-upload leaves one). */
-	async stopOpenUploads(bucket: string): Promise<number> {
+	async openUploads(bucket: string): Promise<{ count: number; token: string }> {
+		await this.#need(bucket, false);
+		const uploads = await this.#open(bucket);
+		const token = await seal(await this.#key, 'stop-uploads', this.#nowS() + CONFIRM_TTL_S, {
+			h: await Tenant0Files.#uploadsDigest(bucket, uploads)
+		});
+		return { count: uploads.length, token };
+	}
+
+	/**
+	 * Stops exactly the unfinished uploads the page counted (a page left mid-upload leaves one).
+	 * If any started or ended since, nothing is stopped and the page is shown again.
+	 */
+	async stopOpenUploads(bucket: string, token: string): Promise<number> {
 		await this.#need(bucket, true);
+		const signed = await open<{ h: string }>(await this.#key, 'stop-uploads', token, this.#nowS());
+		const uploads = await this.#open(bucket);
+		if (!signed || signed.h !== (await Tenant0Files.#uploadsDigest(bucket, uploads)))
+			throw new FileError(
+				409,
+				'The unfinished uploads changed since the page was shown.',
+				'Check the list again.'
+			);
 		let stopped = 0;
 		try {
-			for (const u of await this.#storage.openUploads(bucket)) {
+			for (const u of uploads) {
 				try {
 					await this.#storage.abortUpload(bucket, u.key, u.uploadId);
 					stopped++;

@@ -18,7 +18,7 @@ export const actions: Actions = {
 		if (form.get('confirm') !== 'yes')
 			error(400, { message: 'Tick the box to confirm.', hint: 'Go back to the delete page.' });
 		try {
-			await files.stopOpenUploads(params.bucket);
+			await files.stopOpenUploads(params.bucket, String(form.get('token') ?? ''));
 		} catch (err) {
 			if (err instanceof FileError) error(err.status, { message: err.message, hint: err.hint });
 			throw err;

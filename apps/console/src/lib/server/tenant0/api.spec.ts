@@ -396,7 +396,7 @@ describe('tenant0 files', () => {
 		).toBe('file:403');
 	});
 
-	it('lists and stops unfinished uploads, so the bucket can be deleted', async () => {
+	it('lists and stops exactly the unfinished uploads shown', async () => {
 		const { files, fake, api } = setup();
 		await api.buckets.create({ body: { name: 'left' } });
 		await files.startUpload(
@@ -406,15 +406,32 @@ describe('tenant0 files', () => {
 			'application/octet-stream',
 			'https://c'
 		);
-		fake.buckets.get('left')!.held = false;
-		expect(await files.openUploads('left')).toBe(1);
+		const shown = await files.openUploads('left');
+		expect(shown.count).toBe(1);
 		expect(await code(api.buckets.delete({ bucket: 'left', dry_run: true }))).toBe(
 			'bucket_not_empty'
 		);
-		expect(await files.stopOpenUploads('left')).toBe(1);
-		expect(await files.openUploads('left')).toBe(0);
-		await api.buckets.delete({ bucket: 'left' });
-		expect(fake.buckets.has('left')).toBe(false);
+		// An upload started after the page was shown: nothing is stopped.
+		await files.startUpload(
+			'left',
+			'b.bin',
+			PART_SIZE * 2,
+			'application/octet-stream',
+			'https://c'
+		);
+		expect(await code(files.stopOpenUploads('left', shown.token))).toBe('file:409');
+		expect((await files.openUploads('left')).count).toBe(2);
+		expect(await code(files.stopOpenUploads('left', 'forged'))).toBe('file:409');
+		const again = await files.openUploads('left');
+		expect(await files.stopOpenUploads('left', again.token)).toBe(2);
+		expect((await files.openUploads('left')).count).toBe(0);
+		// Nothing open any more: the dry run passes; the service still keeps a bucket that once
+		// opened an upload, and says so.
+		expect(await api.buckets.delete({ bucket: 'left', dry_run: true })).toMatchObject({
+			dry_run: true
+		});
+		expect(await code(api.buckets.delete({ bucket: 'left' }))).toBe('bucket_not_empty');
+		expect(fake.buckets.has('left')).toBe(true);
 	});
 
 	it('confirms and deletes 50 files with long paths', async () => {

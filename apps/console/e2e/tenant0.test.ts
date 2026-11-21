@@ -200,6 +200,9 @@ test('leaving the page during a multipart upload stops it on storage', async ({
 	await expect.poll(open).toBe(1);
 	await page.goto('/keys');
 	await expect.poll(open).toBe(0);
+	// Stopped, not finished: no file was made.
+	await page.goto('/buckets/scratch');
+	await expect(main(page).getByRole('rowheader', { name: 'leave.bin' })).toHaveCount(0);
 });
 
 test('an unfinished upload left behind can be stopped from the delete page', async ({
@@ -218,7 +221,10 @@ test('an unfinished upload left behind can be stopped from the delete page', asy
 	await page.getByLabel('Stop the unfinished uploads in scratch').check();
 	await page.getByRole('button', { name: 'Stop unfinished uploads' }).click();
 	await expect(page).toHaveURL(/\/buckets\/scratch\/delete$/);
-	await expect(page.getByLabel('Type scratch to confirm')).toBeVisible();
+	await page.getByLabel('Type scratch to confirm').fill('scratch');
+	await page.getByRole('button', { name: 'Delete bucket' }).click();
+	// The service keeps a bucket that ever opened an upload, and the page says why.
+	await expect(page.getByText('has held files before, so it is kept')).toBeVisible();
 });
 
 test('an upload address only works for what it was issued for', async ({ request }) => {

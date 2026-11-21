@@ -101,8 +101,9 @@ export interface FileStore {
 	confirmDelete?(bucket: string, keys: string[]): Promise<DeleteConfirmation>;
 	deleteFiles?(bucket: string, items: DeleteItem[], token: string): Promise<DeleteResult>;
 	/** Unfinished multipart uploads (they keep a bucket from being deleted), and stopping them. */
-	openUploads?(bucket: string): Promise<number>;
-	stopOpenUploads?(bucket: string): Promise<number>;
+	/** `token` binds exactly the uploads counted; stopping refuses if the set changed since. */
+	openUploads?(bucket: string): Promise<{ count: number; token: string }>;
+	stopOpenUploads?(bucket: string, token: string): Promise<number>;
 	/** Present only where buckets can be connected. */
 	otherBuckets?(): Promise<OtherBucket[]>;
 	connect?(bucket: string, access: ConsoleAccess): Promise<void>;

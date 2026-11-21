@@ -35,6 +35,7 @@
 					? 'it'
 					: 'them'} drops the parts sent so far; finished files are not touched.
 			</p>
+			<input type="hidden" name="token" value={data.uploadsToken} />
 			<label class="check">
 				<input type="checkbox" name="confirm" value="yes" required />
 				<span>Stop the unfinished uploads in {name}</span>
