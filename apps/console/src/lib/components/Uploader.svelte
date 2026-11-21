@@ -49,8 +49,9 @@
 		const res = await fetch(url, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json', accept: 'application/json' },
-			// Never cancelled when the page is left: an upload the server has just started must reach
-			// the page, so it can still be stopped (see start()).
+			// Not cancelled when the page navigates: an upload the server has just started must reach
+			// the page, so it can still be stopped (see start()). Closing the tab during this request
+			// can still leave one unfinished; the bucket's delete page can stop it.
 			body: JSON.stringify(body)
 		});
 		return answer(res, `The request failed (${res.status}).`);

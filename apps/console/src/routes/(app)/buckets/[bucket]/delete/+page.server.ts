@@ -35,8 +35,12 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			// Unfinished uploads also keep a bucket; when they are all that is left (no file), they
 			// can be stopped from here.
 			const listing = await locals.files.list(bucket.name, '').catch(() => null);
+			// Stopping needs write access; a read-only bucket never gets the form.
 			const onlyUploads =
-				listing !== null && listing.files.length === 0 && listing.folders.length === 0;
+				listing !== null &&
+				listing.files.length === 0 &&
+				listing.folders.length === 0 &&
+				(await locals.files.access(bucket.name).catch(() => null)) === 'read_write';
 			const open =
 				onlyUploads && locals.files.openUploads
 					? await locals.files.openUploads(bucket.name).catch(() => null)

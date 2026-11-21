@@ -18,7 +18,12 @@ export const actions: Actions = {
 		if (form.get('confirm') !== 'yes')
 			error(400, { message: 'Tick the box to confirm.', hint: 'Go back to the delete page.' });
 		try {
-			await files.stopOpenUploads(params.bucket, String(form.get('token') ?? ''));
+			const r = await files.stopOpenUploads(params.bucket, String(form.get('token') ?? ''));
+			if (r.failed)
+				error(502, {
+					message: `${r.stopped} unfinished upload${r.stopped === 1 ? ' was' : 's were'} stopped; ${r.failed} could not be.`,
+					hint: 'Try again in a minute.'
+				});
 		} catch (err) {
 			if (err instanceof FileError) error(err.status, { message: err.message, hint: err.hint });
 			throw err;

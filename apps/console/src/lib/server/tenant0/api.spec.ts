@@ -423,7 +423,7 @@ describe('tenant0 files', () => {
 		expect((await files.openUploads('left')).count).toBe(2);
 		expect(await code(files.stopOpenUploads('left', 'forged'))).toBe('file:409');
 		const again = await files.openUploads('left');
-		expect(await files.stopOpenUploads('left', again.token)).toBe(2);
+		expect(await files.stopOpenUploads('left', again.token)).toEqual({ stopped: 2, failed: 0 });
 		expect((await files.openUploads('left')).count).toBe(0);
 		// Nothing open any more: the dry run passes; the service still keeps a bucket that once
 		// opened an upload, and says so.

@@ -205,6 +205,26 @@ test('leaving the page during a multipart upload stops it on storage', async ({
 	await expect(main(page).getByRole('rowheader', { name: 'leave.bin' })).toHaveCount(0);
 });
 
+test('a bucket with files and an unfinished upload offers no stop form', async ({
+	page,
+	request
+}) => {
+	const origin = { origin: 'http://127.0.0.1:4177' };
+	await page.goto('/buckets/scratch');
+	await ready(page);
+	await page
+		.locator('input[type="file"]')
+		.setInputFiles({ name: 'kept.txt', mimeType: 'text/plain', buffer: Buffer.from('k') });
+	await expect(page.getByText('Uploaded, 1 B')).toBeVisible();
+	await request.post('/buckets/scratch/upload', {
+		data: { key: 'orphan.bin', size: 40 * 1024 * 1024 },
+		headers: origin
+	});
+	await page.goto('/buckets/scratch/delete');
+	await expect(page.getByText('This bucket still holds files')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Stop unfinished uploads' })).toHaveCount(0);
+});
+
 test('an unfinished upload left behind can be stopped from the delete page', async ({
 	page,
 	request

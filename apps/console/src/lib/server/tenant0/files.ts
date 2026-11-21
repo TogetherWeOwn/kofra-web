@@ -425,7 +425,10 @@ export class Tenant0Files implements FileStore {
 	 * Stops exactly the unfinished uploads the page counted (a page left mid-upload leaves one).
 	 * If any started or ended since, nothing is stopped and the page is shown again.
 	 */
-	async stopOpenUploads(bucket: string, token: string): Promise<number> {
+	async stopOpenUploads(
+		bucket: string,
+		token: string
+	): Promise<{ stopped: number; failed: number }> {
 		await this.#need(bucket, true);
 		const signed = await open<{ h: string }>(await this.#key, 'stop-uploads', token, this.#nowS());
 		const uploads = await this.#open(bucket);
@@ -435,21 +438,23 @@ export class Tenant0Files implements FileStore {
 				'The unfinished uploads changed since the page was shown.',
 				'Check the list again.'
 			);
+		// Each one on its own: one that cannot be stopped does not keep the rest open.
 		let stopped = 0;
+		let failed = 0;
 		try {
 			for (const u of uploads) {
 				try {
 					await this.#storage.abortUpload(bucket, u.key, u.uploadId);
 					stopped++;
 				} catch (err) {
-					if (!(err instanceof StorageError && err.code === 'NoSuchUpload')) throw err;
+					if (err instanceof StorageError && err.code === 'NoSuchUpload') stopped++;
+					else failed++;
 				}
 			}
-		} catch (err) {
-			storageFailure(err);
+		} finally {
+			this.#api.forget();
 		}
-		this.#api.forget();
-		return stopped;
+		return { stopped, failed };
 	}
 
 	async otherBuckets(): Promise<OtherBucket[]> {

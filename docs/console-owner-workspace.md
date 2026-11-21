@@ -94,7 +94,9 @@ log line or an error message; the browser only ever talks to the console.
   and the multipart completion send `If-None-Match: *`. The service never clears an
   unfinished multipart upload by itself, so the page aborts it when a part fails or the
   page is left (keepalive request on `pagehide`), and the abort route still accepts an
-  expired token (signature, purpose, bucket and upload id are checked).
+  expired token (signature, purpose, bucket and upload id are checked). Closing the tab while an upload is
+  being started can still leave one; the bucket's delete page lists unfinished uploads when
+  nothing else is left and stops exactly the ones it showed (signed digest).
 - `confirmDelete(bucket, keys)` and `deleteFiles(bucket, confirmed)`: up to 50 files. The
   confirmation page lists every file with its size; its form carries the keys, their ETags
   and a signed SHA-256 digest of the bucket and the ordered (key, ETag) pairs. The action re-checks the HMAC and deletes each file with
