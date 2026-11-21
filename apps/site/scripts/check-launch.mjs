@@ -40,7 +40,7 @@ for (const f of files.filter((f) => /\.(html|md|txt|xml)$/.test(f) && !legal(f))
 	if (rel(f) === 'llms-full.txt')
 		text = text
 			.split('\n---\n')
-			.filter((s) => !/kofra\.app\/legal\//.test(s))
+			.filter((s) => !/^\s*<!-- Kofra: https:\/\/kofra\.app\/legal\//.test(s))
 			.join('\n---\n');
 	const m = CLOSED.exec(text);
 	if (m) problems.push(`${rel(f)}: still says "${m[0]}"`);

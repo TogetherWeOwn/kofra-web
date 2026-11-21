@@ -82,7 +82,7 @@ export const WEBDAV_BLOCKS: Block[] = [
 	},
 	{
 		type: 'p',
-		text: 'Run the prompt line on its own and type the secret; it is not shown. The secret is kept in an environment variable for this terminal session only, never in the rclone config file or on a command line, so repeat the last two steps in each new terminal. On Windows, mount on a drive letter instead (`X:`) and skip `mkdir`. For files above the WebDAV upload limit, use the [S3 remote](/docs/rclone) instead.'
+		text: 'Run the prompt line on its own and type the secret; it is not shown. The secret is kept in an environment variable for this terminal session only, never in the rclone config file or on a command line, so repeat the last two steps in each new terminal. These steps are for macOS and Linux. On Windows, run `rclone config`, edit the `kofradav` remote and type the secret when it asks for the password, then mount on a drive letter: `rclone mount kofradav:my-bucket X: --vfs-cache-mode writes`. For files above the WebDAV upload limit, use the [S3 remote](/docs/rclone) instead.'
 	},
 
 	{ type: 'h2', text: 'Limits', id: 'limits' },
