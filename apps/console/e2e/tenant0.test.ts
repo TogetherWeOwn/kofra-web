@@ -202,6 +202,25 @@ test('leaving the page during a multipart upload stops it on storage', async ({
 	await expect.poll(open).toBe(0);
 });
 
+test('an unfinished upload left behind can be stopped from the delete page', async ({
+	page,
+	request
+}) => {
+	const origin = { origin: 'http://127.0.0.1:4177' };
+	const start = await request.post('/buckets/scratch/upload', {
+		data: { key: 'orphan.bin', size: 40 * 1024 * 1024 },
+		headers: origin
+	});
+	expect(((await start.json()) as { method: string }).method).toBe('MULTIPART');
+	await page.goto('/buckets/scratch/delete');
+	await expect(page.getByText('This bucket has unfinished uploads')).toBeVisible();
+	await ready(page);
+	await page.getByLabel('Stop the unfinished uploads in scratch').check();
+	await page.getByRole('button', { name: 'Stop unfinished uploads' }).click();
+	await expect(page).toHaveURL(/\/buckets\/scratch\/delete$/);
+	await expect(page.getByLabel('Type scratch to confirm')).toBeVisible();
+});
+
 test('an upload address only works for what it was issued for', async ({ request }) => {
 	const origin = { origin: 'http://127.0.0.1:4177' };
 	const start = await request.post('/buckets/scratch/upload', {

@@ -24,3 +24,5 @@ export const bucketPageHref = (bucket: string, prefix: string, cursor: string) =
 	resolve(`/(app)/buckets/[bucket]?${prefix ? `prefix=${q(prefix)}&` : ''}cursor=${q(cursor)}`, {
 		bucket
 	});
+export const stopUploadsAction = (bucket: string) =>
+	resolve('/(app)/buckets/[bucket]/stop-uploads', { bucket });

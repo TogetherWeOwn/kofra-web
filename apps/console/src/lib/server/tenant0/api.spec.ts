@@ -396,6 +396,27 @@ describe('tenant0 files', () => {
 		).toBe('file:403');
 	});
 
+	it('lists and stops unfinished uploads, so the bucket can be deleted', async () => {
+		const { files, fake, api } = setup();
+		await api.buckets.create({ body: { name: 'left' } });
+		await files.startUpload(
+			'left',
+			'a.bin',
+			PART_SIZE * 2,
+			'application/octet-stream',
+			'https://c'
+		);
+		fake.buckets.get('left')!.held = false;
+		expect(await files.openUploads('left')).toBe(1);
+		expect(await code(api.buckets.delete({ bucket: 'left', dry_run: true }))).toBe(
+			'bucket_not_empty'
+		);
+		expect(await files.stopOpenUploads('left')).toBe(1);
+		expect(await files.openUploads('left')).toBe(0);
+		await api.buckets.delete({ bucket: 'left' });
+		expect(fake.buckets.has('left')).toBe(false);
+	});
+
 	it('confirms and deletes 50 files with long paths', async () => {
 		const { files, fake } = setup();
 		const b = fake.buckets.get('files')!;

@@ -21,22 +21,31 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	// cannot be deleted, and the page says so instead of showing the form.
 	try {
 		const plan = (await locals.api.buckets.delete({ bucket: bucket.name, dry_run: true })) as Plan;
-		return { bucket, plan, blocked: null, blockedTitle: null, crumbs };
+		return { bucket, plan, blocked: null, blockedTitle: null, uploads: 0, crumbs };
 	} catch (err) {
-		if (err instanceof KofraError && err.code === 'bucket_not_empty')
+		if (err instanceof KofraError && err.code === 'bucket_not_empty') {
+			// Unfinished uploads also keep a bucket; they can be stopped from here.
+			const uploads = locals.files.openUploads
+				? await locals.files.openUploads(bucket.name).catch(() => 0)
+				: 0;
 			return {
 				bucket,
 				plan: null,
 				blocked: describe(err),
-				blockedTitle: 'This bucket still holds files',
+				blockedTitle: uploads
+					? 'This bucket has unfinished uploads'
+					: 'This bucket still holds files',
+				uploads,
 				crumbs
 			};
+		}
 		if (err instanceof KofraError && err.code === 'role_forbidden')
 			return {
 				bucket,
 				plan: null,
 				blocked: describe(err),
 				blockedTitle: 'This bucket is protected',
+				uploads: 0,
 				crumbs
 			};
 		loadFailed(err);

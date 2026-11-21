@@ -91,7 +91,12 @@ export function makeHandle(getConfig: () => ConsoleConfig, options: HandleOption
 		});
 		event.locals.files = new Tenant0Files(tenant, storage, tokenKey(t.storage.secret), now);
 		event.locals.workspace = tenant0Workspace(t.workspaceName, t.storage.keyId, t.protectedBuckets);
-		event.locals.countsComplete = async () => (await tenant.usage()).seeded;
+		// A failed read is reported by the page's own API call (as busy storage), not here.
+		event.locals.countsComplete = () =>
+			tenant.usage().then(
+				(u) => u.seeded,
+				() => true
+			);
 		event.locals.billing = cfg.billing;
 		return applyHeaders(await resolve(event));
 	};

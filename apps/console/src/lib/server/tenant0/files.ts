@@ -393,6 +393,35 @@ export class Tenant0Files implements FileStore {
 		return result;
 	}
 
+	async openUploads(bucket: string): Promise<number> {
+		await this.#need(bucket, false);
+		try {
+			return (await this.#storage.openUploads(bucket)).length;
+		} catch (err) {
+			storageFailure(err);
+		}
+	}
+
+	/** Stops every unfinished upload in the bucket (a page left mid-upload leaves one). */
+	async stopOpenUploads(bucket: string): Promise<number> {
+		await this.#need(bucket, true);
+		let stopped = 0;
+		try {
+			for (const u of await this.#storage.openUploads(bucket)) {
+				try {
+					await this.#storage.abortUpload(bucket, u.key, u.uploadId);
+					stopped++;
+				} catch (err) {
+					if (!(err instanceof StorageError && err.code === 'NoSuchUpload')) throw err;
+				}
+			}
+		} catch (err) {
+			storageFailure(err);
+		}
+		this.#api.forget();
+		return stopped;
+	}
+
 	async otherBuckets(): Promise<OtherBucket[]> {
 		let buckets, access;
 		try {

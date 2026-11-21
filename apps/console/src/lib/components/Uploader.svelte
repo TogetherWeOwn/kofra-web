@@ -49,8 +49,9 @@
 		const res = await fetch(url, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json', accept: 'application/json' },
-			body: JSON.stringify(body),
-			signal: controller.signal
+			// Never cancelled when the page is left: an upload the server has just started must reach
+			// the page, so it can still be stopped (see start()).
+			body: JSON.stringify(body)
 		});
 		return answer(res, `The request failed (${res.status}).`);
 	}
@@ -146,11 +147,9 @@
 	let current: XMLHttpRequest | null = null;
 	// Leaving the bucket page stops the upload in flight and drops the rest of the queue.
 	let stopped = false;
-	const controller = new AbortController();
 	function leave() {
 		stopped = true;
 		queue.length = 0;
-		controller.abort();
 		current?.abort();
 		if (openUpload) abortUpload(openUpload);
 		openUpload = null;
@@ -228,6 +227,10 @@
 		if (active) e.preventDefault();
 	}}
 	onpagehide={leave}
+	onpageshow={(e) => {
+		// Back to a page restored from the browser's cache after leave(): start afresh.
+		if (e.persisted && stopped) location.reload();
+	}}
 />
 
 <section class="card pad up" aria-labelledby="up-h">

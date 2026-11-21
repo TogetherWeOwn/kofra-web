@@ -9,14 +9,20 @@ export const load: PageServerLoad = async ({ locals }) => {
 			recentDays(locals.api, 30),
 			locals.api.usage.buckets({ limit: 200 }),
 			locals.countsComplete(),
-			locals.api.buckets.list({ limit: 200 })
+			// Best effort: without it the rows link to the file browser as before.
+			locals.workspace.features.connect
+				? locals.api.buckets.list({ limit: 200 }).then(
+						(r) => r.data.map((b) => b.name),
+						() => null
+					)
+				: null
 		]);
 		return {
 			usage,
 			days,
 			buckets: buckets.data,
 			// Buckets the console can open link to their files; the others to their Open page.
-			open: open.data.map((b) => b.name),
+			open,
 			countsComplete,
 			crumbs: [{ label: 'Usage' }]
 		};

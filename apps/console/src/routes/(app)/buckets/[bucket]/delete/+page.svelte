@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { bucketHref } from '#lib/links.js';
+	import { bucketHref, stopUploadsAction } from '#lib/links.js';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import Notice from '#lib/components/Notice.svelte';
 	import PlanSummary from '#lib/components/PlanSummary.svelte';
@@ -25,8 +25,25 @@
 {#if data.blocked}
 	<Notice tone="warning" title={data.blockedTitle ?? 'This bucket cannot be deleted'}>
 		<p>{data.blocked.message}</p>
-		{#if data.blocked.hint}<p>{data.blocked.hint}</p>{/if}
+		{#if data.blocked.hint && !data.uploads}<p>{data.blocked.hint}</p>{/if}
 	</Notice>
+	{#if data.uploads}
+		<form class="card pad form" method="POST" action={stopUploadsAction(name)}>
+			<p>
+				{data.uploads} upload{data.uploads === 1 ? ' was' : 's were'} started in this bucket and never
+				finished, for example when a page was closed during an upload. Stopping {data.uploads === 1
+					? 'it'
+					: 'them'} drops the parts sent so far; finished files are not touched.
+			</p>
+			<label class="check">
+				<input type="checkbox" name="confirm" value="yes" required />
+				<span>Stop the unfinished uploads in {name}</span>
+			</label>
+			<div class="actions">
+				<button class="btn-plain" type="submit">Stop unfinished uploads</button>
+			</div>
+		</form>
+	{/if}
 	<p><a href={back}>Back to {name}</a></p>
 {:else if data.plan}
 	{#if form && 'problem' in form && form.problem}<ProblemNotice problem={form.problem} />{/if}

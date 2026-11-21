@@ -350,6 +350,25 @@ export function createStorageClient(cfg: Tenant0Config['storage'], now: () => nu
 		},
 
 		/** True when the bucket has at least one unfinished multipart upload. */
+		/** The first page (up to 1,000) of unfinished multipart uploads in the bucket. */
+		async openUploads(bucket: string): Promise<{ key: string; uploadId: string }[]> {
+			const xml = await (
+				await ok(
+					await s3({
+						method: 'GET',
+						bucket,
+						query: [
+							['max-uploads', '1000'],
+							['uploads', '']
+						]
+					})
+				)
+			).text();
+			return blocks(xml, 'Upload')
+				.map((b) => ({ key: text(b, 'Key') ?? '', uploadId: text(b, 'UploadId') ?? '' }))
+				.filter((u) => u.key && u.uploadId);
+		},
+
 		async hasOpenUploads(bucket: string): Promise<boolean> {
 			const xml = await (
 				await ok(

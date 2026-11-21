@@ -170,7 +170,7 @@
 				{#each sorted as b (b.bucket)}
 					<tr>
 						<th scope="row">
-							{#if data.open.includes(b.bucket) || !data.ws.features.connect}
+							{#if !data.open || data.open.includes(b.bucket)}
 								<a class="cell-link" href={bucketHref(b.bucket)}>{b.bucket}</a>
 							{:else}
 								<a class="cell-link" href={bucketConnectHref(b.bucket)}>{b.bucket}</a>
