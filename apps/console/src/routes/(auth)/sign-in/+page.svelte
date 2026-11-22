@@ -17,7 +17,13 @@
 </svelte:head>
 
 <h1>Sign in</h1>
-{#if data.mode !== 'live' && data.mode !== 'live-fake'}
+{#if data.mode === 'tenant0'}
+	<p>Sign-in with an account is not available here. This console opens your own workspace.</p>
+	<p class="actions">
+		<a class="btn-plain" href={resolve('/(app)')}>Open your workspace</a>
+		<a href={DOCS_URL} rel="external">Read the documentation</a>
+	</p>
+{:else if data.mode !== 'live' && data.mode !== 'live-fake'}
 	<p>
 		Sign-in is not available yet. Accounts with email and password, passkeys and two-factor
 		authentication come with the first release.
