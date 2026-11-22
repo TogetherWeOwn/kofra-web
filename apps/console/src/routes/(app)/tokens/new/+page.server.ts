@@ -7,7 +7,8 @@ import { scopeGroups } from '#lib/token-scopes.js';
 import type { Actions, PageServerLoad } from './$types';
 
 const scopeNames = new Set(scopeGroups.flatMap(({ scopes }) => Object.keys(scopes)));
-const expiries = ['30', '90', '365', 'never'];
+// The API's longest lifetime is 1,000 days (`TokenLifetimeDays`); no token is unlimited.
+const expiries = ['30', '90', '365', '1000'];
 
 const checkFresh = (locals: App.Locals) => requireFreshStep(locals, '/tokens/new');
 
@@ -57,7 +58,7 @@ export const actions: Actions = {
 				scopes,
 				buckets: bucketList.length ? bucketList : undefined,
 				allowed_ips: ipList.length ? ipList : undefined,
-				expires_in_days: expiry === 'never' ? undefined : Number(expiry)
+				expires_in_days: Number(expiry)
 			});
 			return { created };
 		} catch (err) {

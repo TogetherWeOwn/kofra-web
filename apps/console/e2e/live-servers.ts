@@ -6,9 +6,9 @@
 //
 //   node e2e/live-servers.ts <port>
 //
-// Keys are random per run and never printed. They go to .dev.vars files next
-// to this run's own generated copies of both Workers' configurations (in the
-// run's git-ignored state folder and in the console's build output), so no
+// Keys are never printed. They go to .dev.vars files next to this run's own
+// generated copies of both Workers' configurations, in the run's state folder
+// (git-ignored, owner-only), which is removed when the run stops; no
 // developer's .dev.vars is ever touched. Mail stays in the API's local outbox
 // table, which the tests read with `wrangler d1 execute`.
 //
@@ -16,25 +16,46 @@
 // still runs here, but its bindings reach that deployed Worker (remote
 // bindings) and its database (KOFRA_E2E_REMOTE_D1, read by the tests); the
 // deployed Worker's assertion key comes in KOFRA_E2E_ASSERTION_KEY. Only for a
-// staging copy whose mail for test addresses goes to its outbox.
+// staging copy whose mail for test addresses goes to its outbox, and only with
+// KOFRA_E2E_REMOTE_ACK naming that database.
 import { execFileSync, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const port = Number(process.argv[2] ?? 4176);
 const remote = process.env.KOFRA_E2E_REMOTE_API;
+const remoteDb = process.env.KOFRA_E2E_REMOTE_D1;
 const apiRoot = process.env.KOFRA_API_DIR;
-if (!apiRoot && !remote) throw new Error('KOFRA_API_DIR must name a kofra-api checkout');
+// Local or remote, never a mix: a local run must not write to a deployed database.
+if (remote || remoteDb) {
+	if (!remote || !remoteDb || apiRoot)
+		throw new Error(
+			'KOFRA_E2E_REMOTE_API and KOFRA_E2E_REMOTE_D1 go together, without KOFRA_API_DIR'
+		);
+	if (process.env.KOFRA_E2E_REMOTE_ACK !== remoteDb)
+		throw new Error('KOFRA_E2E_REMOTE_ACK must name the deployed database the tests write to');
+} else if (!apiRoot || !path.isAbsolute(apiRoot)) {
+	throw new Error('KOFRA_API_DIR must be the absolute path of a kofra-api checkout');
+}
 const api = path.resolve(apiRoot ?? '.', 'workers/kofra-api');
+if (!remote && !existsSync(path.join(api, 'wrangler.toml')))
+	throw new Error('KOFRA_API_DIR has no workers/kofra-api/wrangler.toml');
 const here = path.dirname(fileURLToPath(import.meta.url));
 const consoleDir = path.resolve(here, '..');
 export const LIVE_STATE = path.join(consoleDir, '.wrangler', 'e2e-live');
 const wrangler = path.join(consoleDir, 'node_modules', '.bin', 'wrangler');
 
 rmSync(LIVE_STATE, { recursive: true, force: true });
-mkdirSync(LIVE_STATE, { recursive: true });
+mkdirSync(LIVE_STATE, { recursive: true, mode: 0o700 });
+let cleaned = false;
+/** Removes every file this run wrote: its configurations, keys and database. */
+const cleanup = () => {
+	if (cleaned) return;
+	cleaned = true;
+	rmSync(LIVE_STATE, { recursive: true, force: true });
+};
 
 const hex = () => randomBytes(32).toString('hex');
 const assertionKey = remote ? process.env.KOFRA_E2E_ASSERTION_KEY : hex();
@@ -79,13 +100,15 @@ if (!remote) {
 	);
 }
 
-// The console as built, in live mode, bound to the API's Console entry point. Its copy stays
-// beside the build (its paths are relative to it); the build folder is generated output, so
-// the .dev.vars written there belongs to this run.
+// The console as built, in live mode, bound to the API's Console entry point. Its copy goes
+// to the state folder too, with its paths made absolute.
 const gen = path.join(consoleDir, '.svelte-kit/cloudflare/worker/wrangler.json');
 const cfg = JSON.parse(readFileSync(gen, 'utf8'));
 for (const k of ['configPath', 'userConfigPath', 'topLevelName', 'definedEnvironments'])
 	delete cfg[k];
+cfg.main = path.resolve(path.dirname(gen), cfg.main);
+if (cfg.assets?.directory)
+	cfg.assets.directory = path.resolve(path.dirname(gen), cfg.assets.directory);
 cfg.name = 'kofra-console-e2e-live';
 cfg.vars = { ...cfg.vars, CONSOLE_DATA: 'live', BILLING: 'off' };
 const service = remote
@@ -95,18 +118,26 @@ cfg.services = [
 	{ binding: 'ACCOUNT', ...service },
 	{ binding: 'API', ...service }
 ];
-const liveConfig = path.join(path.dirname(gen), 'wrangler.e2e-live.json');
+const consoleState = path.join(LIVE_STATE, 'console');
+mkdirSync(consoleState, { mode: 0o700 });
+const liveConfig = path.join(consoleState, 'wrangler.json');
 writeFileSync(liveConfig, JSON.stringify(cfg, null, 2));
-const consoleVars = path.join(path.dirname(gen), '.dev.vars');
-writeFileSync(consoleVars, `ASSERTION_KEY=${assertionKey}\n`, { mode: 0o600 });
+writeFileSync(path.join(consoleState, '.dev.vars'), `ASSERTION_KEY=${assertionKey}\n`, {
+	mode: 0o600
+});
 
 const env = { ...process.env, CI: '1' };
-if (!remote)
-	execFileSync(
-		wrangler,
-		['d1', 'migrations', 'apply', 'DB', '--local', '--persist-to', LIVE_STATE, '-c', apiConfig],
-		{ stdio: ['ignore', 'ignore', 'inherit'], env }
-	);
+try {
+	if (!remote)
+		execFileSync(
+			wrangler,
+			['d1', 'migrations', 'apply', 'DB', '--local', '--persist-to', LIVE_STATE, '-c', apiConfig],
+			{ stdio: ['ignore', 'ignore', 'inherit'], env }
+		);
+} catch (err) {
+	cleanup();
+	throw err;
+}
 
 const child = spawn(
 	wrangler,
@@ -126,11 +157,14 @@ const child = spawn(
 	],
 	{ stdio: 'inherit', env }
 );
+// Playwright stops this server with SIGTERM (gracefulShutdown in playwright.config.ts).
 const stop = () => {
 	child.kill('SIGINT');
-	rmSync(consoleVars, { force: true });
-	rmSync(apiDir, { recursive: true, force: true });
+	cleanup();
 };
 process.on('SIGINT', stop);
 process.on('SIGTERM', stop);
-child.on('exit', (code) => process.exit(code ?? 0));
+child.on('exit', (code) => {
+	cleanup();
+	process.exit(code ?? 0);
+});

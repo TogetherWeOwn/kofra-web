@@ -122,7 +122,9 @@ export default defineConfig({
 						command: `${afterBuild}node e2e/live-servers.ts 4176`,
 						url: 'http://127.0.0.1:4176/favicon.svg',
 						reuseExistingServer: false,
-						timeout: 300_000
+						timeout: 300_000,
+						// A signal it can handle, so it removes the keys it wrote.
+						gracefulShutdown: { signal: 'SIGTERM' as const, timeout: 10_000 }
 					}
 				]
 			: [])

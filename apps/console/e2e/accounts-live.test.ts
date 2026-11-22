@@ -31,6 +31,33 @@ function sql(command: string): Record<string, unknown>[] {
 	return (JSON.parse(out) as { results: Record<string, unknown>[] }[])[0]?.results ?? [];
 }
 
+/** A user's ID by address, as an SQL subquery (addresses are this run's own). */
+const userOf = (email: string) =>
+	`(SELECT id FROM account_users WHERE email_key = '${email.toLowerCase()}')`;
+
+// Remove what this run made (it may run against a shared staging database), in one call.
+test.afterAll(() => {
+	const mine = `(SELECT id FROM account_users WHERE email_key LIKE '%.${RUN}@example.com')`;
+	const ws = `(SELECT workspace_id FROM api_members WHERE user_id IN ${mine})`;
+	const mark = `e2e-delete-${RUN}`;
+	sql(
+		[
+			`DELETE FROM api_tokens WHERE workspace_id IN ${ws}`,
+			`DELETE FROM api_audit WHERE workspace_id IN ${ws}`,
+			`DELETE FROM api_idempotency WHERE workspace_id IN ${ws}`,
+			`DELETE FROM api_deletion_requests WHERE workspace_id IN ${ws}`,
+			`DELETE FROM account_provisioning WHERE workspace_id IN ${ws}`,
+			// Members point at workspaces: mark the workspaces, drop the members, then them.
+			`UPDATE api_workspaces SET name = '${mark}' WHERE id IN ${ws}`,
+			`DELETE FROM api_members WHERE user_id IN ${mine}`,
+			`DELETE FROM api_workspaces WHERE name = '${mark}'`,
+			`DELETE FROM account_users WHERE id IN ${mine}`,
+			`DELETE FROM account_invites WHERE email_key LIKE '%.${RUN}@example.com'`,
+			`DELETE FROM account_mail_outbox WHERE to_addr LIKE '%.${RUN}@example.com'`
+		].join('; ')
+	);
+});
+
 /** What the operator's invite script does: the hash in D1, the token to the person. */
 function invite(email: string): string {
 	const token = randomBytes(32).toString('base64url');
@@ -197,7 +224,7 @@ test('CSRF is required and API tokens are made and revoked through the API', asy
 	await expect(page.getByText('Read only')).toBeVisible();
 	expect(
 		sql(
-			`SELECT count(*) AS n FROM api_tokens WHERE name = 'Build scripts' AND revoked_at IS NULL`
+			`SELECT count(*) AS n FROM api_tokens WHERE name = 'Build scripts' AND revoked_at IS NULL AND user_id = ${userOf(addr('tokens'))}`
 		)[0]?.n
 	).toBeGreaterThan(0);
 	await page.getByRole('link', { name: 'Revoke Build scripts' }).click();
@@ -264,7 +291,9 @@ test('a passkey is registered and signs in, checked by the real WebAuthn verifie
 	).toBeVisible();
 	await expect(page.getByText('Save these recovery codes')).toBeVisible();
 	expect(
-		sql(`SELECT count(*) AS n FROM account_passkeys WHERE name = 'Test device'`)[0]?.n
+		sql(
+			`SELECT count(*) AS n FROM account_passkeys WHERE name = 'Test device' AND user_id = ${userOf(addr('passkey'))}`
+		)[0]?.n
 	).toBeGreaterThan(0);
 
 	await signOut(page);
