@@ -199,25 +199,27 @@ export async function handleLive(
 		const workspace = locals.member;
 		locals.files = unavailableFiles();
 		locals.workspace = liveWorkspace(workspace?.name ?? 'Your workspace');
+		const transport = async (input: RequestInfo | URL, init?: RequestInit) => {
+			if (!workspace || workspace.state !== 'active' || !me)
+				throw new Error('An active workspace is required.');
+			const request = new Request(input, init);
+			const assertion = await mintAssertion(
+				cfg.assertionKey!,
+				workspace.id,
+				me.user.id,
+				me.session.id,
+				Math.floor(Date.now() / 1000)
+			);
+			request.headers.set('Authorization', `Bearer ${assertion}`);
+			return cfg.api!.fetch(request);
+		};
 		locals.api = new Kofra({
 			// Replace the SDK's static credential inside its transport, including each retry.
 			token: 'console',
 			baseUrl: 'https://api.kofra.app',
-			fetch: async (input, init) => {
-				if (!workspace || workspace.state !== 'active' || !me)
-					throw new Error('An active workspace is required.');
-				const request = new Request(input, init);
-				const assertion = await mintAssertion(
-					cfg.assertionKey!,
-					workspace.id,
-					me.user.id,
-					me.session.id,
-					Math.floor(Date.now() / 1000)
-				);
-				request.headers.set('Authorization', `Bearer ${assertion}`);
-				return cfg.api!.fetch(request);
-			}
+			fetch: transport
 		});
+		locals.apiFetch = (apiPath, init) => transport(new URL(apiPath, 'https://api.kofra.app'), init);
 	} else {
 		// live-fake: the sign-in pages on the fake, the workspace pages on sample data.
 		const { demo, api } = openDemo(url, cookies.get(demoCookieName(url)));

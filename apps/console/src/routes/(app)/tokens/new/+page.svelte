@@ -72,10 +72,10 @@
 					<option value="30">30 days</option>
 					<option value="90">90 days</option>
 					<option value="365">1 year</option>
-					<option value="never">Never</option>
+					<option value="1000">1,000 days (the longest)</option>
 				</select>
 				<p class="help" id="expiry-help">
-					A token that never expires stays valid until you revoke it.
+					Every token expires. Make a new one before then, or revoke it sooner.
 				</p>
 				{#if expiryProblem}<p class="err" id="expiry-error">{expiryProblem.message}</p>{/if}
 			</div>

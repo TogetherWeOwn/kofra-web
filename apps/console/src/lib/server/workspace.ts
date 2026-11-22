@@ -23,6 +23,8 @@ export interface WorkspaceInfo {
 		connect: boolean;
 		/** Billing pages. */
 		billing: boolean;
+		/** API tokens (sample tokens in the demo, the API's own in live mode). */
+		apiTokens: boolean;
 	};
 	/** The access key the console itself uses; it is listed but cannot be revoked. */
 	consoleKeyId: string | null;
@@ -42,7 +44,8 @@ export const DEMO_WORKSPACE: WorkspaceInfo = {
 		workspaceDeletion: true,
 		deleteFiles: false,
 		connect: false,
-		billing: true
+		billing: true,
+		apiTokens: true
 	},
 	consoleKeyId: null,
 	protectedBuckets: []
@@ -65,7 +68,8 @@ export function tenant0Workspace(
 			workspaceDeletion: false,
 			deleteFiles: true,
 			connect: true,
-			billing: false
+			billing: false,
+			apiTokens: false
 		},
 		consoleKeyId,
 		protectedBuckets
@@ -89,7 +93,8 @@ export function liveWorkspace(name: string): WorkspaceInfo {
 			workspaceDeletion: true,
 			deleteFiles: false,
 			connect: false,
-			billing: false
+			billing: false,
+			apiTokens: true
 		},
 		consoleKeyId: null,
 		protectedBuckets: []
