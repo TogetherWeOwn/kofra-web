@@ -1,6 +1,7 @@
 import Activity from '@lucide/svelte/icons/chart-column';
 import Database from '@lucide/svelte/icons/database';
 import KeyRound from '@lucide/svelte/icons/key-round';
+import KeySquare from '@lucide/svelte/icons/key-square';
 import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 import Receipt from '@lucide/svelte/icons/receipt-text';
 import Settings from '@lucide/svelte/icons/settings';
@@ -18,6 +19,7 @@ export const NAV: NavEntry[] = [
 	{ label: 'Overview', href: resolve('/(app)'), icon: LayoutDashboard as NavEntry['icon'] },
 	{ label: 'Buckets', href: resolve('/(app)/buckets'), icon: Database as NavEntry['icon'] },
 	{ label: 'Access keys', href: resolve('/(app)/keys'), icon: KeyRound as NavEntry['icon'] },
+	{ label: 'API tokens', href: resolve('/(app)/tokens'), icon: KeySquare as NavEntry['icon'] },
 	{ label: 'Usage', href: resolve('/(app)/usage'), icon: Activity as NavEntry['icon'] },
 	{ label: 'Billing', href: resolve('/(app)/billing'), icon: Receipt as NavEntry['icon'] },
 	{ label: 'Settings', href: resolve('/(app)/settings'), icon: Settings as NavEntry['icon'] }

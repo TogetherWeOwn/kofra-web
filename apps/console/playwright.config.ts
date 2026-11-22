@@ -12,6 +12,8 @@ import { defineConfig } from '@playwright/test';
 //   host is loopback and storage is a loopback fake; see src/lib/server/gate.ts).
 // - 4179: tenant0 mode as deployed: no DEV_AUTH, so every request without an Access token is
 //   refused.
+// - 4175: live-fake mode: the account service's in-memory fake (loopback only), for the
+//   sign-in and account journeys. Served on localhost: WebAuthn refuses IP addresses as RP IDs.
 const prebuilt = process.env.KOFRA_E2E_PREBUILT === '1';
 // Without a prebuilt output, the first server builds once and leaves a marker for this run;
 // the tenant0 servers wait for it, so none of them starts from an older build.
@@ -46,7 +48,7 @@ export default defineConfig({
 	projects: [
 		{
 			name: 'demo',
-			testIgnore: /tenant0\.test\.ts/,
+			testIgnore: /(tenant0|accounts)\.test\.ts/,
 			use: { baseURL: 'http://127.0.0.1:4174' }
 		},
 		{
@@ -56,6 +58,11 @@ export default defineConfig({
 			fullyParallel: false,
 			workers: 1,
 			use: { baseURL: 'http://127.0.0.1:4177' }
+		},
+		{
+			name: 'live-fake',
+			testMatch: /accounts\.test\.ts/,
+			use: { baseURL: 'http://localhost:4175' }
 		}
 	],
 	webServer: [
@@ -81,6 +88,12 @@ export default defineConfig({
 		{
 			command: `${afterBuild}pnpm exec wrangler dev --port 4179 --inspector-port 9338 --persist-to .wrangler/e2e-deployed ${vars()}`,
 			url: 'http://127.0.0.1:4179/favicon.svg',
+			reuseExistingServer: false,
+			timeout: 240_000
+		},
+		{
+			command: `${afterBuild}pnpm exec wrangler dev --ip 127.0.0.1 --port 4175 --inspector-port 9339 --persist-to .wrangler/e2e-live-fake --var CONSOLE_DATA:live-fake`,
+			url: 'http://127.0.0.1:4175/favicon.svg',
 			reuseExistingServer: false,
 			timeout: 240_000
 		}

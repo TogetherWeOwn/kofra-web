@@ -68,3 +68,64 @@ describe('console wording of API problems', async () => {
 		).toBeUndefined();
 	});
 });
+
+describe('live configuration', () => {
+	const upstream = { fetch: async () => new Response(null, { status: 204 }) };
+	const key = '0a'.repeat(32);
+	const env = { CONSOLE_DATA: 'live', ACCOUNT: upstream, API: upstream, ASSERTION_KEY: key };
+
+	it('requires both service bindings and decodes exactly 32 bytes', () => {
+		expect(readConfig(env)).toMatchObject({
+			mode: 'live',
+			problem: null,
+			account: upstream,
+			api: upstream,
+			assertionKey: new Uint8Array(32).fill(10)
+		});
+	});
+
+	it.each([
+		['ACCOUNT', undefined],
+		['ACCOUNT', { fetch: true }],
+		['API', undefined],
+		['API', {}],
+		['ASSERTION_KEY', undefined],
+		['ASSERTION_KEY', 'ab'],
+		['ASSERTION_KEY', key.toUpperCase()],
+		['ASSERTION_KEY', key + '\n'],
+		['ASSERTION_KEY', 'gg'.repeat(32)]
+	])('refuses an invalid %s and exposes only its name', (setting, value) => {
+		expect(readConfig({ ...env, [setting]: value })).toMatchObject({
+			mode: 'unconfigured',
+			problem: setting,
+			account: null,
+			api: null,
+			assertionKey: null
+		});
+	});
+
+	it('refuses a CONSOLE_MODE that disagrees, and never takes live from it', () => {
+		expect(readConfig({ ...env, CONSOLE_DATA: 'demo', CONSOLE_MODE: 'live' })).toMatchObject({
+			mode: 'unconfigured',
+			problem: 'CONSOLE_MODE'
+		});
+		expect(readConfig({ ...env, CONSOLE_DATA: undefined, CONSOLE_MODE: 'live' }).mode).toBe(
+			'unconfigured'
+		);
+		expect(readConfig({ ...env, CONSOLE_MODE: 'live' }).mode).toBe('live');
+	});
+
+	it('provides the fake without bindings and ignores them in demo', () => {
+		expect(readConfig({ CONSOLE_DATA: 'live-fake' })).toMatchObject({
+			mode: 'live-fake',
+			account: { fetch: expect.any(Function) },
+			assertionKey: null
+		});
+		expect(readConfig({ ...env, CONSOLE_DATA: 'demo' })).toMatchObject({
+			mode: 'demo',
+			account: null,
+			api: null,
+			assertionKey: null
+		});
+	});
+});

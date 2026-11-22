@@ -14,8 +14,18 @@ browser ──(Access at the edge)──► console Worker ──(service bindin
                                    │  locals.files = file browser (list, upload, delete)
 ```
 
-- `CONSOLE_DATA` picks the data source: `demo` (default, as today) or `tenant0`. Any other
-  value, or a `tenant0` deploy with a setting missing, answers every request with 503.
+- `CONSOLE_DATA` picks the data source.
+  - `demo` serves sample data without service bindings. The legacy `CONSOLE_MODE=demo`
+    also works when `CONSOLE_DATA` is unset.
+  - `tenant0` requires Cloudflare Access settings and storage credentials from section 3.
+    It uses the `STORAGE` binding or, for local tests, a loopback HTTP `STORAGE_ORIGIN`.
+  - `live` requires the `ACCOUNT` and `API` service bindings and an `ASSERTION_KEY` of
+    exactly 64 lowercase hexadecimal characters.
+  - `live-fake` uses an in-memory account service and sample workspace data without
+    bindings. It accepts only loopback requests and serves passkeys on `localhost`.
+- An unsupported mode or missing or invalid required configuration makes the console
+  refuse every request with 503. A `CONSOLE_MODE` that disagrees with `CONSOLE_DATA` also
+  makes the console refuse every request.
 - `locals.api` stays the generated SDK (`Kofra`). In `tenant0` its `fetch` is a local
   transport that answers the `/v1` contract (vendor/openapi.json) from the storage service's
   admin API and S3 API, exactly as the demo transport answers it from a cookie. Swapping in
@@ -49,7 +59,8 @@ to the storage service.
 
 | Name                               | Kind            | Use                                                         |
 | ---------------------------------- | --------------- | ----------------------------------------------------------- |
-| `CONSOLE_DATA`                     | var             | `tenant0`                                                   |
+| `CONSOLE_DATA`                     | var             | `demo`, `tenant0`, `live`, or `live-fake`                   |
+| `CONSOLE_MODE`                     | var             | Legacy mode. Must match `CONSOLE_DATA` if both are set.     |
 | `ACCESS_TEAM_DOMAIN`               | var             | `<team>.cloudflareaccess.com`                               |
 | `ACCESS_AUD`, `ALLOWED_EMAILS`     | secret          | Access application tag; comma-separated emails              |
 | `STORAGE`                          | service binding | the storage Worker (production)                             |

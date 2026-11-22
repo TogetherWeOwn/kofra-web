@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Csrf from '#lib/components/account/Csrf.svelte';
 	import { focusFirstInvalid } from '#lib/forms.js';
 	import { resolve } from '$app/paths';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
@@ -6,6 +7,7 @@
 	import { Button } from '@kofra/ui';
 	import KeyReveal from '#lib/components/KeyReveal.svelte';
 	import ProblemNotice from '#lib/components/ProblemNotice.svelte';
+	import Notice from '#lib/components/Notice.svelte';
 
 	let { data, form } = $props();
 	let busy = $state(false);
@@ -35,6 +37,15 @@
 	<KeyReveal created={form.created} sample={data.ws.features.sample} />
 {:else}
 	{#if form && 'problem' in form && form.problem}<ProblemNotice problem={form.problem} />{/if}
+	{#if data.writeNeedsStep}
+		<Notice tone="info">
+			<p>
+				A key that can write needs you to confirm it's you first.
+				<a href="{resolve('/(auth)/confirm-identity')}?next=%2Fkeys%2Fnew">Confirm now</a>, or
+				create a read-only key.
+			</p>
+		</Notice>
+	{/if}
 	<form
 		class="card pad form"
 		method="POST"
@@ -47,6 +58,7 @@
 			};
 		}}
 	>
+		<Csrf />
 		{#if data.ws.features.keyNames}<div class="field">
 				<label for="name">Name <span class="muted">(optional)</span></label>
 				<input

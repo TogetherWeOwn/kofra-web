@@ -3,6 +3,7 @@ import { bucketHref } from '#lib/links.js';
 import { error } from '@sveltejs/kit';
 import { loadFailed } from '#lib/server/api.js';
 import { FileError, MAX_DELETE } from '#lib/server/files.js';
+import type { ConsoleAccess, FileListing } from '#lib/server/files.js';
 import { folderCrumbs, validPrefix } from '#lib/paths.js';
 import type { PageServerLoad } from './$types';
 
@@ -18,14 +19,18 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	} catch (err) {
 		loadFailed(err);
 	}
-	let listing, access, countsComplete;
+	// A customer workspace has no file browser yet: files are reached with an access key.
+	const filesUnavailable = locals.mode === 'live';
+	let listing: FileListing, access: ConsoleAccess | null, countsComplete: boolean;
 	try {
 		// File listing is not part of the management API yet: it comes from the file store.
-		[listing, access, countsComplete] = await Promise.all([
-			locals.files.list(bucket.name, prefix, cursor),
-			locals.files.access(bucket.name),
-			locals.countsComplete()
-		]);
+		[listing, access, countsComplete] = filesUnavailable
+			? [{ folders: [], files: [], next: null }, 'read', await locals.countsComplete()]
+			: await Promise.all([
+					locals.files.list(bucket.name, prefix, cursor),
+					locals.files.access(bucket.name),
+					locals.countsComplete()
+				]);
 	} catch (err) {
 		if (err instanceof FileError) error(err.status, { message: err.message, hint: err.hint });
 		throw err;
@@ -42,6 +47,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		maxDelete: MAX_DELETE,
 		isProtected: locals.workspace.protectedBuckets.includes(bucket.name),
 		sample: features.sample,
+		filesUnavailable,
 		connect: features.connect,
 		countsComplete,
 		folders: folderCrumbs(prefix),

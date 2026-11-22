@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Csrf from '#lib/components/account/Csrf.svelte';
 	import { resolve } from '$app/paths';
 	import { Button } from '@kofra/ui';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
@@ -37,6 +38,7 @@
 {#if form && 'problem' in form && form.problem}<ProblemNotice problem={form.problem} />{/if}
 
 <form class="card pad form" method="POST">
+	<Csrf />
 	<fieldset class="field">
 		<legend>What the console may do in {data.name}</legend>
 		{#if !widen}

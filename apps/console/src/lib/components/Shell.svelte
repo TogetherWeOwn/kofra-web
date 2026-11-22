@@ -16,15 +16,29 @@
 		crumbs = [],
 		workspace,
 		ws,
+		signedIn = false,
+		workspaceReady = true,
 		children
 	}: {
 		path: string;
 		crumbs?: Crumb[];
 		workspace: string;
 		ws: WorkspaceInfo;
+		/** A customer signed in through the account service (live modes). */
+		signedIn?: boolean;
+		/** False while the workspace is still being set up: no section links yet. */
+		workspaceReady?: boolean;
 		children: Snippet;
 	} = $props();
-	const nav = $derived(NAV.filter((e) => ws.features.billing || e.label !== 'Billing'));
+	// API tokens need the API's token endpoints, which only the sample workspaces stand in
+	// for until they ship.
+	const nav = $derived(
+		NAV.filter(
+			(e) =>
+				(ws.features.billing || e.label !== 'Billing') &&
+				(ws.features.sample || e.label !== 'API tokens')
+		)
+	);
 
 	let open = $state(false);
 	let menuButton = $state<HTMLButtonElement>();
@@ -64,17 +78,17 @@
 			<span class="side-acct-n">{workspace}</span>
 			<span class="side-acct-p">{ws.features.sample ? 'Sample data' : 'Live data'}</span>
 		</div>
-		<nav aria-label="Console sections">
-			<ul>
-				{#each nav as item (item.href)}
-					<li>
-						<a href={item.href} aria-current={current === item ? 'page' : undefined}>
-							<item.icon class="icon" aria-hidden="true" />{item.label}
-						</a>
-					</li>
-				{/each}
-			</ul>
-		</nav>
+		{#if workspaceReady}<nav aria-label="Console sections">
+				<ul>
+					{#each nav as item (item.href)}
+						<li>
+							<a href={item.href} aria-current={current === item ? 'page' : undefined}>
+								<item.icon class="icon" aria-hidden="true" />{item.label}
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</nav>{/if}
 		<ul class="side-foot">
 			<li>
 				<a href={DOCS_URL} rel="external">
@@ -83,7 +97,14 @@
 			</li>
 			<li><a href={LICENCES_URL} rel="external">Licences</a></li>
 			<li>
-				{#if ws.features.sample}
+				{#if signedIn}
+					<a
+						href={resolve('/(app)/account')}
+						aria-current={path === '/account' ? 'page' : undefined}
+					>
+						<LogIn class="icon" aria-hidden="true" />Account
+					</a>
+				{:else if ws.features.sample}
 					<a href={resolve('/(auth)/sign-in')}><LogIn class="icon" aria-hidden="true" />Sign in</a>
 				{:else}
 					<!-- Cloudflare Access ends the session at this address on the console's own host. -->

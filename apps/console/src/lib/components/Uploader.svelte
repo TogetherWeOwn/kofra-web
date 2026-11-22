@@ -2,6 +2,7 @@
 	import Upload from '@lucide/svelte/icons/upload';
 	import { onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
 	import { bytes } from '#lib/format.js';
 	import { uploadKey, validKey } from '#lib/paths.js';
 
@@ -39,6 +40,14 @@
 
 	const active = $derived(items.some((i) => i.state === 'waiting' || i.state === 'uploading'));
 
+	/** The session's CSRF header for this console's own endpoints (live modes only). */
+	function csrf(url: string): Record<string, string> {
+		const token = page.data.csrf as string | undefined;
+		return token && new URL(url, location.origin).origin === location.origin
+			? { 'x-kofra-csrf': token }
+			: {};
+	}
+
 	async function answer(res: Response, fallback: string) {
 		const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
 		if (!res.ok) throw new Error(typeof body.message === 'string' ? body.message : fallback);
@@ -48,7 +57,7 @@
 	async function post(url: string, body: unknown) {
 		const res = await fetch(url, {
 			method: 'POST',
-			headers: { 'content-type': 'application/json', accept: 'application/json' },
+			headers: { 'content-type': 'application/json', accept: 'application/json', ...csrf(url) },
 			// Not cancelled when the page navigates: an upload the server has just started must reach
 			// the page, so it can still be stopped (see start()). Closing the tab during this request
 			// can still leave one unfinished: once the bucket holds no file, its delete page can stop
@@ -76,6 +85,7 @@
 			current = xhr;
 			xhr.open('PUT', url);
 			if (type) xhr.setRequestHeader('content-type', type);
+			for (const [name, value] of Object.entries(csrf(url))) xhr.setRequestHeader(name, value);
 			xhr.upload.onprogress = (e) => progress(e.loaded);
 			xhr.onload = () => {
 				let parsed: Record<string, unknown> = {};
@@ -106,7 +116,7 @@
 	function abortUpload(target: Extract<Target, { method: 'MULTIPART' }>) {
 		fetch(target.abort_url, {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', ...csrf(target.abort_url) },
 			body: JSON.stringify({ token: target.token }),
 			keepalive: true
 		}).catch(() => {});

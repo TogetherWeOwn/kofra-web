@@ -66,7 +66,9 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 				bucket,
 				plan: null,
 				blocked: describe(err),
-				blockedTitle: 'This bucket is protected',
+				blockedTitle: locals.workspace.protectedBuckets.includes(bucket.name)
+					? 'This bucket is protected'
+					: 'Your role does not allow this',
 				uploads: 0,
 				recentUploads: 0,
 				unreachableUploads: 0,

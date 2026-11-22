@@ -3,7 +3,7 @@
 
 export interface WorkspaceInfo {
 	name: string;
-	kind: 'demo' | 'tenant0';
+	kind: 'demo' | 'tenant0' | 'live';
 	features: {
 		/** Sample data that resets (the demo notice, Reset demo). */
 		sample: boolean;
@@ -69,5 +69,29 @@ export function tenant0Workspace(
 		},
 		consoleKeyId,
 		protectedBuckets
+	};
+}
+
+/**
+ * A customer workspace in live mode. What the storage plane cannot serve per tenant yet
+ * (traffic, events, the file browser) stays hidden rather than showing zeros.
+ */
+export function liveWorkspace(name: string): WorkspaceInfo {
+	return {
+		name,
+		kind: 'live',
+		features: {
+			sample: false,
+			traffic: false,
+			events: false,
+			keyNames: true,
+			keyLimit: true,
+			workspaceDeletion: true,
+			deleteFiles: false,
+			connect: false,
+			billing: false
+		},
+		consoleKeyId: null,
+		protectedBuckets: []
 	};
 }

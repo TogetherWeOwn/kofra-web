@@ -59,6 +59,17 @@ test('as deployed, nothing is served without an Access token, and storage is nev
 	expect(after.length).toBe(before.length);
 });
 
+test('sign-in shows the static notice in tenant0 mode', async ({ page }) => {
+	await page.goto('/sign-in');
+	await expect(
+		page.getByText('This console opens your own workspace.', { exact: false })
+	).toBeVisible();
+	await expect(page.getByText('sample data', { exact: false })).toHaveCount(0);
+	await expect(page.getByRole('link', { name: 'Open your workspace' })).toBeVisible();
+	await expect(page.locator('input[type="password"]')).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'Sign in with a passkey' })).toHaveCount(0);
+});
+
 test('buckets: the console lists what it can open, protects files, and offers the rest', async ({
 	page
 }) => {

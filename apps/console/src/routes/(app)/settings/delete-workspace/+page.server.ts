@@ -1,6 +1,7 @@
 import { resolve } from '$app/paths';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Plan } from '@kofra/api';
+import { requireFreshStep } from '#lib/server/account/actions.js';
 import { actionFailed, loadFailed } from '#lib/server/api.js';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -9,12 +10,14 @@ const unavailable = () =>
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
 	if (!locals.workspace.features.workspaceDeletion) unavailable();
+	requireFreshStep(locals, '/settings/delete-workspace');
 	const { account } = await parent();
-	if (account.deletion) redirect(303, '/settings');
+	if (!account || account.deletion) redirect(303, '/settings');
 	try {
 		const plan = (await locals.api.account.delete({ dry_run: true })) as Plan;
 		return {
 			plan,
+			id: account.id,
 			crumbs: [
 				{ label: 'Settings', href: resolve('/(app)/settings') },
 				{ label: 'Delete workspace' }
@@ -28,6 +31,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 export const actions: Actions = {
 	default: async ({ locals, request }) => {
 		if (!locals.workspace.features.workspaceDeletion) unavailable();
+		requireFreshStep(locals, '/settings/delete-workspace');
 		const form = await request.formData();
 		let id: string;
 		try {

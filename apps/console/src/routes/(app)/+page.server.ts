@@ -3,6 +3,8 @@ import { latestEvents } from '#lib/server/lists.js';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
+	if (locals.member?.state === 'setting_up')
+		return { settingUp: true as const, crumbs: [{ label: 'Overview' }] };
 	try {
 		const [usage, buckets, keys, events, countsComplete, others] = await Promise.all([
 			locals.api.usage.get(),
@@ -14,6 +16,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			locals.files.otherBuckets ? locals.files.otherBuckets() : []
 		]);
 		return {
+			settingUp: false as const,
 			usage,
 			countsComplete,
 			largest: [...buckets.data].sort((a, b) => b.stored_bytes - a.stored_bytes).slice(0, 5),

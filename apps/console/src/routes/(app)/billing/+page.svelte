@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Csrf from '#lib/components/account/Csrf.svelte';
 	import CreditCard from '@lucide/svelte/icons/credit-card';
 	import Notice from '#lib/components/Notice.svelte';
 	import ProblemNotice from '#lib/components/ProblemNotice.svelte';
@@ -61,6 +62,7 @@
 			<dd>Set at launch</dd>
 		</dl>
 		<form method="POST" action="?/checkout">
+			<Csrf />
 			<button class="btn-plain" type="submit" disabled={!data.billing.enabled}>
 				Choose this plan
 			</button>
@@ -74,6 +76,7 @@
 			provider. Card numbers never reach Kofra.
 		</p>
 		<form method="POST" action="?/portal">
+			<Csrf />
 			<button class="btn-plain" type="submit" disabled={!data.billing.portal}>
 				Manage payment details
 			</button>

@@ -1,6 +1,7 @@
 // Console configuration from Worker variables, secrets and bindings. Pure: the caller passes
 // the environment, so tests need no Workers runtime.
 import { parseEmails } from './access.js';
+import { fakeAccount } from './account/fake.js';
 
 export interface BillingConfig {
 	/** Billing actions work only when this is true. */
@@ -43,11 +44,19 @@ export interface ConsoleConfig {
 	 * "demo": sample data per visitor. "tenant0": the operator's own storage account, behind
 	 * Cloudflare Access. "unconfigured": every request is refused.
 	 */
-	mode: 'demo' | 'tenant0' | 'unconfigured';
+	mode: 'demo' | 'tenant0' | 'live' | 'live-fake' | 'unconfigured';
 	/** For "unconfigured": the name of the first missing or invalid setting, never a value. */
 	problem: string | null;
 	billing: BillingConfig;
 	tenant0: Tenant0Config | null;
+	/**
+	 * "live": customer sign-in through the account service (`ACCOUNT` binding), workspace
+	 * calls over the `API` binding signed with `ASSERTION_KEY`. "live-fake": the same pages on
+	 * an in-memory account service, for tests on loopback only.
+	 */
+	account: Upstream | null;
+	api: Upstream | null;
+	assertionKey: Uint8Array | null;
 }
 
 type Env = Record<string, unknown>;
@@ -145,23 +154,68 @@ export function readTenant0(env: Env): Tenant0Config | string {
 	};
 }
 
+const none = { account: null, api: null, assertionKey: null } as const;
+
 export function readConfig(env: Env): ConsoleConfig {
 	// CONSOLE_DATA picks the data source. Without it, the older CONSOLE_MODE=demo still works.
-	const data = str(env, 'CONSOLE_DATA') ?? (str(env, 'CONSOLE_MODE') === 'demo' ? 'demo' : null);
+	// A CONSOLE_MODE that disagrees with CONSOLE_DATA refuses every request instead of
+	// silently serving one of the two.
+	const legacy = str(env, 'CONSOLE_MODE');
+	const chosen = str(env, 'CONSOLE_DATA');
+	if (legacy !== null && chosen !== null && legacy !== chosen)
+		return {
+			mode: 'unconfigured',
+			problem: 'CONSOLE_MODE',
+			billing: readBilling(env, true),
+			tenant0: null,
+			...none
+		};
+	const data = chosen ?? (legacy === 'demo' ? 'demo' : null);
 	if (data === 'demo')
-		return { mode: 'demo', problem: null, billing: readBilling(env, true), tenant0: null };
+		return { mode: 'demo', problem: null, billing: readBilling(env, true), tenant0: null, ...none };
+	if (data === 'live-fake')
+		return {
+			mode: 'live-fake',
+			problem: null,
+			billing: readBilling(env, true),
+			tenant0: null,
+			...none,
+			account: fakeAccount
+		};
+	if (data === 'live') {
+		const billing = readBilling(env, true);
+		const key = env.ASSERTION_KEY;
+		const problem = !isUpstream(env.ACCOUNT)
+			? 'ACCOUNT'
+			: !isUpstream(env.API)
+				? 'API'
+				: typeof key !== 'string' || !/^[a-f0-9]{64}$/.test(key)
+					? 'ASSERTION_KEY'
+					: null;
+		if (problem) return { mode: 'unconfigured', problem, billing, tenant0: null, ...none };
+		return {
+			mode: 'live',
+			problem: null,
+			billing,
+			tenant0: null,
+			account: env.ACCOUNT as Upstream,
+			api: env.API as Upstream,
+			assertionKey: Uint8Array.from((key as string).match(/../g)!, (p) => Number.parseInt(p, 16))
+		};
+	}
 	// Nothing is served while unconfigured; the billing reading is kept for its own tests.
 	if (data !== 'tenant0')
 		return {
 			mode: 'unconfigured',
 			problem: 'CONSOLE_DATA',
 			billing: readBilling(env, true),
-			tenant0: null
+			tenant0: null,
+			...none
 		};
 	// No billing for the operator's own workspace.
 	const off = readBilling(env, false);
 	const t = readTenant0(env);
 	if (typeof t === 'string')
-		return { mode: 'unconfigured', problem: t, billing: off, tenant0: null };
-	return { mode: 'tenant0', problem: null, billing: off, tenant0: t };
+		return { mode: 'unconfigured', problem: t, billing: off, tenant0: null, ...none };
+	return { mode: 'tenant0', problem: null, billing: off, tenant0: t, ...none };
 }

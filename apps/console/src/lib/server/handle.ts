@@ -6,6 +6,7 @@ import { demoCookieName, demoSetCookie, openDemo } from './demo.js';
 import { demoFiles } from './files.js';
 import { checkRequest, forbidden, sameOrigin } from './gate.js';
 import { applyHeaders } from './headers.js';
+import { handleLive } from './live.js';
 import { createStorageClient } from './storage/client.js';
 import { LOCAL_TOKEN, Tenant0Api } from './tenant0/api.js';
 import { Tenant0Files } from './tenant0/files.js';
@@ -49,11 +50,18 @@ export interface HandleOptions {
  * The console's request hook. "demo" serves per-visitor sample data. "tenant0" serves the
  * operator's own storage account and first checks Cloudflare Access's signed token on every
  * request (gate.ts). Any other configuration refuses every request: a build never serves a
- * workspace without its sign-in.
+ * workspace without its sign-in. "live" and "live-fake" sign customers in through the
+ * account service (live.ts).
  */
 export function makeHandle(getConfig: () => ConsoleConfig, options: HandleOptions = {}): Handle {
 	return async ({ event, resolve }) => {
 		const cfg = getConfig();
+		if (cfg.mode === 'live' || cfg.mode === 'live-fake') return handleLive(cfg, event, resolve);
+		// The modes below have no customer sign-in.
+		event.locals.mode = cfg.mode;
+		event.locals.account = null;
+		event.locals.me = null;
+		event.locals.member = null;
 		if (cfg.mode === 'demo') {
 			const { demo, api } = openDemo(event.url, event.cookies.get(demoCookieName(event.url)));
 			event.locals.demo = demo;

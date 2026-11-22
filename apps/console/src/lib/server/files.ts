@@ -1,6 +1,7 @@
 // The file browser's operations, which the API contract does not cover yet: listing,
 // uploads, deletes and connecting a bucket. Each data source implements `FileStore`; pages
 // use only this interface, so the future API client replaces an implementation, not a page.
+import { error } from '@sveltejs/kit';
 import type { DemoApi } from '@kofra/api/demo';
 import { DEMO_MAX_UPLOAD, demoFilePath } from './demo.js';
 
@@ -164,5 +165,18 @@ export function demoFiles(demo: DemoApi): FileStore {
 				expires_at: isoSeconds(expires)
 			};
 		}
+	};
+}
+
+/**
+ * Live workspaces until the API serves files: every call answers 503, so file pages say the
+ * files are not available yet instead of showing an empty bucket.
+ */
+export function unavailableFiles(): FileStore {
+	const no = () => error(503, { message: 'Files are not available in this workspace yet.' });
+	return {
+		access: async () => no(),
+		list: async () => no(),
+		startUpload: async () => no()
 	};
 }

@@ -1,5 +1,6 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { mintAssertion } from './account/assertion.js';
 import { readConfig } from './config.js';
 import { makeHandle } from './handle.js';
 
@@ -50,4 +51,190 @@ describe('console request hook', () => {
 			/^__Host-kofra-demo=.+; HttpOnly; SameSite=Lax; Secure$/
 		);
 	});
+});
+
+it('refuses live-fake requests from a non-loopback hostname even for public paths', async () => {
+	const handle = makeHandle(() => readConfig({ CONSOLE_DATA: 'live-fake' }));
+	const res = await handle({
+		event: { ...event(), url: new URL('https://localhost.example/sign-in') },
+		resolve: async () => {
+			throw new Error('The request should be refused before routing.');
+		}
+	});
+	expect(res.status).toBe(503);
+	expect(await res.text()).toBe('This console is not configured.');
+	expect(res.headers.get('x-robots-tag')).toBe('noindex');
+});
+
+it('signs each live API call for the selected member workspace', async () => {
+	const now = vi.spyOn(Date, 'now').mockReturnValue(1763546410_000);
+	const key = Uint8Array.from({ length: 32 }, (_, i) => i);
+	const ws = (id: string) => ({ id, name: id, role: 'member', state: 'active' }) as const;
+	const headers: (string | null)[] = [];
+	const me = {
+		user: { id: 'usr_example' },
+		session: { id: 'ses_example' },
+		workspaces: [ws('ws_first'), ws('ws_selected')],
+		csrf: 'csrf_test_0123456789',
+		needs: null
+	};
+	const handle = makeHandle(() => ({
+		...readConfig({ CONSOLE_MODE: 'demo' }),
+		mode: 'live',
+		account: {
+			async fetch(req) {
+				expect(req.headers.get('Kofra-Session')).toBe('test-session');
+				expect(req.url).toBe('https://account.internal/account/v1/session/resolve');
+				return Response.json(me);
+			}
+		},
+		api: {
+			async fetch(req) {
+				headers.push(req.headers.get('authorization'));
+				expect(req.url).toBe('https://api.kofra.app/v1/account');
+				return Response.json({});
+			}
+		},
+		assertionKey: key
+	}));
+	try {
+		const request = new Request('https://console.example/');
+		const status = await handle({
+			event: {
+				...event(),
+				url: new URL(request.url),
+				request,
+				route: { id: '/(app)' },
+				getClientAddress: () => '192.0.2.1',
+				cookies: {
+					get: (name: string) => (name === 'kofra_ws' ? 'ws_selected' : 'test-session')
+				} as RequestEvent['cookies']
+			},
+			resolve: async ({ locals }) => {
+				await locals.api.account.get();
+				now.mockReturnValue(1763546411_000);
+				await locals.api.account.get();
+				return new Response('ok');
+			}
+		});
+		expect(status.status).toBe(200);
+		expect(headers).toEqual(
+			await Promise.all(
+				[1763546410, 1763546411].map(
+					async (secs) =>
+						`Bearer ${await mintAssertion(key, 'ws_selected', me.user.id, me.session.id, secs)}`
+				)
+			)
+		);
+	} finally {
+		now.mockRestore();
+	}
+});
+
+describe('live-fake stage gating', () => {
+	const handle = makeHandle(() => readConfig({ CONSOLE_DATA: 'live-fake' }));
+	const run = (path: string, init: RequestInit = {}) =>
+		handle({
+			event: {
+				...event(),
+				url: new URL(`http://localhost${path}`),
+				request: new Request(`http://localhost${path}`, init),
+				getClientAddress: () => '127.0.0.1',
+				cookies: { get: () => undefined, set: () => {}, delete: () => {}, serialize: () => '' },
+				route: {
+					id: path.startsWith('/account')
+						? '/(app)/account'
+						: path.startsWith('/sign-in')
+							? '/(auth)/sign-in'
+							: null
+				}
+			},
+			resolve: async () => new Response('page')
+		} as never);
+
+	it('refuses a POST to an account route without a session', async () => {
+		const res = await run('/account?/profile', {
+			method: 'POST',
+			headers: { 'content-type': 'application/x-www-form-urlencoded', 'content-length': '6' },
+			body: 'name=x'
+		});
+		expect(res.status).toBe(403);
+	});
+
+	it('refuses an oversized body on a sign-in route before parsing it', async () => {
+		const res = await run('/sign-in', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', 'content-length': String(65 * 1024) },
+			body: '{}'
+		});
+		expect(res.status).toBe(413);
+	});
+
+	it('refuses a body without a declared length on an account route', async () => {
+		const stream = new ReadableStream({
+			start(c) {
+				c.enqueue(new TextEncoder().encode('{}'));
+				c.close();
+			}
+		});
+		const res = await run('/sign-in', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: stream,
+			duplex: 'half'
+		} as RequestInit);
+		expect(res.status).toBe(411);
+	});
+
+	it('lets a bodyless POST through to the CSRF and session checks', async () => {
+		const res = await run('/account?/profile', { method: 'POST' });
+		expect(res.status).toBe(403);
+	});
+
+	it('serves the fake mail endpoint only in live-fake, and only for GET', async () => {
+		const res = await run('/__fake/last-token?email=x', { method: 'POST' });
+		expect(res.status).toBe(404);
+	});
+});
+
+it('checks session CSRF on public form posts when signed in', async () => {
+	const csrf = 'csrf_test_0123456789';
+	const handle = makeHandle(() => ({
+		...readConfig({ CONSOLE_DATA: 'live-fake' }),
+		account: {
+			fetch: async () => Response.json({ csrf, needs: null, workspaces: [] })
+		}
+	}));
+	const url = new URL('http://localhost/verify?/confirm');
+	const resolve = vi.fn(async () => new Response('page'));
+	const run = (body: string, cookie?: string) =>
+		handle({
+			event: {
+				...event(cookie),
+				url,
+				request: new Request(url, {
+					method: 'POST',
+					headers: {
+						'content-type': 'application/x-www-form-urlencoded',
+						'content-length': String(body.length)
+					},
+					body
+				}),
+				getClientAddress: () => '127.0.0.1',
+				route: { id: '/(auth)/verify' }
+			},
+			resolve
+		});
+
+	expect((await run('token=test', 'test-session')).status).toBe(403);
+	expect(resolve).not.toHaveBeenCalled();
+	expect((await run(`token=test&_csrf=${csrf}`, 'test-session')).status).toBe(200);
+	expect((await run('token=test')).status).toBe(200);
+});
+
+it('refuses requests when the legacy mode disagrees with the selected data mode', async () => {
+	const handle = makeHandle(() => readConfig({ CONSOLE_DATA: 'live-fake', CONSOLE_MODE: 'demo' }));
+	const resolve = vi.fn(async () => new Response('page'));
+	expect((await handle({ event: event(), resolve })).status).toBe(503);
+	expect(resolve).not.toHaveBeenCalled();
 });

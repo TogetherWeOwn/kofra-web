@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Csrf from '#lib/components/account/Csrf.svelte';
 	import { resolve } from '$app/paths';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import PlanSummary from '#lib/components/PlanSummary.svelte';
@@ -29,6 +30,7 @@
 </section>
 
 <form class="card pad form" method="POST">
+	<Csrf />
 	<div class="field">
 		<label class="check">
 			<input

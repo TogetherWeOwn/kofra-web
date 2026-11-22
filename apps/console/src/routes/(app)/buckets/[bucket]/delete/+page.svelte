@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Csrf from '#lib/components/account/Csrf.svelte';
 	import { bucketHref, stopUploadsAction } from '#lib/links.js';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import Notice from '#lib/components/Notice.svelte';
@@ -45,6 +46,7 @@
 	</Notice>
 	{#if data.uploads}
 		<form class="card pad form" method="POST" action={stopUploadsAction(name)}>
+			<Csrf />
 			<p>
 				{data.uploads} upload{data.uploads === 1 ? ' was' : 's were'} started in this bucket more than
 				13 hours ago and never finished, for example when a page was closed during an upload. Stopping
@@ -68,6 +70,7 @@
 		<PlanSummary plan={data.plan} />
 	</section>
 	<form class="card pad form" method="POST">
+		<Csrf />
 		<div class="field">
 			<label for="confirm">Type <code>{name}</code> to confirm</label>
 			<input

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Csrf from '#lib/components/account/Csrf.svelte';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import Notice from '#lib/components/Notice.svelte';
 	import ProblemNotice from '#lib/components/ProblemNotice.svelte';
@@ -66,6 +67,7 @@
 	</section>
 
 	<form class="card pad form" method="POST">
+		<Csrf />
 		<input type="hidden" name="token" value={data.token} />
 		<input type="hidden" name="prefix" value={data.prefix} />
 		{#each data.items as item (item.key)}

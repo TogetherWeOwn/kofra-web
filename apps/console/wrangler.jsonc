@@ -13,7 +13,9 @@
 		// needs the settings, secrets and service binding listed in
 		// docs/console-owner-workspace.md. Any other value, or a missing setting, makes every
 		// page answer 503 (see src/lib/server/config.ts), so a build never serves real data
-		// without its sign-in.
+		// without its sign-in. "live" serves customer workspaces through the account service
+		// and the management API (both private service bindings) and needs an assertion key;
+		// "live-fake" uses the account service's in-memory fake and refuses non-loopback hosts.
 		"CONSOLE_DATA": "demo",
 		// "off" or "test". "test" also needs the STRIPE_SECRET_KEY secret (a test-mode key) and
 		// STRIPE_PRICE_ID; see src/lib/server/stripe.ts. Always off in tenant0.
