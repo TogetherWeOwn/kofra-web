@@ -38,7 +38,7 @@ const TENANT0_VARS = {
 	WORKSPACE_NAME: 'Owner workspace',
 	PROTECTED_BUCKETS: 'nntune'
 };
-const liveApi = process.env.KOFRA_API_DIR;
+const liveApi = process.env.KOFRA_API_DIR ?? process.env.KOFRA_E2E_REMOTE_API;
 const vars = (extra: Record<string, string> = {}) =>
 	Object.entries({ ...TENANT0_VARS, ...extra })
 		.map(([k, v]) => `--var '${k}:${v}'`)
@@ -76,6 +76,9 @@ export default defineConfig({
 						// One database for every test, read by the tests: one at a time.
 						fullyParallel: false,
 						workers: 1,
+						// Against a deployed API every step crosses the network.
+						timeout: 120_000,
+						expect: { timeout: 20_000 },
 						use: { baseURL: 'http://localhost:4176' }
 					}
 				]

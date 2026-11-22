@@ -16,24 +16,18 @@ const RUN = randomBytes(3).toString('hex');
 const PW = `live ${randomBytes(9).toString('base64url')} password`;
 const addr = (local: string) => `${local}.${RUN}${'@'}example.com`;
 
+// A deployed API's database (see live-servers.ts), or the local one.
+const REMOTE_D1 = process.env.KOFRA_E2E_REMOTE_D1;
+
 function sql(command: string): Record<string, unknown>[] {
-	const out = execFileSync(
-		wrangler,
-		[
-			'd1',
-			'execute',
-			'DB',
-			'--local',
-			'--persist-to',
-			STATE,
-			'-c',
-			'wrangler.toml',
-			'--json',
-			'--command',
-			command
-		],
-		{ cwd: API, env: { ...process.env, CI: '1' }, stdio: ['ignore', 'pipe', 'ignore'] }
-	).toString();
+	const where = REMOTE_D1
+		? [REMOTE_D1, '--remote']
+		: ['DB', '--local', '--persist-to', STATE, '-c', 'wrangler.toml'];
+	const out = execFileSync(wrangler, ['d1', 'execute', ...where, '--json', '--command', command], {
+		cwd: REMOTE_D1 ? path.resolve(import.meta.dirname, '..') : API,
+		env: { ...process.env, CI: '1' },
+		stdio: ['ignore', 'pipe', 'ignore']
+	}).toString();
 	return (JSON.parse(out) as { results: Record<string, unknown>[] }[])[0]?.results ?? [];
 }
 
@@ -140,7 +134,7 @@ test('invite, verification, workspace on the real service', async ({ page }) => 
 	// The verification link never signed anyone in, and it is spent.
 	expect(
 		sql(
-			`SELECT count(*) AS n FROM account_email_tokens WHERE used_at IS NULL AND purpose = 'verify'`
+			`SELECT count(*) AS n FROM account_email_tokens WHERE used_at IS NULL AND purpose = 'verify' AND email = '${addr('owner')}'`
 		)[0]?.n
 	).toBe(0);
 });
@@ -242,6 +236,8 @@ test('a passkey is registered and signs in, checked by the real WebAuthn verifie
 	browserName
 }) => {
 	test.skip(browserName !== 'chromium', 'The virtual authenticator uses Chromium CDP.');
+	// A deployed API's passkeys belong to its own console host, not to this local one.
+	test.skip(!!REMOTE_D1, 'Passkeys are bound to the deployed console host.');
 	const cdp = await page.context().newCDPSession(page);
 	await cdp.send('WebAuthn.enable');
 	await cdp.send('WebAuthn.addVirtualAuthenticator', {

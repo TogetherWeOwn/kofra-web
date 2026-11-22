@@ -9,15 +9,22 @@
 // Keys are random per run, written to the two git-ignored .dev.vars files
 // and never printed. Mail stays in the API's local outbox table, which the
 // tests read with `wrangler d1 execute` (see accounts-live.test.ts).
+//
+// With KOFRA_E2E_REMOTE_API (the name of a deployed API Worker) the console
+// still runs here, but its bindings reach that deployed Worker (remote
+// bindings) and its database (KOFRA_E2E_REMOTE_D1, read by the tests); the
+// deployed Worker's assertion key comes in KOFRA_E2E_ASSERTION_KEY. Only for a
+// staging copy whose mail for test addresses goes to its outbox.
 import { execFileSync, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const port = Number(process.argv[2] ?? 4176);
+const remote = process.env.KOFRA_E2E_REMOTE_API;
 const apiRoot = process.env.KOFRA_API_DIR;
-if (!apiRoot) throw new Error('KOFRA_API_DIR must name a kofra-api checkout');
-const api = path.resolve(apiRoot, 'workers/kofra-api');
+if (!apiRoot && !remote) throw new Error('KOFRA_API_DIR must name a kofra-api checkout');
+const api = path.resolve(apiRoot ?? '.', 'workers/kofra-api');
 const here = path.dirname(new URL(import.meta.url).pathname);
 const consoleDir = path.resolve(here, '..');
 export const LIVE_STATE = path.join(consoleDir, '.wrangler', 'e2e-live');
@@ -27,12 +34,15 @@ rmSync(LIVE_STATE, { recursive: true, force: true });
 mkdirSync(LIVE_STATE, { recursive: true });
 
 const hex = () => randomBytes(32).toString('hex');
-const assertionKey = hex();
-writeFileSync(
-	path.join(api, '.dev.vars'),
-	`ACCOUNT_SECRET_KEY=${hex()}\nASSERTION_KEY=${assertionKey}\nCURSOR_KEY=${hex()}\n`,
-	{ mode: 0o600 }
-);
+const assertionKey = remote ? process.env.KOFRA_E2E_ASSERTION_KEY : hex();
+if (!assertionKey || !/^[a-f0-9]{64}$/.test(assertionKey))
+	throw new Error('KOFRA_E2E_ASSERTION_KEY must hold the deployed API Worker key');
+if (!remote)
+	writeFileSync(
+		path.join(api, '.dev.vars'),
+		`ACCOUNT_SECRET_KEY=${hex()}\nASSERTION_KEY=${assertionKey}\nCURSOR_KEY=${hex()}\n`,
+		{ mode: 0o600 }
+	);
 
 // The console as built, in live mode, bound to the API's Console entry point.
 const gen = path.join(consoleDir, '.svelte-kit/cloudflare/worker/wrangler.json');
@@ -41,9 +51,12 @@ for (const k of ['configPath', 'userConfigPath', 'topLevelName', 'definedEnviron
 	delete cfg[k];
 cfg.name = 'kofra-console-e2e-live';
 cfg.vars = { ...cfg.vars, CONSOLE_DATA: 'live', BILLING: 'off' };
+const service = remote
+	? { service: remote, entrypoint: 'Console', remote: true }
+	: { service: 'kofra-api', entrypoint: 'Console' };
 cfg.services = [
-	{ binding: 'ACCOUNT', service: 'kofra-api', entrypoint: 'Console' },
-	{ binding: 'API', service: 'kofra-api', entrypoint: 'Console' }
+	{ binding: 'ACCOUNT', ...service },
+	{ binding: 'API', ...service }
 ];
 const liveConfig = path.join(path.dirname(gen), 'wrangler.e2e-live.json');
 writeFileSync(liveConfig, JSON.stringify(cfg, null, 2));
@@ -51,11 +64,22 @@ writeFileSync(path.join(path.dirname(gen), '.dev.vars'), `ASSERTION_KEY=${assert
 	mode: 0o600
 });
 
-execFileSync(
-	wrangler,
-	['d1', 'migrations', 'apply', 'DB', '--local', '--persist-to', LIVE_STATE, '-c', 'wrangler.toml'],
-	{ cwd: api, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, CI: '1' } }
-);
+if (!remote)
+	execFileSync(
+		wrangler,
+		[
+			'd1',
+			'migrations',
+			'apply',
+			'DB',
+			'--local',
+			'--persist-to',
+			LIVE_STATE,
+			'-c',
+			'wrangler.toml'
+		],
+		{ cwd: api, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, CI: '1' } }
+	);
 
 const child = spawn(
 	wrangler,
@@ -63,8 +87,7 @@ const child = spawn(
 		'dev',
 		'-c',
 		liveConfig,
-		'-c',
-		path.join(api, 'wrangler.toml'),
+		...(remote ? [] : ['-c', path.join(api, 'wrangler.toml')]),
 		'--ip',
 		'127.0.0.1',
 		'--port',
