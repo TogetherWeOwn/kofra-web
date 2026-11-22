@@ -57,11 +57,11 @@ const cleanup = () => {
 	rmSync(LIVE_STATE, { recursive: true, force: true });
 };
 // From here on, every way out removes the keys: a normal or failed exit (an uncaught error
-// included) and the signals Playwright and Ctrl-C send. Only SIGKILL cannot be caught; the
-// folder is owner-only and git-ignored, and the next run removes it first.
+// included), SIGINT, SIGTERM, SIGHUP (a closed terminal) and SIGQUIT. Only SIGKILL cannot be
+// caught; the folder is owner-only and git-ignored, and the next run removes it first.
 let child: ReturnType<typeof spawn> | undefined = undefined;
 process.on('exit', cleanup);
-for (const signal of ['SIGINT', 'SIGTERM'] as const)
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGQUIT'] as const)
 	process.on(signal, () => {
 		if (child && child.exitCode === null) child.kill('SIGINT');
 		else process.exit(1);
@@ -83,7 +83,8 @@ if (!remote) {
 	const absolute = (key: string, value: string) => {
 		const line = new RegExp(`^${key}\\s*=\\s*"[^"]*"`, 'm');
 		if (!line.test(toml)) throw new Error(`the API Worker configuration has no ${key}`);
-		toml = toml.replace(line, `${key} = ${JSON.stringify(value)}`);
+		// A replacer function: the path is taken literally (no `$&` patterns).
+		toml = toml.replace(line, () => `${key} = ${JSON.stringify(value)}`);
 	};
 	absolute('main', path.join(api, 'entry.mjs'));
 	absolute('migrations_dir', path.resolve(api, '../../migrations'));
