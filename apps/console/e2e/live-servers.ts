@@ -56,43 +56,38 @@ const cleanup = () => {
 	cleaned = true;
 	rmSync(LIVE_STATE, { recursive: true, force: true });
 };
+// From here on, every way out removes the keys: a normal or failed exit (an uncaught error
+// included) and the signals Playwright and Ctrl-C send. Only SIGKILL cannot be caught; the
+// folder is owner-only and git-ignored, and the next run removes it first.
+let child: ReturnType<typeof spawn> | undefined = undefined;
+process.on('exit', cleanup);
+for (const signal of ['SIGINT', 'SIGTERM'] as const)
+	process.on(signal, () => {
+		if (child && child.exitCode === null) child.kill('SIGINT');
+		else process.exit(1);
+		cleanup();
+	});
 
 const hex = () => randomBytes(32).toString('hex');
 const assertionKey = remote ? process.env.KOFRA_E2E_ASSERTION_KEY : hex();
 if (!assertionKey || !/^[a-f0-9]{64}$/.test(assertionKey))
 	throw new Error('KOFRA_E2E_ASSERTION_KEY must hold the deployed API Worker key');
 
-// The API Worker's configuration, copied with absolute paths into the state folder, with its
-// keys beside it. Its name, date, database and [vars] are read from its wrangler.toml.
+// The API Worker's configuration, copied as it is into the state folder with only its two
+// paths made absolute, and its keys beside it.
 const apiDir = path.join(LIVE_STATE, 'api');
-const apiConfig = path.join(apiDir, 'wrangler.json');
+const apiConfig = path.join(apiDir, 'wrangler.toml');
 if (!remote) {
 	mkdirSync(apiDir, { recursive: true });
-	const toml = readFileSync(path.join(api, 'wrangler.toml'), 'utf8');
-	const field = (name: string) => new RegExp(`^${name}\\s*=\\s*"([^"]+)"`, 'm').exec(toml)?.[1];
-	const varsBlock = toml.split(/^\[vars\]\s*$/m)[1]?.split(/^\[/m)[0] ?? '';
-	const vars = Object.fromEntries(
-		[...varsBlock.matchAll(/^([A-Z0-9_]+)\s*=\s*"([^"]*)"/gm)].map((m) => [m[1], m[2]])
-	);
-	if (!field('name') || !field('compatibility_date') || !field('database_id') || !vars.KOFRA_ENV)
-		throw new Error('could not read the API Worker configuration');
-	writeFileSync(
-		apiConfig,
-		JSON.stringify({
-			name: field('name'),
-			main: path.join(api, 'entry.mjs'),
-			compatibility_date: field('compatibility_date'),
-			d1_databases: [
-				{
-					binding: 'DB',
-					database_name: field('database_name'),
-					database_id: field('database_id'),
-					migrations_dir: path.resolve(api, '../../migrations')
-				}
-			],
-			vars
-		})
-	);
+	let toml = readFileSync(path.join(api, 'wrangler.toml'), 'utf8');
+	const absolute = (key: string, value: string) => {
+		const line = new RegExp(`^${key}\\s*=\\s*"[^"]*"`, 'm');
+		if (!line.test(toml)) throw new Error(`the API Worker configuration has no ${key}`);
+		toml = toml.replace(line, `${key} = ${JSON.stringify(value)}`);
+	};
+	absolute('main', path.join(api, 'entry.mjs'));
+	absolute('migrations_dir', path.resolve(api, '../../migrations'));
+	writeFileSync(apiConfig, toml);
 	writeFileSync(
 		path.join(apiDir, '.dev.vars'),
 		`ACCOUNT_SECRET_KEY=${hex()}\nASSERTION_KEY=${assertionKey}\nCURSOR_KEY=${hex()}\n`,
@@ -127,19 +122,14 @@ writeFileSync(path.join(consoleState, '.dev.vars'), `ASSERTION_KEY=${assertionKe
 });
 
 const env = { ...process.env, CI: '1' };
-try {
-	if (!remote)
-		execFileSync(
-			wrangler,
-			['d1', 'migrations', 'apply', 'DB', '--local', '--persist-to', LIVE_STATE, '-c', apiConfig],
-			{ stdio: ['ignore', 'ignore', 'inherit'], env }
-		);
-} catch (err) {
-	cleanup();
-	throw err;
-}
+if (!remote)
+	execFileSync(
+		wrangler,
+		['d1', 'migrations', 'apply', 'DB', '--local', '--persist-to', LIVE_STATE, '-c', apiConfig],
+		{ stdio: ['ignore', 'ignore', 'inherit'], env }
+	);
 
-const child = spawn(
+child = spawn(
 	wrangler,
 	[
 		'dev',
@@ -157,14 +147,8 @@ const child = spawn(
 	],
 	{ stdio: 'inherit', env }
 );
-// Playwright stops this server with SIGTERM (gracefulShutdown in playwright.config.ts).
-const stop = () => {
-	child.kill('SIGINT');
-	cleanup();
-};
-process.on('SIGINT', stop);
-process.on('SIGTERM', stop);
-child.on('exit', (code) => {
-	cleanup();
-	process.exit(code ?? 0);
+child.on('error', (err) => {
+	console.error(`live servers: ${err.message}`);
+	process.exit(1);
 });
+child.on('exit', (code) => process.exit(code ?? 0));

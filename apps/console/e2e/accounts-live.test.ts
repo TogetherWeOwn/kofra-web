@@ -35,11 +35,16 @@ function sql(command: string): Record<string, unknown>[] {
 const userOf = (email: string) =>
 	`(SELECT id FROM account_users WHERE email_key = '${email.toLowerCase()}')`;
 
-// Remove what this run made (it may run against a shared staging database): the workspaces
-// by the IDs read first, since members point at them.
+// Remove what this run made (it may run against a shared staging database): its own
+// addresses exactly, and only workspaces whose members are all its own, by ID.
 test.afterAll(() => {
-	const mine = `(SELECT id FROM account_users WHERE email_key LIKE '%.${RUN}@example.com')`;
-	const ids = sql(`SELECT DISTINCT workspace_id AS id FROM api_members WHERE user_id IN ${mine}`)
+	const addresses = ['owner', 'wrong', 'someone-else', 'totp', 'tokens', 'reset', 'passkey']
+		.map((local) => `'${addr(local).toLowerCase()}'`)
+		.join(', ');
+	const mine = `(SELECT id FROM account_users WHERE email_key IN (${addresses}))`;
+	const ids = sql(
+		`SELECT DISTINCT m.workspace_id AS id FROM api_members m WHERE m.user_id IN ${mine} AND NOT EXISTS (SELECT 1 FROM api_members o WHERE o.workspace_id = m.workspace_id AND o.user_id NOT IN ${mine})`
+	)
 		.map((r) => String(r.id))
 		.filter((id) => /^ws_[a-z0-9]+$/.test(id));
 	const ws = `(${ids.map((id) => `'${id}'`).join(', ') || "''"})`;
@@ -53,8 +58,8 @@ test.afterAll(() => {
 			`DELETE FROM api_members WHERE workspace_id IN ${ws}`,
 			`DELETE FROM api_workspaces WHERE id IN ${ws}`,
 			`DELETE FROM account_users WHERE id IN ${mine}`,
-			`DELETE FROM account_invites WHERE email_key LIKE '%.${RUN}@example.com'`,
-			`DELETE FROM account_mail_outbox WHERE to_addr LIKE '%.${RUN}@example.com'`
+			`DELETE FROM account_invites WHERE email_key IN (${addresses})`,
+			`DELETE FROM account_mail_outbox WHERE to_addr IN (${addresses})`
 		].join('; ')
 	);
 	expect(sql(`SELECT count(*) AS n FROM account_users WHERE id IN ${mine}`)[0]?.n).toBe(0);
