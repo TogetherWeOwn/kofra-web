@@ -18,11 +18,13 @@
 		defaultName,
 		removeId,
 		needsPassword,
+		recoveryCodesLeft,
 		codesReplaced = false,
 		csrf,
 		result
 	}: {
-		/** Another card issued or voided the recovery codes: hide any set shown here. */
+		recoveryCodesLeft: number;
+		/** Another card issued recovery codes: hide any set shown here. */
 		codesReplaced?: boolean;
 		passkeys: Passkey[];
 		/** No second factor yet: the first one needs the current password. */
@@ -45,7 +47,7 @@
 	let problem = $state('');
 	let codes = $state<string[] | null>(null);
 	$effect(() => {
-		if (codesReplaced) codes = null;
+		if (codesReplaced || recoveryCodesLeft === 0) codes = null;
 	});
 
 	onMount(() => {
@@ -97,7 +99,7 @@
 <section class="card pad" aria-labelledby="passkeys">
 	<h2 id="passkeys">Passkeys</h2>
 	<p>Sign in with your fingerprint, face or device PIN instead of a password.</p>
-	{#if codes}<RecoveryReveal {codes} />{/if}
+	{#if codes && recoveryCodesLeft > 0}<RecoveryReveal {codes} />{/if}
 	{#if result?.problem}<ProblemNotice problem={result.problem} />{/if}
 	{#if result?.saved}<Notice tone="success" live><p>Passkey renamed.</p></Notice>{/if}
 	{#if passkeys.length}

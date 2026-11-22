@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button } from '@kofra/ui';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import type { ShownProblem } from '#lib/types.js';
 	import CopyField from '../CopyField.svelte';
@@ -28,6 +29,14 @@
 			problem?: ShownProblem;
 		} | null;
 	} = $props();
+
+	const accountUrl = resolve('/(app)/account');
+
+	function discardSetup(event: MouseEvent) {
+		if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+		event.preventDefault();
+		void goto(resolve('/(app)/account#two-step'), { refreshAll: true });
+	}
 </script>
 
 <section class="card pad" aria-labelledby="two-step">
@@ -44,7 +53,7 @@
 			<ActionForm action="?/totpDisable" {csrf} {result}>
 				<div class="actions">
 					<Button type="submit">Turn off</Button>
-					<a href="{resolve('/(app)/account')}#two-step">Cancel</a>
+					<a href="{accountUrl}?resetSetup=1#two-step" onclick={discardSetup}>Cancel</a>
 				</div>
 			</ActionForm>
 		{:else}
@@ -76,7 +85,7 @@
 			{/if}
 			<div class="actions"><Button type="submit">Confirm setup</Button></div>
 		</ActionForm>
-		<p><a href="{resolve('/(app)/account')}#two-step">Start over</a></p>
+		<p><a href="{accountUrl}?resetSetup=1#two-step" onclick={discardSetup}>Start over</a></p>
 	{:else}
 		<ActionForm action="?/totpBegin" {csrf} {result}>
 			<div class="actions"><Button type="submit">Set up</Button></div>

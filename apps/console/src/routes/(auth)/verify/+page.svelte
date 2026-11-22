@@ -18,7 +18,11 @@
 	<Notice tone="success" live><p>Your new email address is confirmed.</p></Notice>
 	<p><a href={resolve('/(auth)/sign-in')}>Sign in</a></p>
 {:else if data.token && !invalid && !form?.sent && !form?.resend}
-	<ActionForm action={'?/confirm&' + new URLSearchParams({ token: data.token })} result={form}>
+	<ActionForm
+		action={'?/confirm&' + new URLSearchParams({ token: data.token })}
+		csrf={data.csrf}
+		result={form}
+	>
 		<input type="hidden" name="token" value={data.token} />
 		<Field
 			name="password"
@@ -36,7 +40,7 @@
 			We sent a link to {email}. Open it to confirm your email address.
 		</p>{/if}
 	{#if form?.sent}<Notice tone="success" live><p>Sent. It can take a minute.</p></Notice>{/if}
-	<ActionForm action={'?/resend&' + new URLSearchParams({ email })} result={form}>
+	<ActionForm action={'?/resend&' + new URLSearchParams({ email })} csrf={data.csrf} result={form}>
 		{#if data.email && !invalid && form?.field !== 'email'}
 			<input type="hidden" name="email" value={email} />
 		{:else}

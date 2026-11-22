@@ -11,7 +11,7 @@
 <svelte:head><title>Choose a new password: Kofra console</title></svelte:head>
 <h1>Choose a new password</h1>
 {#if data.ready}
-	<ActionForm result={form}>
+	<ActionForm csrf={data.csrf} result={form}>
 		<Field
 			name="password"
 			label="New password"

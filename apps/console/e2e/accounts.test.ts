@@ -168,6 +168,12 @@ test('registers a passkey and uses it to sign in', async ({ page, browserName })
 	await page.getByRole('button', { name: 'Set up', exact: true }).click();
 	await expect(page.getByText('Scan the QR code')).toBeVisible();
 	await expect(page.locator('pre.code-block').first()).toHaveText(first!);
+	await page.getByRole('link', { name: 'Start over' }).click();
+	await expect(page.locator('#authenticator-secret')).toHaveCount(0);
+	await expect(page.getByRole('img', { name: 'QR code for your authenticator app' })).toHaveCount(
+		0
+	);
+	await expect(page.getByRole('button', { name: 'Set up', exact: true })).toBeVisible();
 	// A new set replaces the old one: only the new set is shown.
 	await page.getByRole('button', { name: 'Create new codes' }).click();
 	await expect(page.locator('pre.code-block')).toHaveCount(1);
@@ -178,6 +184,37 @@ test('registers a passkey and uses it to sign in', async ({ page, browserName })
 	await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 	await page.getByRole('button', { name: 'Sign in with a passkey' }).click();
 	await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+});
+
+test('removing the only passkey hides the revealed recovery codes', async ({
+	page,
+	browserName
+}) => {
+	test.skip(browserName !== 'chromium', 'The virtual authenticator uses Chromium CDP.');
+	const cdp = await page.context().newCDPSession(page);
+	await cdp.send('WebAuthn.enable');
+	await cdp.send('WebAuthn.addVirtualAuthenticator', {
+		options: {
+			protocol: 'ctap2',
+			transport: 'internal',
+			hasResidentKey: true,
+			hasUserVerification: true,
+			isUserVerified: true
+		}
+	});
+
+	await login(page, 'recovery@example.com');
+	await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+	await page.goto('/account');
+	await page.getByRole('button', { name: 'Add a passkey' }).click();
+	await page.getByLabel('Passkey name').fill('Temporary passkey');
+	await page.locator('#new-passkey-password').fill(existingPassword);
+	await page.getByRole('button', { name: 'Create passkey' }).click();
+	await expect(page.locator('pre.code-block')).toBeVisible();
+	await page.getByRole('link', { name: 'Remove Temporary passkey' }).click();
+	await page.getByRole('button', { name: 'Remove passkey' }).click();
+	await expect(page.getByText('No passkeys yet.')).toBeVisible();
+	await expect(page.locator('pre.code-block')).toHaveCount(0);
 });
 
 test('a passkey-only account completes the second step with a recovery code', async ({
@@ -226,6 +263,7 @@ test('an address change is confirmed without a password and the new address sign
 	await expect(page.getByText('We sent a link to changed@example.com')).toBeVisible();
 	await page.goto(`/verify?token=${await token(page, 'changed@example.com')}`);
 	await page.reload();
+	await expect(page.locator('input[name="_csrf"]')).toHaveValue(/.+/);
 	await page.getByRole('button', { name: 'Confirm email address' }).click();
 	await expect(page.getByText('Your new email address is confirmed.')).toBeVisible();
 	await page.goto('/sign-out');

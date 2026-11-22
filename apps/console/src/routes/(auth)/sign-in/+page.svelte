@@ -17,7 +17,7 @@
 </svelte:head>
 
 <h1>Sign in</h1>
-{#if data.mode === 'demo'}
+{#if data.mode !== 'live' && data.mode !== 'live-fake'}
 	<p>
 		Sign-in is not available yet. Accounts with email and password, passkeys and two-factor
 		authentication come with the first release.
@@ -34,7 +34,7 @@
 	{#if data.reset}
 		<Notice tone="success"><p>Your password was changed. Sign in with the new one.</p></Notice>
 	{/if}
-	<ActionForm result={form}>
+	<ActionForm csrf={data.csrf} result={form}>
 		<Field
 			name="email"
 			label="Email"

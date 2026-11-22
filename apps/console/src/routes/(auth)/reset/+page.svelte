@@ -4,7 +4,7 @@
 	import ActionForm from '#lib/components/account/ActionForm.svelte';
 	import Field from '#lib/components/account/Field.svelte';
 
-	let { form } = $props();
+	let { data, form } = $props();
 </script>
 
 <svelte:head><title>Reset your password: Kofra console</title></svelte:head>
@@ -14,7 +14,7 @@
 		<p>If an account exists for that address, we sent a link. It works for 30 minutes.</p>
 	</Notice>
 {:else}
-	<ActionForm result={form}>
+	<ActionForm csrf={data.csrf} result={form}>
 		<Field
 			name="email"
 			label="Email"

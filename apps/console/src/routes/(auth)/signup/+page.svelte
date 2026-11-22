@@ -11,7 +11,7 @@
 {#if !data.invite}
 	<p>Kofra is invite-only for now. Ask the person who invited you for a new link.</p>
 {:else}
-	<ActionForm result={form}>
+	<ActionForm csrf={data.csrf} result={form}>
 		<Field name="name" label="Name" autocomplete="name" defaultValue={form?.name ?? ''} />
 		<Field
 			name="email"

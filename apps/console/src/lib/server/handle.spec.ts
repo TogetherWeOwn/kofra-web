@@ -196,3 +196,45 @@ describe('live-fake stage gating', () => {
 		expect(res.status).toBe(404);
 	});
 });
+
+it('checks session CSRF on public form posts when signed in', async () => {
+	const csrf = 'csrf_test_0123456789';
+	const handle = makeHandle(() => ({
+		...readConfig({ CONSOLE_DATA: 'live-fake' }),
+		account: {
+			fetch: async () => Response.json({ csrf, needs: null, workspaces: [] })
+		}
+	}));
+	const url = new URL('http://localhost/verify?/confirm');
+	const resolve = vi.fn(async () => new Response('page'));
+	const run = (body: string, cookie?: string) =>
+		handle({
+			event: {
+				...event(cookie),
+				url,
+				request: new Request(url, {
+					method: 'POST',
+					headers: {
+						'content-type': 'application/x-www-form-urlencoded',
+						'content-length': String(body.length)
+					},
+					body
+				}),
+				getClientAddress: () => '127.0.0.1',
+				route: { id: '/(auth)/verify' }
+			},
+			resolve
+		});
+
+	expect((await run('token=test', 'test-session')).status).toBe(403);
+	expect(resolve).not.toHaveBeenCalled();
+	expect((await run(`token=test&_csrf=${csrf}`, 'test-session')).status).toBe(200);
+	expect((await run('token=test')).status).toBe(200);
+});
+
+it('refuses requests when the legacy mode disagrees with the selected data mode', async () => {
+	const handle = makeHandle(() => readConfig({ CONSOLE_DATA: 'live-fake', CONSOLE_MODE: 'demo' }));
+	const resolve = vi.fn(async () => new Response('page'));
+	expect((await handle({ event: event(), resolve })).status).toBe(503);
+	expect(resolve).not.toHaveBeenCalled();
+});

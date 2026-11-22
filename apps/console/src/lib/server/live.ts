@@ -144,7 +144,7 @@ export async function handleLive(
 			if (!Number.isFinite(length) || length > MAX_ACCOUNT_BODY)
 				return finish(new Response('This request is too large.', { status: 413 }));
 		}
-		if (!read && (!publicRoute || (passkey && me))) {
+		if (!read && (!publicRoute || me)) {
 			if (!me) return finish(new Response('This request was refused.', { status: 403 }));
 			const type = event.request.headers.get('content-type') ?? '';
 			let csrf: FormDataEntryValue | null = event.request.headers.get('x-kofra-csrf');
