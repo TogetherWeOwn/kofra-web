@@ -1,6 +1,5 @@
 import { KofraError } from '@kofra/api';
 import { error, type RequestEvent } from '@sveltejs/kit';
-import { loadFailed } from './api.js';
 
 export interface ApiToken {
 	id: string;
@@ -72,8 +71,9 @@ const MAX_PAGES = 10;
 
 /**
  * The API's `tokens.list`, `tokens.create` and `tokens.revoke` over the live transport. The
- * vendored SDK predates these operations, so they are called directly; an error answer
- * becomes a `KofraError`, as from the SDK, and reaches the page the same way.
+ * vendored SDK predates these operations, so they are called directly. An error answer throws
+ * a `KofraError`, as the SDK does, so each route handles it as it handles SDK errors: an error
+ * page for a load, the form's problem for an action.
  */
 export function liveTokensPort(apiFetch: NonNullable<App.Locals['apiFetch']>): TokensPort {
 	const call = async (method: string, path: string, body?: unknown, key?: string) => {
@@ -89,22 +89,20 @@ export function liveTokensPort(apiFetch: NonNullable<App.Locals['apiFetch']>): T
 		const data: unknown = await r.json().catch(() => null);
 		if (!r.ok) {
 			const p = (data ?? {}) as Record<string, unknown>;
-			loadFailed(
-				new KofraError({
-					type: typeof p.type === 'string' ? p.type : 'about:blank',
-					status: r.status,
-					code: typeof p.code === 'string' ? p.code : 'internal_error',
-					title: typeof p.title === 'string' ? p.title : 'Error',
-					detail: typeof p.detail === 'string' ? p.detail : 'The request was refused.',
-					hint: typeof p.hint === 'string' ? p.hint : '',
-					docs_url: typeof p.docs_url === 'string' ? p.docs_url : '',
-					request_id:
-						typeof p.request_id === 'string'
-							? p.request_id
-							: (r.headers.get('Kofra-Request-Id') ?? ''),
-					retryable: p.retryable === true
-				})
-			);
+			throw new KofraError({
+				type: typeof p.type === 'string' ? p.type : 'about:blank',
+				status: r.status,
+				code: typeof p.code === 'string' ? p.code : 'internal_error',
+				title: typeof p.title === 'string' ? p.title : 'Error',
+				detail: typeof p.detail === 'string' ? p.detail : 'The request was refused.',
+				hint: typeof p.hint === 'string' ? p.hint : '',
+				docs_url: typeof p.docs_url === 'string' ? p.docs_url : '',
+				request_id:
+					typeof p.request_id === 'string'
+						? p.request_id
+						: (r.headers.get('Kofra-Request-Id') ?? ''),
+				retryable: p.retryable === true
+			});
 		}
 		return data;
 	};

@@ -125,6 +125,7 @@ test('invite, verification, workspace on the real service', async ({ page }) => 
 	await page.getByLabel('Email').fill(addr('wrong'));
 	await page.getByLabel('Password').fill(PW);
 	await page.getByRole('button', { name: 'Create account' }).click();
+	await expect(page.getByText('Kofra is invite-only for now.', { exact: false })).toBeVisible();
 	await expect(page.getByRole('heading', { name: 'Check your inbox' })).toHaveCount(0);
 
 	await newOwner(page, 'owner');

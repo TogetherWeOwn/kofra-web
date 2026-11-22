@@ -30,13 +30,11 @@
 		workspaceReady?: boolean;
 		children: Snippet;
 	} = $props();
-	// API tokens need the API's token endpoints, which only the sample workspaces stand in
-	// for until they ship.
 	const nav = $derived(
 		NAV.filter(
 			(e) =>
 				(ws.features.billing || e.label !== 'Billing') &&
-				(ws.features.sample || e.label !== 'API tokens')
+				(ws.features.apiTokens || e.label !== 'API tokens')
 		)
 	);
 

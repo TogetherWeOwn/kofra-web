@@ -1,3 +1,4 @@
+import { KofraError } from '@kofra/api';
 import { isHttpError } from '@sveltejs/kit';
 import { describe, expect, it } from 'vitest';
 import { liveTokensPort } from './api-tokens.js';
@@ -58,7 +59,7 @@ describe('API tokens in live mode', () => {
 		expect(seen[1]).toMatchObject({ method: 'DELETE', path: '/v1/tokens/tok_c' });
 	});
 
-	it('turns a refusal into an error page with the API status', async () => {
+	it('turns a refusal into a KofraError with the API status', async () => {
 		const { port } = upstream([
 			Response.json(
 				{ status: 403, code: 'role_forbidden', title: 'Forbidden', detail: 'Your role cannot.' },
@@ -66,10 +67,12 @@ describe('API tokens in live mode', () => {
 			)
 		]);
 		const err = await port.create({ name: 'x', scopes: ['keys:write'] }).catch((e: unknown) => e);
-		expect(isHttpError(err) && err.status).toBe(403);
-		expect(isHttpError(err) && err.body).toMatchObject({
-			message: 'Your role cannot.',
-			requestId: 'req_1'
+		expect(err).toBeInstanceOf(KofraError);
+		expect((err as KofraError).status).toBe(403);
+		expect((err as KofraError).problem).toMatchObject({
+			code: 'role_forbidden',
+			detail: 'Your role cannot.',
+			request_id: 'req_1'
 		});
 	});
 

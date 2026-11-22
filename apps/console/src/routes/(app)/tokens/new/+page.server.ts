@@ -2,6 +2,7 @@ import { resolve } from '$app/paths';
 import { fail } from '@sveltejs/kit';
 import { field, requireFreshStep } from '#lib/server/account/actions.js';
 import { tokensPort } from '#lib/server/api-tokens.js';
+import { actionFailed } from '#lib/server/api.js';
 import { scopeGroups } from '#lib/token-scopes.js';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -50,13 +51,18 @@ export const actions: Actions = {
 			.split(/\r?\n/)
 			.map((address) => address.trim())
 			.filter(Boolean);
-		const created = await port.create({
-			name,
-			scopes,
-			buckets: bucketList.length ? bucketList : undefined,
-			allowed_ips: ipList.length ? ipList : undefined,
-			expires_in_days: expiry === 'never' ? undefined : Number(expiry)
-		});
-		return { created };
+		try {
+			const created = await port.create({
+				name,
+				scopes,
+				buckets: bucketList.length ? bucketList : undefined,
+				allowed_ips: ipList.length ? ipList : undefined,
+				expires_in_days: expiry === 'never' ? undefined : Number(expiry)
+			});
+			return { created };
+		} catch (err) {
+			// A refusal from the API goes back to the form with what was entered.
+			return actionFailed(err, { input });
+		}
 	}
 };
