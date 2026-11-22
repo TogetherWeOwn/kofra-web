@@ -20,7 +20,9 @@ browser ──(Access at the edge)──► console Worker ──(service bindin
   - `tenant0` requires Cloudflare Access settings and storage credentials from section 3.
     It uses the `STORAGE` binding or, for local tests, a loopback HTTP `STORAGE_ORIGIN`.
   - `live` requires the `ACCOUNT` and `API` service bindings and an `ASSERTION_KEY` of
-    exactly 64 lowercase hexadecimal characters.
+    exactly 64 lowercase hexadecimal characters. Both bindings name the Kofra API Worker's
+    `Console` entry point, and the key is the same as that Worker's `ASSERTION_KEY`. API tokens
+    are read and changed through the API (`tokens.list`, `tokens.create`, `tokens.revoke`).
   - `live-fake` uses an in-memory account service and sample workspace data without
     bindings. It accepts only loopback requests and serves passkeys on `localhost`.
 - An unsupported mode or missing or invalid required configuration makes the console

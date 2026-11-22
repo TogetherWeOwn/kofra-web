@@ -73,10 +73,19 @@
 			<CopyField id="authenticator-secret" label="Setup key" value={result.secret} />
 		{/if}
 		<ActionForm action="?/totpConfirm" {csrf} {result}>
-			<Field name="code" label="Code" autocomplete="one-time-code" inputmode="numeric" {result} />
+			<Field
+				name="code"
+				id="totp-code"
+				label="Code"
+				autocomplete="one-time-code"
+				inputmode="numeric"
+				{result}
+			/>
 			{#if !hasPasskeys}
+				<!-- Its own ID: the password section on this page already has "password". -->
 				<Field
 					name="password"
+					id="totp-password"
 					label="Current password"
 					type="password"
 					autocomplete="current-password"

@@ -22,6 +22,11 @@ declare global {
 			member: WorkspaceSummary | null;
 			/** The API client: the SDK, over the demo, tenant0 or live transport. */
 			api: Kofra;
+			/**
+			 * Live only: the same signed transport as `api`, for operations the vendored SDK
+			 * does not have yet (API tokens). `path` is an API path such as `/v1/tokens`.
+			 */
+			apiFetch?: (path: string, init?: RequestInit) => Promise<Response>;
 			/** Files in buckets: listing, uploads, deletes (not in the API contract yet). */
 			files: FileStore;
 			/** What this workspace's data source can show. */

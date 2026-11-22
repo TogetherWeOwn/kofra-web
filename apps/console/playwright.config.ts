@@ -14,6 +14,9 @@ import { defineConfig } from '@playwright/test';
 //   refused.
 // - 4175: live-fake mode: the account service's in-memory fake (loopback only), for the
 //   sign-in and account journeys. Served on localhost: WebAuthn refuses IP addresses as RP IDs.
+// - 4176 (only with KOFRA_API_DIR, a kofra-api checkout whose Worker is built): live mode on
+//   the real account service and API (the Kofra API Worker on a fresh local D1), over the
+//   same service bindings as deployed (e2e/live-servers.ts).
 const prebuilt = process.env.KOFRA_E2E_PREBUILT === '1';
 // Without a prebuilt output, the first server builds once and leaves a marker for this run;
 // the tenant0 servers wait for it, so none of them starts from an older build.
@@ -35,6 +38,7 @@ const TENANT0_VARS = {
 	WORKSPACE_NAME: 'Owner workspace',
 	PROTECTED_BUCKETS: 'nntune'
 };
+const liveApi = process.env.KOFRA_API_DIR;
 const vars = (extra: Record<string, string> = {}) =>
 	Object.entries({ ...TENANT0_VARS, ...extra })
 		.map(([k, v]) => `--var '${k}:${v}'`)
@@ -48,7 +52,7 @@ export default defineConfig({
 	projects: [
 		{
 			name: 'demo',
-			testIgnore: /(tenant0|accounts)\.test\.ts/,
+			testIgnore: /(tenant0|accounts|accounts-live)\.test\.ts/,
 			use: { baseURL: 'http://127.0.0.1:4174' }
 		},
 		{
@@ -63,7 +67,19 @@ export default defineConfig({
 			name: 'live-fake',
 			testMatch: /accounts\.test\.ts/,
 			use: { baseURL: 'http://localhost:4175' }
-		}
+		},
+		...(liveApi
+			? [
+					{
+						name: 'live',
+						testMatch: /accounts-live\.test\.ts/,
+						// One database for every test, read by the tests: one at a time.
+						fullyParallel: false,
+						workers: 1,
+						use: { baseURL: 'http://localhost:4176' }
+					}
+				]
+			: [])
 	],
 	webServer: [
 		{
@@ -96,6 +112,16 @@ export default defineConfig({
 			url: 'http://127.0.0.1:4175/favicon.svg',
 			reuseExistingServer: false,
 			timeout: 240_000
-		}
+		},
+		...(liveApi
+			? [
+					{
+						command: `${afterBuild}node e2e/live-servers.ts 4176`,
+						url: 'http://127.0.0.1:4176/favicon.svg',
+						reuseExistingServer: false,
+						timeout: 300_000
+					}
+				]
+			: [])
 	]
 });

@@ -1,4 +1,6 @@
+import { KofraError } from '@kofra/api';
 import { error, type RequestEvent } from '@sveltejs/kit';
+import { loadFailed } from './api.js';
 
 export interface ApiToken {
 	id: string;
@@ -65,10 +67,79 @@ export function resetSampleTokens({ cookies, url }: RequestEvent) {
 	});
 }
 
+/** Most pages of tokens read for one list (100 each; a workspace has far fewer). */
+const MAX_PAGES = 10;
+
+/**
+ * The API's `tokens.list`, `tokens.create` and `tokens.revoke` over the live transport. The
+ * vendored SDK predates these operations, so they are called directly; an error answer
+ * becomes a `KofraError`, as from the SDK, and reaches the page the same way.
+ */
+export function liveTokensPort(apiFetch: NonNullable<App.Locals['apiFetch']>): TokensPort {
+	const call = async (method: string, path: string, body?: unknown, key?: string) => {
+		const headers = new Headers();
+		if (body !== undefined) headers.set('Content-Type', 'application/json');
+		if (key) headers.set('Idempotency-Key', key);
+		const r = await apiFetch(path, {
+			method,
+			headers,
+			body: body === undefined ? undefined : JSON.stringify(body)
+		});
+		if (r.status === 204) return null;
+		const data: unknown = await r.json().catch(() => null);
+		if (!r.ok) {
+			const p = (data ?? {}) as Record<string, unknown>;
+			loadFailed(
+				new KofraError({
+					type: typeof p.type === 'string' ? p.type : 'about:blank',
+					status: r.status,
+					code: typeof p.code === 'string' ? p.code : 'internal_error',
+					title: typeof p.title === 'string' ? p.title : 'Error',
+					detail: typeof p.detail === 'string' ? p.detail : 'The request was refused.',
+					hint: typeof p.hint === 'string' ? p.hint : '',
+					docs_url: typeof p.docs_url === 'string' ? p.docs_url : '',
+					request_id:
+						typeof p.request_id === 'string'
+							? p.request_id
+							: (r.headers.get('Kofra-Request-Id') ?? ''),
+					retryable: p.retryable === true
+				})
+			);
+		}
+		return data;
+	};
+	return {
+		async list() {
+			const all: ApiToken[] = [];
+			let cursor: string | null = null;
+			for (let i = 0; i < MAX_PAGES; i++) {
+				const q = new URLSearchParams({ limit: '100' });
+				if (cursor) q.set('cursor', cursor);
+				const page = (await call('GET', `/v1/tokens?${q}`)) as {
+					data: ApiToken[];
+					next_cursor: string | null;
+				};
+				all.push(...page.data);
+				cursor = page.next_cursor;
+				if (!cursor) break;
+			}
+			return all;
+		},
+		async create(input) {
+			// One key per click: a retry inside the transport cannot make a second token.
+			return (await call('POST', '/v1/tokens', input, crypto.randomUUID())) as ApiTokenCreated;
+		},
+		async revoke(id) {
+			if (!/^tok_[A-Za-z0-9]+$/.test(id))
+				error(404, { message: 'That token is no longer available.' });
+			await call('DELETE', `/v1/tokens/${id}`);
+		}
+	};
+}
+
 export function tokensPort({ locals, cookies, url }: RequestEvent): TokensPort {
-	// Connect the live port to the SDK here once its token endpoints are released.
-	// Sample tokens only (demo and live-fake). Connect the live port to the SDK here once its
-	// token endpoints are released.
+	if (locals.mode === 'live' && locals.apiFetch) return liveTokensPort(locals.apiFetch);
+	// Sample tokens only (demo and live-fake).
 	if (locals.mode !== 'demo' && locals.mode !== 'live-fake')
 		error(503, { message: 'API tokens are not available yet.' });
 
