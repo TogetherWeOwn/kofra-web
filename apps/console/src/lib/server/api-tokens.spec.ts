@@ -76,6 +76,12 @@ describe('API tokens in live mode', () => {
 		});
 	});
 
+	it('refuses to show a list cut short', async () => {
+		const page = () => Response.json({ data: [token('tok_x')], next_cursor: 'more' });
+		const { port } = upstream(Array.from({ length: 60 }, page));
+		await expect(port.list()).rejects.toThrow('More API tokens');
+	});
+
 	it('never sends an ID that is not a token ID', async () => {
 		const { seen, port } = upstream([]);
 		const err = await port.revoke('../keys/x').catch((e: unknown) => e);

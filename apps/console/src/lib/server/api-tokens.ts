@@ -66,8 +66,9 @@ export function resetSampleTokens({ cookies, url }: RequestEvent) {
 	});
 }
 
-/** Most pages of tokens read for one list (100 each; a workspace has far fewer). */
-const MAX_PAGES = 10;
+/** Most pages of tokens read for one list (100 each). Past it the list is refused, never
+ * shown cut short. */
+const MAX_PAGES = 50;
 
 /**
  * The API's `tokens.list`, `tokens.create` and `tokens.revoke` over the live transport. The
@@ -119,9 +120,9 @@ export function liveTokensPort(apiFetch: NonNullable<App.Locals['apiFetch']>): T
 				};
 				all.push(...page.data);
 				cursor = page.next_cursor;
-				if (!cursor) break;
+				if (!cursor) return all;
 			}
-			return all;
+			throw new Error('More API tokens than one page can list.');
 		},
 		async create(input) {
 			// One key per click: a retry inside the transport cannot make a second token.

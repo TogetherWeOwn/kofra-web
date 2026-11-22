@@ -35,11 +35,14 @@ function sql(command: string): Record<string, unknown>[] {
 const userOf = (email: string) =>
 	`(SELECT id FROM account_users WHERE email_key = '${email.toLowerCase()}')`;
 
-// Remove what this run made (it may run against a shared staging database), in one call.
+// Remove what this run made (it may run against a shared staging database): the workspaces
+// by the IDs read first, since members point at them.
 test.afterAll(() => {
 	const mine = `(SELECT id FROM account_users WHERE email_key LIKE '%.${RUN}@example.com')`;
-	const ws = `(SELECT workspace_id FROM api_members WHERE user_id IN ${mine})`;
-	const mark = `e2e-delete-${RUN}`;
+	const ids = sql(`SELECT DISTINCT workspace_id AS id FROM api_members WHERE user_id IN ${mine}`)
+		.map((r) => String(r.id))
+		.filter((id) => /^ws_[a-z0-9]+$/.test(id));
+	const ws = `(${ids.map((id) => `'${id}'`).join(', ') || "''"})`;
 	sql(
 		[
 			`DELETE FROM api_tokens WHERE workspace_id IN ${ws}`,
@@ -47,15 +50,14 @@ test.afterAll(() => {
 			`DELETE FROM api_idempotency WHERE workspace_id IN ${ws}`,
 			`DELETE FROM api_deletion_requests WHERE workspace_id IN ${ws}`,
 			`DELETE FROM account_provisioning WHERE workspace_id IN ${ws}`,
-			// Members point at workspaces: mark the workspaces, drop the members, then them.
-			`UPDATE api_workspaces SET name = '${mark}' WHERE id IN ${ws}`,
-			`DELETE FROM api_members WHERE user_id IN ${mine}`,
-			`DELETE FROM api_workspaces WHERE name = '${mark}'`,
+			`DELETE FROM api_members WHERE workspace_id IN ${ws}`,
+			`DELETE FROM api_workspaces WHERE id IN ${ws}`,
 			`DELETE FROM account_users WHERE id IN ${mine}`,
 			`DELETE FROM account_invites WHERE email_key LIKE '%.${RUN}@example.com'`,
 			`DELETE FROM account_mail_outbox WHERE to_addr LIKE '%.${RUN}@example.com'`
 		].join('; ')
 	);
+	expect(sql(`SELECT count(*) AS n FROM account_users WHERE id IN ${mine}`)[0]?.n).toBe(0);
 });
 
 /** What the operator's invite script does: the hash in D1, the token to the person. */
