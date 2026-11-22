@@ -9,7 +9,6 @@ import { execFileSync } from 'node:child_process';
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 import path from 'node:path';
 
-const API = path.resolve(process.env.KOFRA_API_DIR ?? '.', 'workers/kofra-api');
 const STATE = path.resolve(import.meta.dirname, '..', '.wrangler', 'e2e-live');
 const wrangler = path.resolve(import.meta.dirname, '..', 'node_modules', '.bin', 'wrangler');
 const RUN = randomBytes(3).toString('hex');
@@ -22,9 +21,10 @@ const REMOTE_D1 = process.env.KOFRA_E2E_REMOTE_D1;
 function sql(command: string): Record<string, unknown>[] {
 	const where = REMOTE_D1
 		? [REMOTE_D1, '--remote']
-		: ['DB', '--local', '--persist-to', STATE, '-c', 'wrangler.toml'];
+		: // The launcher's own copy of the API configuration, the one it migrated and runs.
+			['DB', '--local', '--persist-to', STATE, '-c', path.join(STATE, 'api', 'wrangler.toml')];
 	const out = execFileSync(wrangler, ['d1', 'execute', ...where, '--json', '--command', command], {
-		cwd: REMOTE_D1 ? path.resolve(import.meta.dirname, '..') : API,
+		cwd: path.resolve(import.meta.dirname, '..'),
 		env: { ...process.env, CI: '1' },
 		stdio: ['ignore', 'pipe', 'ignore']
 	}).toString();

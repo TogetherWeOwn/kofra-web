@@ -81,7 +81,8 @@ if (!remote) {
 	mkdirSync(apiDir, { recursive: true });
 	let toml = readFileSync(path.join(api, 'wrangler.toml'), 'utf8');
 	const absolute = (key: string, value: string) => {
-		const line = new RegExp(`^${key}\\s*=\\s*"[^"]*"`, 'm');
+		// A top-level `key = "…"` or `key = '…'` line, indented or not.
+		const line = new RegExp(`^[ \\t]*${key}[ \\t]*=[ \\t]*(?:"[^"\\n]*"|'[^'\\n]*')`, 'm');
 		if (!line.test(toml)) throw new Error(`the API Worker configuration has no ${key}`);
 		// A replacer function: the path is taken literally (no `$&` patterns).
 		toml = toml.replace(line, () => `${key} = ${JSON.stringify(value)}`);
